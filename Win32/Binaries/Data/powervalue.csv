@@ -1,0 +1,2 @@
+MaxHP,MaxMP ,MaxSP ,PA ,MA ,PF ,MF ,HPRecover ,MPRecover ,SPRecover ,AttSpeed ,CombinationAtt ,MoveSpeed ,JumpHeight ,FlyTimes ,SPDamage ,AttPush ,AttPushDef ,AttRaise ,AttraiseDef ,Stiff ,StiffDef ,BaseCrit ,Critrate ,BaseToughness ,VertigoDef ,VertigoTimeDef ,SlowDef ,SlowTimeDef ,PoisonDef ,BloodDef ,KODef ,FloatVal ,Floatdef ,Fall ,Falldef 
+0.0333,1,4.5,1,1,0.8,0.8,1,10,10,0,0,0,0,0,12,0,0,0,0,0,0,5,5,3.5,0,0,0,0,0,0,0,0,0,0,0

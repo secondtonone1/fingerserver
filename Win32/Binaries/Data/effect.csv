@@ -1,0 +1,4 @@
+id,resType,type,playType,anchorPoint,reference,offset,playSpeed,frameStart,frameCount,res,interval
+100001,,,,0.5;0.15,,0;0,30,0,6,common_effect_jumpsmokes01,5
+100002,,,,0.5;0.15,,0;0,30,0,4,common_effect_jumpsmokes01,4
+1,2,4,1,0.5;0.5,4,0;0,30,0,5,common_effect_bluntbehit01,2

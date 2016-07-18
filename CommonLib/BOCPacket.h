@@ -1,0 +1,28 @@
+#ifndef __LYNX_COMMON_LIB_BOCPACKET_H__
+#define __LYNX_COMMON_LIB_BOCPACKET_H__
+
+#include "LoginPacket.h"
+#include "PlayerPacket.h"
+#include "SkillPacket.h"
+#include "BuffPacket.h"
+#include "ItemPacket.h"
+#include "StagePacket.h"
+#include "EquipStatePacket.h"
+#include "FashionPacket.h"
+#include "RhymePacket.h"
+#include "BoxPacket.h"
+#include "FirePacket.h"
+#include "HoarStonePacket.h"
+#include "HeroEquipPacket.h"
+#include "GemPacket.h"
+#include "JewelryPacket.h"
+#include "MaterialPacket.h"
+#include "ServantPacket.h"
+#include "ChatPacket.h"
+#include "DetailInfoPacket.h"
+#include "GMPacket.h"
+#include "FriendPacket.h"
+#include "EmailPacket.h"
+#include "CharactorPacket.h"
+#include "AchieveAndDailyPacket.h"
+#endif // __LYNX_COMMON_LIB_BOCPACKET_H__

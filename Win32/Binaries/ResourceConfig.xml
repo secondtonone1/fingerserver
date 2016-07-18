@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<config>
+  <resourcegroup name="Data">
+    <resource type="File" path="Data"/>
+  </resourcegroup>
+  <resourcegroup name="Table">
+    <resource type="File" path="Table"/>
+  </resourcegroup>
+</config>
+

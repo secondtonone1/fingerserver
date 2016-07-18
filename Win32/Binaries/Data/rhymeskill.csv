@@ -1,0 +1,4 @@
+id,activeNeedLevel,name1,desc1,icon1,powerNeed1,skillPosition1,skillId1,effectId1,name2,desc2,icon2,powerNeed2,skillPosition2,skillId2,effectId2,name3,desc3,icon3,powerNeed3,skillPosition3,skillId3,effectId3
+1,1;0,大飞第一个,大飞第一个,image/icon_skill/Wxiangqi.png,0,300;200,9,-1,风入松,使用韵的力量，召唤猛虎，对全体敌人造成伤害。,image/icon_skill/Wxiangqi.png,0,300;200,2009,-1,白糖第一个,白糖第一个,image/icon_skill/Wxiangqi.png,0,300;200,9,-1
+2,4;0,大飞第二个,大飞第二个,image/icon_skill/Wxiangqi.png,0,300;200,8,-1,镜花水月,武崧化为5个分身，对全体敌人造成伤害。,image/icon_skill/Wxiangqi.png,0,300;200,2010,-1,白糖第二个,白糖第二个,image/icon_skill/Wxiangqi.png,0,300;200,8,-1
+3,7;0,大飞第三个,大飞第三个,image/icon_skill/Wxiangqi.png,0,300;200,7,-1,象棋乱打,武崧将棍棒化为象棋，使用棋子对全体敌人进行攻击。,image/icon_skill/Wxiangqi.png,0,300;200,2011,-1,白糖第三个,白糖第三个,image/icon_skill/Wxiangqi.png,0,300;200,7,-1

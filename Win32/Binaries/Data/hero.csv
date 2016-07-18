@@ -1,0 +1,6 @@
+id,name,desc,weapon,rhymeskill1,rhymeskill2,rhymeskill3,res,skillList,skillListOnCreate,DefenceAreaStand,DefenceAreaLie,charScale,clothesScale,weaponScale,headRes,fastModeNeedPower,fastModeKeepTime,headIcon,weightvalue,skillweight,playerlevel,viplevel,cost,sect,CharRes,CharOffset,CharZoder
+1,大飞,外表霸道粗犷，实则憨厚亲切。说话嗓门大、力气大，实际上属于新好男人，女红、做饭、家务样样拿手。对小动物也很有爱心。,拳套,千斤鼎,巴蛇乱舞,千斤坠,hero0001,1001;1002;1003;1004;1005;1006;1007;1008;1009;1010;1011,1001;1002;1003;1004;1005,;-55;0;130;100,;-55;0;130;100,1,1,1,#hero0001_headicon.png,50;100,5;10,#hero0001_headicon.png,90,0;0;30;30;30;30;30;30;0;0;0,0,3,1000,9,#wusong_luoti.png,"0,0",3
+2,武崧,自傲、俊酷的天才，星罗班的优等生。身为名门之后，不管是对家族还是个人，荣誉感和责任感都非常强。善下象棋，长于布局，思维缜密，处事冷静，是星罗班的优等生。,棍棒,风入松,镜花水月,象棋乱打,hero0002,2001;2002;2003;2004;2005;2006;2007;2008;2009;2010;2011,2001;2002;2003;2004;2005,;-55;0;130;150,;-55;0;130;100,1,1,1,#hero0002_headicon.png,50;100,5;10,#hero0002_headicon.png,90,0;0;30;30;30;30;30;30;0;0;0,0,3,1000,12,#wusong_luoti.png,"0,0",3
+,,,,,,,,,,,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,,,,,,,,,,,
