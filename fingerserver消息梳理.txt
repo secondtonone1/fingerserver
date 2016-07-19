@@ -1,0 +1,565 @@
+客户端消息处理流程：
+
+第一步：
+NetworkSystem::initial()
+{
+	//完成ListenerWorker 的定义和初始化
+	if (!mListenerWorker.initial(0, mainListenIp, mainListenPort, gmListenIp, gmListenPort))
+    {
+        LOG_WARN("Failed to initial listener thread worker");
+        return false;
+    }
+	//networker 的初始化
+	for (UInt32 i = 0; i < NETWORK_THREAD_WORKER_COUNT; ++i)
+    {
+        if (!mNetworkWorkerArray[i].initial(i))
+        {
+            LOG_WARN("Failed to initial network thread worker [%u]", i);
+            return false;
+        }
+    }
+
+}
+
+第二部： ListenerWorker 的定义和初始化
+bool 
+ListenerWorker::initial(UInt32 index, const String& mainListenIp, UInt16 mainListenPort,
+                        const String& gmListenIp, UInt16 gmListenPort)
+						{
+							//开辟ioservice
+							mIOService = XNEW(IOService)();
+
+							ASSERT(mIOService);
+							//创建TcpListener
+							mMainTcpListener = XNEW(TcpListener)(mIOService, mainListenIp.c_str(), mainListenPort);
+							ASSERT(mMainTcpListener);
+							//TcpListener的 mOnAccepted设置为ListenerWorker::onMainAccepted
+							LYNX_REGISTER_ACCEPTED(mMainTcpListener, this, &ListenerWorker::onMainAccepted);
+							//创建TcpConnection 同步给TcpListener
+							mMainTcpListener->asyncAccept(XNEW(TcpConnection)(mIOService));
+						
+						
+						}
+						
+第三步：TcpListener 的创建流程
+
+TcpListener::TcpListener(IOService* ioService, const String& srcIp, UInt16 srcPort) 
+: Socket(TRANSPORT_TCP), mIOService(ioService), mIStream((128 - sizeof(StreamBuffer::Node)))
+{
+	//mRecvEvent 是IOEvent类型，和模型驱动直接关联的结构体
+	mRecvEvent.mFd = mFd;
+    mRecvEvent.mEventType = IOSERVICE_READ_EVENT;
+	//绑定该回调函数为onAccept
+	//如果epoll或者select检测读事件会在dispatch里派发该消息调用onAccept函数
+    mRecvEvent.mCallback = &onAccepted;
+    mRecvEvent.mData = mIStream.allocNode();
+
+    if (mIOService->addEvent(&mRecvEvent) < 0)
+    {
+        LOG_WARN("Failed to add read ev for tcp listen.");
+        ASSERT(0);
+    }
+
+}
+
+第四步：epoll或者select检测客户端连接，那么调用
+TcpListener::onAccepted(IOEvent* ev, UInt32 eventType)
+{
+	conn->mFd = listener->tcpAccept(conn->mDstIp, conn->mDstPort);
+            if (conn->mFd > 0)
+            {
+                ASSERT(conn->mIOService == listener->mIOService);
+                char tmpBuf[128];
+                inet_ntop(AF_INET, &conn->mDstIp, tmpBuf, 128);
+                conn->mStrDstIp = tmpBuf;
+               
+				//设置TcpConnection 的mRecvEvent回调事件为onReceived 王戊辰
+				//注意TcpConnection的mRecvEvent和TcpListener的mRecvEvent不是一个
+				//因为绑定的fd不同
+                conn->resume();
+				//设置为pending true 王戊辰
+                conn->asyncReceive();
+                if (!listener->mOnAccepted.empty())
+                {
+                    listener->mOnAccepted(conn, conn->mIStream, conn->mOStream);
+                }
+                //ev->mOwner = NULL;
+            }
+            else if (conn->mFd <= 0)
+            {
+                LOG_WARN("Failed to accept tcp connection errno %d", ev->mErrno);
+                if (!listener->mOnAcceptFailed.empty())
+                {
+                    listener->mOnAcceptFailed(conn, conn->mIStream, conn->mOStream);
+                }
+                //ev->mOwner = NULL;
+            }
+   
+}
+
+第五步：TcpConnection 的 resume流程
+
+void 
+TcpConnection::resume()
+{
+    mValid = true;
+    mRecvEvent.mFd = mFd;
+    mRecvEvent.mEventType = IOSERVICE_READ_EVENT;
+    mRecvEvent.mOwner = this;
+	//为新连接设置的回调函数为onReceived
+	//以后mFd新的消息到来都会触发onReceived
+    mRecvEvent.mCallback = &onReceived;
+    mRecvPending = false;
+
+    mSendEvent.mFd = mFd;
+    mSendEvent.mEventType = IOSERVICE_WRITE_EVENT;
+    mSendEvent.mOwner = this;
+    mSendEvent.mCallback = &onSent;
+    mSendPending = false;
+
+    {
+        // Add read event for connection persist.
+        if (mIOService->addEvent(&mRecvEvent) < 0)
+        {
+            LOG_WARN("Failed to add read event, fd=%d.", mFd);
+            if (mIOTimer == NULL)
+            {
+                mIOTimer = XNEW(IOTimer)(mIOService);
+                mIOTimer->set(1, IOTimerCallback(&TcpConnection::onTimer), this);
+            }
+        }
+    }
+}
+
+
+第六步：之前第四部调用了resume，之后有调用了mOnAccepted
+由于第二部绑定了LYNX_REGISTER_ACCEPTED(mMainTcpListener, this, &ListenerWorker::onMainAccepted);
+所以实际调用的是ListenerWorker::onMainAccepted
+
+void 
+ListenerWorker::onMainAccepted(TcpConnection* conn, StreamBuffer& istream, StreamBuffer& ostream)
+{
+	LOG_INFO("Player Connection arrived from [%s:%u]", conn->getFromIp().c_str(), conn->getFromPort());
+	mMainConnectionSet.insert(conn);
+	conn->mRecvTimeStamp = TimeUtil::getTimeSec();
+	//旧的连接用于绑定mOnReceived事件了 王戊辰
+	//下一次再接收到消息触发onMainReceived 王戊辰
+	LYNX_REGISTER_RECEIVED(conn, this, &ListenerWorker::onMainReceived);
+	LYNX_REGISTER_CONNECT_BROKEN(conn, this, &ListenerWorker::onMainDisconnected);
+	//新new一个conn用于监听新的客户端连接 王戊辰
+	mMainTcpListener->asyncAccept(XNEW(TcpConnection)(mIOService));
+	
+}
+
+上面那几步是accept过程。
+那么下边是对于连接成功的客户端，消息发送到服务器处理的流程
+第七步：第五步中对于连接的客户端，继续和服务器发送消息会
+在epoll或者select模型里调用onReceive
+
+void 
+TcpConnection::onReceived(IOEvent* ev, UInt32 eventType)
+{
+    if (eventType & IOSERVICE_READ_EVENT)
+    {
+        TcpConnection* conn = (TcpConnection *)ev->mOwner;
+        if (conn == NULL)
+        {
+            LOG_WARN("Exception for invalid conn pointer");
+            return;
+        }
+
+        conn->mRecvPending = false;
+        //conn->mRecvTimeStamp = TimeUtil::GetTimeSec();
+
+        if (ev->mErrno != LYNX_ERROR_NONE)
+        {
+            conn->mErrno = ev->mErrno;
+            conn->cleanConnection();
+          
+
+            if (conn->mValid && !conn->mOnConnectBroken.empty())
+            {
+                conn->mValid = false;
+                if (conn->mIOTimer)
+                {
+                    conn->mIOTimer->cancel();
+                }
+                conn->mOnConnectBroken(conn, conn->mIStream, conn->mOStream);
+            }
+            return;
+        }
+
+      
+        {
+			//epoll 边缘触发需要while循环中读取 王戊辰
+            if (conn->mReadUtilNull) // read until tcp buffer is null when read event arrived.
+            {
+                while (1)
+                {
+                    ev->mData = conn->mIStream.allocNode();
+                    Int32 nBytes = conn->tcpRecv((char *)ev->mData + sizeof(StreamBuffer::Node),
+                        conn->mIStream.mNodeDataSize);
+                    if (nBytes > 0) 
+                    {
+                        conn->mRecvByteCount += nBytes;
+                        ev->mData->mLen = nBytes;
+                        conn->mIStream.pushNode(ev->mData);
+                        ev->mData = NULL;
+                    }
+                    else if (nBytes < 0)
+                    {
+                        conn->mIStream.deallocNode(ev->mData);
+                        ev->mData = NULL;
+                        conn->cleanConnection();
+                        if (conn->mValid && !conn->mOnConnectBroken.empty())
+                        {
+                            conn->mValid = false;
+                            if (conn->mIOTimer)
+                            {
+                                conn->mIOTimer->cancel();
+                            }
+                            conn->mOnConnectBroken(conn, conn->mIStream, conn->mOStream);
+                        }
+                        break;
+                    }
+                    else // == 0, would block, tcp receive buffer is null. callback application.
+                    {
+                        conn->mIStream.deallocNode(ev->mData);
+                        ev->mData = NULL;
+						//调用connection 的onReceived
+						// LYNX_REGISTER_RECEIVED(tcpConnection, this, &NetworkWorker::onReceived);
+                        if (!conn->mOnReceived.empty())
+                        {
+                            conn->mOnReceived(conn, conn->mIStream, conn->mOStream);
+                        }
+                        break;
+                    }
+                }
+            }
+            else // read one time when read event arrived.
+            {
+				//epoll LT模式或者select模式
+                ev->mData = conn->mIStream.allocNode();
+                Int32 nBytes = conn->tcpRecv((char *)ev->mData + sizeof(StreamBuffer::Node),
+                    conn->mIStream.mNodeDataSize);
+                if (nBytes > 0) 
+                {
+                    conn->mRecvByteCount += nBytes;
+                    ev->mData->mLen = nBytes;
+                    conn->mIStream.pushNode(ev->mData);
+                    ev->mData = NULL;
+                    if (!conn->mOnReceived.empty())
+                    {
+                        conn->mOnReceived(conn, conn->mIStream, conn->mOStream);
+                    }
+                }
+                else if (nBytes < 0)
+                {
+                    conn->mIStream.deallocNode(ev->mData);
+                    ev->mData = NULL;
+                    conn->cleanConnection();
+                    if (conn->mValid && !conn->mOnConnectBroken.empty())
+                    {
+                        conn->mValid = false;
+                        if (conn->mIOTimer)
+                        {
+                            conn->mIOTimer->cancel();
+                        }
+                        conn->mOnConnectBroken(conn, conn->mIStream, conn->mOStream);
+                    }
+                }
+                else // == 0, would block, tcp receive buffer is null. callback application.
+                {
+                    conn->mIStream.deallocNode(ev->mData);
+                    ev->mData = NULL;
+                    if (!conn->mOnReceived.empty())
+                    {
+                        conn->mOnReceived(conn, conn->mIStream, conn->mOStream);
+                    }
+                }
+            }
+        }
+    }
+    else
+    {
+        LOG_WARN("Exception for unknown logic.");
+        ASSERT(0);
+    }
+}
+
+第八步： 在第七步中调用了conn->mOnConnectBroken(conn, conn->mIStream, conn->mOStream);
+由于在第六步中注册了LYNX_REGISTER_RECEIVED(conn, this, &ListenerWorker::onMainReceived);
+所以，所以调用的是
+void 
+ListenerWorker::onMainReceived(TcpConnection* conn, StreamBuffer& istream, StreamBuffer& ostream)
+{
+
+	//删除回调函数，绑定别的回调函数做准备 王戊辰
+	LYNX_DEREGISTER_RECEIVED(conn, this, &ListenerWorker::onMainReceived);
+	LYNX_DEREGISTER_CONNECT_BROKEN(conn, this, &ListenerWorker::onMainDisconnected);
+	//从主链接上删除，绑定到network的连接上 王戊辰
+	mMainConnectionSet.erase(conn);
+	//将IOService的读写回调函数关闭,
+	//此时任何客户端和服务器通信都不会收到
+	conn->pause();
+	//把io服务断开 王戊辰
+    conn->setService(NULL);
+
+	//发送消息
+	ConnectionAcceptedNotify notify;
+    notify.mType = 0;
+	notify.mConnPointer = conn;
+	postMsgToOutputQueue(notify, 0);
+}
+
+
+第九步：这个注册就不找了，可以自己看，会触发
+REGISTER_THREAD_MSG(mThreadMsgHandler, ConnectionAcceptedNotify, NetworkSystem::onConnectionAcceptedNotify);
+会触发
+
+void 
+NetworkSystem::onConnectionAcceptedNotify(ConnectionAcceptedNotify& msg)
+{
+	TcpConnection* tcpConnection = (TcpConnection*)msg.mConnPointer;
+	if (!tcpConnection)
+	{
+		LOG_WARN("Tcp connection pointer is NULL.");
+		return;
+	}
+
+	//发送消息
+	ConnId connId = mConnIdIndex++;
+	ConnectionOpenNotify connectionOpenNotify;
+	connectionOpenNotify.mConnId = connId;
+	connectionOpenNotify.mConnPointer = tcpConnection;
+	postThreadMsgToNetworkWorker(connectionOpenNotify, connId);
+	
+	//创建应用层消息处理结构体
+	ClientConnection* clientConnection = XNEW(ClientConnection)();
+	ASSERT(clientConnection);
+	clientConnection->mConnId = connId;
+    clientConnection->mType = msg.mType;
+    clientConnection->mFromIp = tcpConnection->getFromIp();
+    clientConnection->mFromPort = tcpConnection->getFromPort();
+
+	mClientConnectionMap.insert(connId, clientConnection);	
+}
+
+第十部：同样的方式会触发
+
+void 
+NetworkWorker::onConnectionOpenNotify(ConnectionOpenNotify& msg)
+{
+	TcpConnection* tcpConnection = (TcpConnection*)msg.mConnPointer;
+	if (!tcpConnection)
+	{
+		LOG_WARN("Tcp connection pointer is NULL.");
+		return;
+	}
+
+
+	mTcpConnectionMap.insert(msg.mConnId, tcpConnection);
+	//设置connid  王戊辰
+	tcpConnection->mConnId = msg.mConnId;
+	//将connection绑定新的回调函数  王戊辰
+    LYNX_REGISTER_RECEIVED(tcpConnection, this, &NetworkWorker::onReceived);
+	LYNX_REGISTER_CONNECT_BROKEN(tcpConnection, this, &NetworkWorker::onConnectionBroken);
+	tcpConnection->setService(mIOService);
+	//回复读写事件 王戊辰
+    tcpConnection->resume();
+	//考虑到epoll et模式 EPOLLIN边缘触发，这次不调用，就要漏掉数据了。王戊辰
+    onReceived(tcpConnection, tcpConnection->mIStream, tcpConnection->mOStream);
+}
+
+第十一步：
+在第十部里将TCPConnection的回调函数绑定为NetworkWorker的onReceive了，
+所以以后这个connction消息到来都会触发NetworkWorker的onReceive的。
+
+void 
+NetworkWorker::onReceived(TcpConnection* conn, StreamBuffer& istream, StreamBuffer& ostream)
+{
+	if (conn->mIStream.length() > TCP_MAX_CACHE_ISTREAM_LENGTH ||
+		conn->mOStream.length() > TCP_MAX_CACHE_OSTREAM_LENGTH)
+	{
+		LOG_WARN("Tcp connection stream overflow.");
+		conn->close();
+		return;
+	}
+
+	Map<ConnId, TcpConnection*>::Iter* iter = mTcpConnectionMap.find(conn->mConnId);
+	if (iter == NULL)
+	{
+		LOG_WARN("Tcp connection don't exist.");
+		conn->close();
+		return;
+	}
+
+	UInt32 nodeCount = istream.getNodeCount();
+	if (nodeCount == 0)
+	{
+		LOG_WARN("Logic error for istream node count == 0");
+		conn->close();
+		return;
+	}
+
+	//从istream中取出数据
+	ConnectionReceiveNotify notify;
+	notify.mConnId = conn->mConnId;
+	StreamBuffer::Node* node = NULL;
+	while (node = istream.popNode())
+	{
+		notify.mNodeList.push_back(node);
+	}
+
+	postMsgToOutputQueue(notify, 0);
+}
+
+第十二步：
+
+void 
+NetworkSystem::onConnectionReceiveNotify(ConnectionReceiveNotify& msg)
+{
+	Map<ConnId, ClientConnection*>::Iter* iter = mClientConnectionMap.find(msg.mConnId);
+	if (iter == NULL)
+	{
+		LOG_WARN("Client connection %llu don't exist", msg.mConnId);
+		for (Vector<void*>::iterator jter = msg.mNodeList.begin();
+			jter != msg.mNodeList.end(); ++jter)
+		{
+			XDELETE((StreamBuffer::Node*)(*jter));
+		}
+		ConnectionCloseNotify notify;
+		notify.mConnId = msg.mConnId;
+		postThreadMsgToNetworkWorker(notify, msg.mConnId);
+		return;
+	}
+
+	ClientConnection* clientConnection = iter->mValue;
+	if (!clientConnection)
+	{
+		for (Vector<void*>::iterator jter = msg.mNodeList.begin();
+			jter != msg.mNodeList.end(); ++jter)
+		{
+			XDELETE((StreamBuffer::Node*)(*jter));
+		}
+		ConnectionCloseNotify notify;
+		notify.mConnId = msg.mConnId;
+		postThreadMsgToNetworkWorker(notify, msg.mConnId);
+		return;
+	}
+
+	//将消息取出放入到clientconnection中的istream里，
+	for (Vector<void*>::iterator i = msg.mNodeList.begin();
+		i != msg.mNodeList.end(); ++i)
+	{
+		StreamBuffer::Node* node = (StreamBuffer::Node*)(*i);
+		if (node)
+		{
+			clientConnection->mIStream.pushNode(node);
+		}
+		else
+		{
+			LOG_WARN("Logic error for stream buffer node is NULL.");
+            pushEvent(EVENT_CLIENT_CONNECTION_CLOSE, msg.mConnId);
+            return;
+		}
+	}
+	//然后调用应用层消息处理逻辑
+    clientConnection->onReceived();
+}
+
+到此为止整个流程结写完毕。
+
+
+下面分析下对于epoll和select封装，以及如何派发给上层消息的
+
+第一步：IOService构造函数中选择了不同的网络模型
+IOService::IOService(Int32 type) : mShutdown(false), mPaused(false)
+{
+#ifdef _WIN32
+    switch (type)
+    {
+    case IOSERVICE_SELECT_DRIVER:
+		//选择select模型
+        mIOEventOperator = &selectOperator;
+        break;
+    default:
+        ASSERT(0);
+    }
+#elif defined (__linux__) 
+    switch (type)
+    {
+    case IOSERVICE_SELECT_DRIVER:
+        mIOEventOperator = &selectOperator;
+        break;
+    case IOSERVICE_EPOLL_DRIVER:
+		//选择epoll模型
+        mIOEventOperator = &epollOperator;
+        break;
+    default:
+        ASSERT(0);
+    }
+#else
+    mIOEventOperator = &selectOperator;
+#endif
+	//调用模型的初始化
+    mOperation = mIOEventOperator->mInitial(this);
+    TimeUtil::getTimeOfDay(&mTimeFlag, NULL);
+    LOG_INFO("IOEventOperator was implement by %s", mIOEventOperator->mName);
+}
+
+同样的道理在IOService::addEvent完成
+调用底层网络模型的事件添加
+
+Int32 
+IOService::addEvent(IOEvent* ev)
+{
+    Int32 result  = 0;
+    if (ev->mEventType & IOSERVICE_TIMEOUT_EVENT)
+    {
+        struct Timeval now;
+        TimeUtil::getTimeOfDay(&now, NULL);
+        TIMERADD(&now, &ev->mDuration, &ev->mTimeout);
+        mTimeoutHeap.push(ev);
+        ev->mValid = true;
+    }
+    else
+    {
+        result = mIOEventOperator->mAddEvent(ev, mOperation);
+        if (result == 0) ev->mValid = true;
+    }
+    return result;
+}
+
+调用底层网络的事件删除
+void 
+IOService::delEvent(IOEvent* ev)
+{
+    if (!ev->mValid) return;
+    if (ev->mEventType & IOSERVICE_TIMEOUT_EVENT)
+    {
+        mTimeoutHeap.erase(ev);
+    }
+    else
+    {
+        mIOEventOperator->mDelEvent(ev, mOperation);
+    }
+    ev->mValid = false;
+}
+
+第二部： 在第一步中用到了mIOEventOperator，
+根据不同情况被赋予selectOperator或者epollOperator
+找到一个实现就可以，举例epollOperator
+
+在IOEventOperatorEpollImpl.cpp中
+IOEventOperator epollOperator = 
+{
+    IOSERVICE_EPOLL_DRIVER,
+    "EPOLL",
+    epollInitial,
+    epollRelease,
+    epollAddEvent,
+    epollDelEvent,
+    epollDispatch
+};
+所以读者就可以在这个文件里看到所有的实现了。
