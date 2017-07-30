@@ -2,6 +2,9 @@
 #include "Player.h"
 #include "LogicSystem.h"
 #include "PersistSystem.h"
+#include "FireConfirm/Gift.h"
+
+
 using namespace Lynx;
 
 
@@ -145,8 +148,16 @@ void FashionManager::buyFashion(UInt64 fashionId)
 	}
 
 	//¿Û³ýÖ¸¶¨Ôª±¦
-	m_pPlayer->setPlayerGold(gold - fashionTemp->mLimitRMB);
-	m_pPlayer->getPersistManager().setDirtyBit(BASEDATABIT);
+
+
+	Goods goods;
+	List<Goods> itemList;
+
+	goods.resourcestype =AWARD_BASE;
+	goods.subtype = AWARD_BASE_GOLD;
+	goods.num = 0 - fashionTemp->mLimitRMB;
+	itemList.insertTail(goods);
+	GiftManager::getSingleton().addToPlayer(m_pPlayer->getPlayerGuid(),REFLASH_AWARD,itemList,MiniLog10);
 
 	addFashion(fashionId, connId);
 
@@ -170,14 +181,14 @@ void FashionManager::addFashion(UInt64 fashionId, const ConnId &connId)
 {
 	FashionData fashionData;
 	fashionData.m_nFahionID = fashionId;
-	fashionData.m_nFashionUid = LogicSystem::getSingleton().generateItemGuid();
+	
 
 	List<FashionData>::Iter * insertIter = m_pListFashionDatas->insertTail(fashionData);
 	m_mapIdToFsData.insert(fashionId, &insertIter->mValue);
 
 	FashionAdd fashionAdd;
 	fashionAdd.mFashionId = fashionId;
-	fashionAdd.mFashionUid = fashionData.m_nFashionUid;
+	
 	fashionAdd.mPlayerUid = m_pPlayer->getPlayerGuid();
 
 	PersistSystem::getSingleton().postThreadMsg(fashionAdd, connId);

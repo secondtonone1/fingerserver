@@ -2,6 +2,7 @@
 #include "Player.h"
 #include "CommonLib/Table.h"
 #include "LogicSystem.h"
+#include "FireConfirm/Gift.h"
 
 using namespace Lynx;
 
@@ -156,8 +157,17 @@ void RhymeManager::onEnhanceOnce()
 			//韵魂减少
 			curSoul -= needSoul;
 			//金币减少
-			curCoin -= needCoin;
-			
+
+			Goods goods;
+			List<Goods> itemList;
+
+			goods.resourcestype =AWARD_BASE;
+			goods.subtype = AWARD_BASE_COIN;
+			goods.num = 0 - needCoin;
+			itemList.insertTail(goods);
+			GiftManager::getSingleton().addToPlayer(m_pPlayer->getPlayerGuid(),REFLASH_AWARD,itemList,MiniLog35);
+
+		
 			UInt32 rate = rand()%100;
 			
 			if(rate < rhymeLevelCur->mRateEnhanceVec[0])
@@ -228,7 +238,7 @@ void RhymeManager::onEnhanceOnce()
 		}
 		
 
-		Json::FastWriter styledWriter;
+		Json::StyledWriter styledWriter;
 
 		rhymeEnhanceResp.mPacketID = BOC_RHYME_ENHANCE_RESP;
 		rhymeEnhanceResp.mRespJsonStr = styledWriter.write(root);
@@ -338,7 +348,7 @@ void RhymeManager::onEnhanceTen()
 		UInt32 & curExp = m_pPlayer->mPlayerData.mRhymeData.m_RhymeExp;
 
 		Vector<UInt32> critNumVec;
-		if( curCoin < needCoin*10)
+		if( curCoin < needCoin)
 		{
 			//提示玩家升级所需材料或金币不足
 			GCRhymeEnhanceResp rhymeEnhanceResp;
@@ -362,9 +372,15 @@ void RhymeManager::onEnhanceTen()
 			return;
 		}
 
-		if(curSoul < needSoul * 10)
+		if(curSoul < needSoul * 10 || curCoin < needCoin * 10)
 		{
 			int times = curSoul/needSoul;
+			int cointimes = curCoin/needCoin;
+			if(cointimes < times)
+			{
+				times = cointimes;
+			}
+
 			if(times == 0)
 			{
 				//提示玩家升级所需材料或金币不足
@@ -392,7 +408,14 @@ void RhymeManager::onEnhanceTen()
 			//韵魂减少
 			curSoul -= needSoul*times;
 			//金币减少
-			curCoin -= needCoin*times;
+			Goods goods;
+			List<Goods> itemList;
+
+			goods.resourcestype =AWARD_BASE;
+			goods.subtype = AWARD_BASE_COIN;
+			goods.num = 0 - needCoin * 10;
+			itemList.insertTail(goods);
+			GiftManager::getSingleton().addToPlayer(m_pPlayer->getPlayerGuid(),REFLASH_AWARD,itemList,MiniLog35);
 			
 			List<UInt32>::Iter * rateIter = listRandom.begin();
 			for(UInt32 i = 0; i < times; i++)
@@ -428,7 +451,14 @@ void RhymeManager::onEnhanceTen()
 			//韵魂减少
 			curSoul -= needSoul*10;
 			//金币减少
-			curCoin -= needCoin*10;
+			Goods goods;
+			List<Goods> itemList;
+
+			goods.resourcestype =AWARD_BASE;
+			goods.subtype = AWARD_BASE_COIN;
+			goods.num = 0 - needCoin*10;
+			itemList.insertTail(goods);
+			GiftManager::getSingleton().addToPlayer(m_pPlayer->getPlayerGuid(),REFLASH_AWARD,itemList,MiniLog7);
 
 
 			for(List<UInt32>::Iter * rateIter = listRandom.begin(); rateIter != listRandom.end(); rateIter = listRandom.next(rateIter))
@@ -592,6 +622,11 @@ void RhymeManager::rhymeStep()
 		}
 
 		RhymeLevelTemplate * rhymeLevelCur = RHYMELEVEL_TABLE().get(rhymeID);
+		if (rhymeLevelCur == NULL)
+		{
+			LOG_WARN("rhymeLevelCur not found!!");
+			return;
+		}
 
 		UInt32 &needCoin = rhymeLevelCur->mNextNeedCoin;
 		UInt32 &needExp = rhymeLevelCur->mNextNeedExp;
@@ -648,8 +683,15 @@ void RhymeManager::rhymeStep()
         //韵魂减少
 	    curSoul -= needSoul;
 	    //金币减少
-	    curCoin -= needCoin;
 
+		Goods goods;
+		List<Goods> itemList;
+
+		goods.resourcestype =AWARD_BASE;
+		goods.subtype = AWARD_BASE_COIN;
+		goods.num = 0 - needCoin;
+		itemList.insertTail(goods);
+		GiftManager::getSingleton().addToPlayer(m_pPlayer->getPlayerGuid(),REFLASH_AWARD,itemList,MiniLog35);
 		
 		//考虑韵文进阶情况
 		
@@ -714,7 +756,7 @@ bool RhymeManager::checkGrassTypeCount(UInt32 type, UInt32 count)
 	    case SmallGrass:
 			{
 				
-				res =  (m_pRhymeData->m_RhymeGrass > count);
+				res =  (m_pRhymeData->m_RhymeGrass >= count);
 				
 			}
 		   break;
@@ -722,14 +764,14 @@ bool RhymeManager::checkGrassTypeCount(UInt32 type, UInt32 count)
 		case MidGrass:
 			{
 
-				res =  (m_pRhymeData->m_RhymeGrassMid > count);
+				res =  (m_pRhymeData->m_RhymeGrassMid >= count);
 			}
 			break;
 
 		case LargeGrass:
 			{
 
-				 res =  (m_pRhymeData->m_RhymeGrassHigh > count);
+				 res =  (m_pRhymeData->m_RhymeGrassHigh >= count);
 			}
 			break;
 		default:
@@ -766,6 +808,24 @@ void  RhymeManager::activeRhymeAcupoint(UInt64 acupointIndex,UInt32 step ,UInt32
 	}
 	
 	RhymeAcupointTemplate * rhymeAcupointTemp = RHYMEACUPOINT_TABLE().get(acupointIndex);
+	if (rhymeAcupointTemp == NULL)
+	{
+		GCRhymeAcupointActiveResp resp;
+
+		Json::Value root;
+
+		root["errorId"] = LynxErrno::ClienServerDataNotMatch;
+
+		Json::StyledWriter writer;
+		resp.mRespJsonStr = writer.write(root);
+
+		const ConnId& connId = m_pPlayer->getConnId();
+
+		NetworkSystem::getSingleton().sendMsg(resp,connId);
+
+		LOG_WARN("rhymeAcupointTemp not found!!");
+		return;
+	}
 
 	bool conditionRes = checkGrassTypeCount(rhymeAcupointTemp->mGrassType, rhymeAcupointTemp->mActiveNeedGrass);
 
@@ -999,7 +1059,7 @@ bool RhymeManager::delRhymeGrass(UInt32 grassType, UInt32 count)
 	{
 	case SmallGrass:
 		{
-			if(m_pRhymeData->m_RhymeGrass > count)
+			if(m_pRhymeData->m_RhymeGrass >= count)
 			{
 				m_pPlayer->mPlayerData.mRhymeData.m_RhymeGrass -= count;
 				res = true;
@@ -1015,7 +1075,7 @@ bool RhymeManager::delRhymeGrass(UInt32 grassType, UInt32 count)
 
 	case MidGrass:
 		{
-			if(m_pRhymeData->m_RhymeGrassMid > count)
+			if(m_pRhymeData->m_RhymeGrassMid >= count)
 			{
 				m_pPlayer->mPlayerData.mRhymeData.m_RhymeGrassMid -= count;
 				res = true;
@@ -1030,7 +1090,7 @@ bool RhymeManager::delRhymeGrass(UInt32 grassType, UInt32 count)
 
 	case LargeGrass:
 		{
-			if(m_pRhymeData->m_RhymeGrassHigh > count)
+			if(m_pRhymeData->m_RhymeGrassHigh >= count)
 			{
 				m_pPlayer->mPlayerData.mRhymeData.m_RhymeGrassHigh -= count;
 				res = true;

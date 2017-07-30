@@ -23,22 +23,22 @@ namespace Lynx
 		//resType 资源的类型，对应不同的表,ConstDefinition.h里有对应的类型宏
 		//subTypeID 子类型，对应一类资源中不同的id，即不同配置表里的id
 		//获得物品的数量
-		void addAwardMaterial(UInt32 resType, UInt32 subTypeID, UInt32 count);
+		void  addAwardMaterial(UInt32 resType, UInt32 subTypeID, UInt32 count, ReturnItemEle& rtItemEle,UInt32 systemID);
 
 		UInt32 getAwardCount(UInt32 resType, UInt32 subTypeID);
 
-		void addAwardMaterialsList(const List<AwardData> & awardList);
+		//将返回列表中的物品拼成字符串
+		void convertItemListToStr(const List<ReturnItemEle> & rtItemEleList, Json::Value & root);
+
+		void addAwardMaterialsList(const List<AwardData> & awardList,UInt32 systemID);
 
 		//消耗物品逻辑
-		void costMaterialsList(const List<AwardData> & awardList);
+		void costMaterialsList(const List<AwardData> & awardList,UInt32 systemID);
 
-		void costMaterial(UInt32 resType, UInt32 subTypeID, UInt32 count);
+		bool costMaterial(UInt32 resType, UInt32 subTypeID, UInt32 count,UInt32 systemID);
 
-		void checkExp(const  ConnId& connId);
-
-		void levelUp(const  ConnId& connId,UInt32 level);
-
-		void addAwardGetSendJson(const List<AwardData> & awardList);
+		
+		void addAwardGetSendJson(const List<AwardData> & awardList,UInt32 systemID);
 
 		private:
 		

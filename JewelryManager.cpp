@@ -201,6 +201,10 @@ void JewelryManager::jewelrySet(UInt32 jewelryPos, UInt64 jewelryUid)
 		setResp.mRespJsonStr = writer.write(root);
 		cout << setResp.mRespJsonStr;
 		NetworkSystem::getSingleton().sendMsg(setResp,connId);
+
+		char dest[1024]={0};
+		snprintf(dest,sizeof(dest),"%d,%d",jewelryPos,jewelryUid);
+		LogicSystem::getSingleton().write_log(LogType89,m_pPlayer->getPlayerGuid(), dest,LogInfo);
 	
 }
 
@@ -254,6 +258,10 @@ void JewelryManager::jewelryUnload(UInt32 jewelryPos)
 	cout << unloadResp.mRespJsonStr;
 	NetworkSystem::getSingleton().sendMsg(unloadResp,connId);
 
+	char dest[1024]={0};
+	snprintf(dest,sizeof(dest),"%d,%d",jewelryPos,equipJewelryIter->mValue);
+	LogicSystem::getSingleton().write_log(LogType90,m_pPlayer->getPlayerGuid(), dest,LogInfo);
+
 	
 }
 
@@ -295,7 +303,15 @@ void JewelryManager::jewelrySell(List<UInt64> sellList)
 		bool success = playerCostJewelry(sellIter->mValue);
 		if(success)
 		{
-			m_pPlayer->mPlayerData.mBaseData.m_nCoin += newJewelryTemp->mPrice;
+			Goods goods;
+			List<Goods> itemList;
+
+			goods.resourcestype =AWARD_BASE;
+			goods.subtype = AWARD_BASE_COIN;
+			goods.num = newJewelryTemp->mPrice;
+			itemList.insertTail(goods);
+			GiftManager::getSingleton().addToPlayer(m_pPlayer->getPlayerGuid(),REFLASH_AWARD,itemList,MiniLog6);
+
 			root["jewelrySellList"].append(sellIter->mValue);
 		}
 		else
@@ -312,7 +328,6 @@ void JewelryManager::jewelrySell(List<UInt64> sellList)
 		
 	}
 
-	m_pPlayer->getPersistManager().setDirtyBit(BASEDATABIT);
 
 	GCJewelrySellResp sellResp;
 	sellResp.mPacketID = BOC_JEWELRY_SELL_RESP;
@@ -627,8 +642,16 @@ void  JewelryManager::jewelryPolish(UInt64 objJewelryUid, UInt64 materialJewelry
 	}
 
 	//消耗铜钱
-	m_pPlayer->mPlayerData.mBaseData.m_nCoin -= objJewelryTemp->mRefreshCoin ;
-	m_pPlayer->getPersistManager().setDirtyBit(BASEDATABIT);
+
+	Goods goods;
+	List<Goods> itemList;
+
+	goods.resourcestype =AWARD_BASE;
+	goods.subtype = AWARD_BASE_COIN;
+	goods.num = 0 - objJewelryTemp->mRefreshCoin;
+	itemList.insertTail(goods);
+	GiftManager::getSingleton().addToPlayer(m_pPlayer->getPlayerGuid(),REFLASH_AWARD,itemList,MiniLog7);
+
 
 	AttrPolishTemplate *materialPolishTemp = ATTRPOLISH_TABLE().get(materialJewelryTemp->mLvRequire);
 
@@ -906,6 +929,9 @@ void  JewelryManager::jewelryPolish(UInt64 objJewelryUid, UInt64 materialJewelry
 
 	//cout << polishResp.mRespJsonStr;
 
+	//更新七日训
+	LogicSystem::getSingleton().updateSevenDayTask(m_pPlayer->getPlayerGuid(),SDT10,1);
+
 }
 
 void JewelryManager::jewelryReset(UInt64 objJewelryUid )
@@ -931,10 +957,10 @@ void JewelryManager::jewelryReset(UInt64 objJewelryUid )
 		return ;
 	}
 
-	if(m_pPlayer->mPlayerData.mBaseData.m_nCoin < PolishNeedCoin)
+	if(m_pPlayer->mPlayerData.mBaseData.m_nGold < PolishNeedCoin)
 	{
 		Json::Value root;
-		root["errorId"] = LynxErrno::CoinNotEnough;
+		root["errorId"] = LynxErrno::RmbNotEnough;
 
 		Json::FastWriter writer;
 
@@ -959,8 +985,15 @@ void JewelryManager::jewelryReset(UInt64 objJewelryUid )
 
 	postUpdateMsg(objJewelryIter->mValue,m_nPlayerGuid);
 	
-	m_pPlayer->mPlayerData.mBaseData.m_nCoin -= PolishNeedCoin;
-	m_pPlayer->getPersistManager().setDirtyBit(BASEDATABIT);
+
+	Goods goods;
+	List<Goods> itemList;
+
+	goods.resourcestype =AWARD_BASE;
+	goods.subtype = AWARD_BASE_GOLD;
+	goods.num = 0 - PolishNeedCoin;
+	itemList.insertTail(goods);
+	GiftManager::getSingleton().addToPlayer(m_pPlayer->getPlayerGuid(),REFLASH_AWARD,itemList,MiniLog7);
 
 	Json::Value root;
 	root["errorId"] = LynxErrno::None;
@@ -971,6 +1004,7 @@ void JewelryManager::jewelryReset(UInt64 objJewelryUid )
 	root["oldAttr"]["attrId"] = rdAttrIter->mValue.mRandomID;
 	root["jewelryUid"] = objJewelryUid;
 	root["coin"] = m_pPlayer->mPlayerData.mBaseData.m_nCoin;
+	root["gold"] = m_pPlayer->mPlayerData.mBaseData.m_nGold;
 
 	Json::StyledWriter writer;
 
@@ -1512,6 +1546,11 @@ void JewelryManager::creatQualityMap(JewelryData * materialJewelryData,AttrPolis
 		}
 
 		AttrRandomTemplate * attrRdTemp = ATTRRANDOM_TABLE().get(materialRdIter->mValue.mRandomID);
+		if (attrRdTemp == NULL)
+		{
+			LOG_WARN("attrRdTemp not found!!");
+			return;
+		}
 		if(attrRdTemp->mQuality == Orange)
 		{
 			orangeFlag = true;
@@ -1726,6 +1765,11 @@ void JewelryManager::checkLvAcitve()
 	bool change = false;
 
 	HeroEquipRuleTemplate *heroEquipRule = HEROEQUIPRULE_TABLE().get(m_pPlayer->mPlayerData.mBaseData.m_nModelID);
+	if (heroEquipRule == NULL)
+	{
+		LOG_WARN("heroEquipRule not found!!");
+		return;
+	}
 	UInt32 &playerLv = m_pPlayer->mPlayerData.mBaseData.m_nLevel;
 
 	bool isOpen1 = getJewelrySlotOpenState(1);
@@ -1968,37 +2012,6 @@ void JewelryManager::diaoluoSend(List<JewelryData *> getList)
 UInt32 JewelryManager::getJewelryCount()
 {
 	return m_pJewelryList->size();
-}
-
-
-void JewelryManager::diaoluoSendTest(List<JewelryData *> getList)
-{
-	Json::Value jsonValue;
-	for(List<JewelryData *>::Iter * iter = getList.begin();iter !=  NULL; iter = getList.next(iter) )
-	{	
-		Json::Value tmpValue;
-		getJewelryJsonNode(tmpValue,iter->mValue);
-		jsonValue.append(tmpValue);
-	}
-
-	Json::Value son;   
-
-	son["resourcestype"] = 1 ;
-	son["subtype"] = 13 ;
-	son["num"] = 3;
-	son["attr"].append(jsonValue);
-	// LogicSystem::getSingleton().combinSendData(m_pPlayer->getPlayerGuid(),AWARD_JEWELRY,jsonValue);
-
-	PlayerFireConfirmData &mFireConfirmData = m_pPlayer->GetFireConfirmDataTest();
-  	mFireConfirmData.m_AddSendjs.append(son);
-
-	Json::FastWriter writer;  
-	std::string strWrite = writer.write(son);
-	mFireConfirmData.m_SendStr += strWrite;
-// 	Json::Value root;
-// 	root.append(son);
-// 	LogicSystem::getSingleton().combinSendDataTest(m_pPlayer->getPlayerGuid(),AWARD_JEWELRY,jsonValue);
-
 }
 
 

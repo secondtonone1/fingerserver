@@ -141,6 +141,7 @@ NetworkSystem::update(const UInt64& accTime)
 		}
 	}
 
+	
     // 检查客户端连接有效性
     if (accTime - mLastCheckClientConnectionKeepaliveTime > 30 * 1000)
     {
@@ -148,14 +149,24 @@ NetworkSystem::update(const UInt64& accTime)
         for (Map<ConnId, ClientConnection*>::Iter* iter = mClientConnectionMap.begin();
             iter != mClientConnectionMap.end(); )
         {
+			
             ClientConnection* clientConnection = iter->mValue;
             if (clientConnection)
             {
                 UInt64 keepaliveTime = clientConnection->getKeepaliveTime();
-                if (accTime - keepaliveTime > 3600 * 1000)
+
+			    Int64 invTime =	accTime - keepaliveTime ;			
+				
+				//一个小时没有网络消息则，现在改为二十分钟。
+                if ( invTime >3600*1000)
                 {
-                    pushEvent(EVENT_CLIENT_CONNECTION_CLOSE, clientConnection->getConnId());
+                   pushEvent(EVENT_CLIENT_CONNECTION_CLOSE, clientConnection->getConnId());
+					LOG_INFO("3600s not recieve mConnId =[%d]  ", clientConnection->getConnId());
+					LOG_INFO("keepaliveTime is: %llu", keepaliveTime);
+					LOG_INFO("accTime is: %llu", accTime);
+					LOG_INFO("minus time is: %llu ", (accTime-keepaliveTime)/1000 );
                 }
+
                 iter = mClientConnectionMap.next(iter);
             }
             else
@@ -164,6 +175,7 @@ NetworkSystem::update(const UInt64& accTime)
             }
         }
     }
+	
 }
 
 String 
@@ -222,12 +234,15 @@ NetworkSystem::onConnectionAcceptedNotify(ConnectionAcceptedNotify& msg)
 		return;
 	}
 
+	//生成connId
 	ConnId connId = mConnIdIndex++;
+	//发送连接打开请求，将连接绑定在NetworkWorker上
 	ConnectionOpenNotify connectionOpenNotify;
 	connectionOpenNotify.mConnId = connId;
 	connectionOpenNotify.mConnPointer = tcpConnection;
 	postThreadMsgToNetworkWorker(connectionOpenNotify, connId);
 
+	//将连接放入NetWorkSystem的集合中
 	ClientConnection* clientConnection = XNEW(ClientConnection)();
 	ASSERT(clientConnection);
 	clientConnection->mConnId = connId;
@@ -307,7 +322,42 @@ NetworkSystem::onConnectionBrokenNotify(ConnectionBrokenNotify& msg)
 	}
 
 	pushEvent(EVENT_CLIENT_CONNECTION_CLOSE, connId);
+	LOG_INFO("onConnectionBrokenNotify connId =[%d]  ", connId);
 }
+
+void NetworkSystem::closeAllConnection()
+{
+	
+	for(Map<ConnId, ClientConnection*>::Iter*  iter = mClientConnectionMap.begin(); iter != NULL; 
+		 )
+	{
+			ClientConnection* clientConnection = iter->mValue;
+
+			if (!clientConnection->mBrokenFlag)
+			{
+				ConnectionCloseNotify notify;
+				notify.mConnId = iter->mKey;
+				postThreadMsgToNetworkWorker(notify, notify.mConnId);
+			}
+
+			iter = mClientConnectionMap.erase(iter);
+			clientConnection->release();
+			XDELETE(clientConnection);	
+	}
+
+	
+
+
+	
+}
+
+void NetworkSystem::closeConnection(const ConnId& connId)
+{
+	pushEvent(EVENT_CLIENT_CONNECTION_CLOSE, connId);
+	LOG_INFO("onConnectionBrokenNotify connId =[%d]  ", connId);
+
+}
+
 
 void 
 NetworkSystem::onClientConnectionClosed(const Event& ev)
@@ -352,13 +402,37 @@ void NetworkSystem::setCanMsgRecived(bool val)
 
 void NetworkSystem::sendServerShutDown()
 {
-	ServerShutDown resp;
+
+	GCClientChatResp resp;
+	resp.mPacketID = BOC_CLIENTCHAT_RESP;
+
+	Json::Value root;
+	root["channelType"] = SYSTEMMSG;
+	root["fromPlayer"] = 0;
+	root["chatMsg"] = "game server will shutdown !!!";
+	root["modelid"] = 0;
+	root["name"] = "";
+	root["chattime"] = TimeUtil::getTimeSec();
+	root["msgType"] = 1;
+
+	Json::StyledWriter writer;
+
+	resp.mRespJsonStr = writer.write(root);
+
+	cout << resp.mRespJsonStr << endl;
+
+	
+
+
+
+	UInt32 time = 0;
+
 	for(UInt32 i = 0;i<3;i++)
 	{
-		resp.time = (3 - i)*5;
+		time = (3 - i)*5;
 		NetworkSystem::getSingleton().broadcastMsg(resp);
 		TimeUtil::sleep(5*1000);
 	}
-	resp.time = 0;
+	time = 0;
 	NetworkSystem::getSingleton().broadcastMsg(resp);
 }

@@ -58,7 +58,7 @@ namespace Lynx
 		,m_pAmphitheaterWinCount(NULL),m_pAmphitheaterLoseCount(NULL),m_pDailyChaiCount(NULL),
 		m_pDailyMiCount(NULL),m_pDailyYouCount(NULL),m_pDailyYanCount(NULL),m_pTwelvepalaceEnterCount(NULL),
 		m_pStrTwelvepalaceData(NULL),m_pCouragetrialDailyPoint(NULL),m_pStrCourageData(NULL),m_pActivepoint(NULL),m_nDailyMultipleCopyCount(NULL),
-		m_nTwelvePalaceUnlockCount(NULL){}
+		m_nTwelvePalaceUnlockCount(NULL),m_nTwelvePalaceBuyTimes(NULL),m_nFishEatTimes(NULL){}
 		
 		~PlayerDetailInfo()
 		{
@@ -91,6 +91,8 @@ namespace Lynx
 			m_pActivepoint= NULL;
 			m_nDailyMultipleCopyCount =NULL;
 			m_nTwelvePalaceUnlockCount =NULL;
+			m_nTwelvePalaceBuyTimes =NULL;
+			m_nFishEatTimes =NULL;
 			
 		}
 
@@ -163,6 +165,13 @@ namespace Lynx
 		UInt32* m_nDailyMultipleCopyCount;
 
 		UInt32* m_nTwelvePalaceUnlockCount;
+
+		UInt32* m_nTwelvePalaceBuyTimes;
+
+		UInt32* m_nFishEatTimes;
+		
+
+		
 		
 
 
@@ -181,7 +190,7 @@ namespace Lynx
 		void baseInfoSync();
 		void detailInfoSync();
 		UInt64 getPlayerGold(void);
-		void  setPlayerGold(UInt64 gold);
+// 		void  setPlayerGold(UInt64 gold);
 
 		std::string rename(std::string newname);
 		PlayerBaseData* getPlayerBaseData(void);

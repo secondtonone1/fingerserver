@@ -39,5 +39,7 @@
 
 #include "AchieveData.h"
 
+#include "ConsortData.h"
+
 #endif // __LYNX_COMMON_LIB_DATA_H__
 

@@ -9,6 +9,7 @@ namespace Lynx
 	{
 		// CommonError
 		static const errorId None                          = 0;		//成功
+		static const errorId SytemNotOpen            = 1;		//功能未开启客户端不用显示
 		static const errorId UnknownLogicError             = 1001;	//
 		static const errorId InvalidIdentify               = 1002;	//
 		static const errorId InvalidOperation              = 1003;	//
@@ -55,6 +56,7 @@ namespace Lynx
 		static const errorId OnceTicketNotEnough			= 1049;	//一抽券不足
 		static const errorId TenTicketNotEnough				= 1050;	//十抽券不足
 		static const errorId BeingCooled				    = 1051;	//正在冷却
+		static const errorId PlayerCheating				    = 1052;	//玩家作弊
 
 		
 
@@ -63,6 +65,21 @@ namespace Lynx
 		static const errorId TableElementNotExit           = 1100;  //表里没有这个数据
 		static const errorId PlayerNotFound	   			   = 1101;  //没有找到玩家
 		static const errorId ServantSwitchNotEnough	       = 1102;  //生命之光不足
+		static const errorId CurrencyNotEnough			  = 1103;  //通宝不足
+		static const errorId FishEatTimesNotEnough		  = 1104;  //进度条金币赠送
+		static const errorId MaskNotEnough					 = 1105;  //脸谱数量不足
+		static const errorId RankGameBuyTimesNotEnough		= 1106;  //脸谱数量不足
+		static const errorId BuyCoinTimesNotEnough				   = 1107;	//购买金币次数用完
+
+		static const errorId CannotOpen				   = 1108;	//箱子还不能打开
+		static const errorId HadOpen				   = 1109;	//箱子已经打开
+		static const errorId BattleNotRelive			   = 1110;	//战斗不复活
+		static const errorId BattleTimeUseUP			   = 1111;	//战斗时间到
+		static const errorId BattleLeave			   = 1112;	//战斗离开
+		static const errorId BattleNotFull		   = 1113;	//战斗需求不满足
+
+		static const errorId FoodNotEnough             = 1114;	//缺少美食
+		
 
 
 
@@ -78,7 +95,9 @@ namespace Lynx
         static const errorId NameLengthError               = 2009;	//
         static const errorId ActiveNameSpace               = 2010;	//
         static const errorId PlayerNameForbidden           = 2011;	//
-
+		static const errorId PlayerNameExist						= 2012;//
+		static const errorId NameChangeOnce					= 2013;//
+		static const errorId ForbidLogin								= 2014;
     
         // DataBase
         static const errorId SqlExecuteFail                = 5001;	//
@@ -113,6 +132,7 @@ namespace Lynx
 		static const errorId HoarStoneActived              = 13001;	//
 		static const errorId HoarStoneLvLimit              = 13002;	//
 		static const errorId HoarStoneCondition            = 13003;	//
+		static const errorId HoarStoneLvMax					= 13004;
 
 		//装备
 		//装备等级达到最高级别
@@ -156,6 +176,12 @@ namespace Lynx
 		static const errorId Used						   = 15014;//已使用
 
 		static const errorId ReliveTimesUsedUp			   = 15015;//复活次数已使用
+
+		static const errorId RobotNotFound				   = 15016;//找不到机器人数据
+
+		static const errorId HornBuyTimesNotEnough		   = 15017;//号角购买次数不足
+
+		static const errorId RankGameTimesNotEnough		   = 15018;//挑战次数不足
 // 	
 // 				
 // 		static const errorId AttackPowerNotRight				   = 15001;
@@ -184,6 +210,11 @@ namespace Lynx
 		static const errorId OtherBlackFull							= 18002; //别人的黑名单满了
 		static const errorId SelfFriendFull							= 18003; //自己的好友满了
 		static const errorId SelfBlackFull							= 18004; //自己的黑名单满了
+		static const errorId InSelfBlack							= 18005; //对方在自己的黑名单中
+		static const errorId InOtherBlack							= 18006; //自己在对方的黑名单中
+		static const errorId NotOnLine							= 18007; //不在线
+		static const errorId OnLine							= 18008; //在线
+		static const errorId InOhterBeApply				= 18009; //自己在对方的申请列表中，或者对方申请列表已满
 
 		//
 		static const errorId Lose							= 19001; //失败
@@ -219,6 +250,72 @@ namespace Lynx
 		static const errorId DailyTaskHasExist          = 22005;//每日任务已经存在
 		
 
+		//军团
+		static const errorId PlayerConsortNotFind = 23000; //玩家对应的军团信息不存在
+		static const errorId PlayerHasConsort  = 23001;
+		static const errorId ConsortNotExist  = 23002;
+		static const errorId NoConsortMatch = 23003;
+		static const errorId ConsortNameExist = 23004;
+		static const errorId ConsortNeedCheck = 23005;
+		static const errorId MemberNotExist    = 23006;
+		static const errorId LeaderCannotKicked = 23007;
+		static const errorId LeaderCannotLeave = 23008;
+		static const errorId ConsortFull				= 23009;
+		//玩	` 家自身的资源不足，不满足系统需要的数量
+		static const errorId CostNotEnouf			= 23010;
+		//职位权限不足
+		static const errorId ConsortJobNotMatch = 23011;
+		//公会活跃度不足
+		static const errorId ConsortActiveNotEnough = 23012;
+		static const errorId JustLeaveConsort = 23013;
+	
+		//已经领取过该奖励，重复领取判断错误
+		static const errorId AwardGetten = 23014;
+		//行侠仗义没有可刷新任务
+		static const errorId NoRefreshTask = 23015;
+		//vip对应的行侠仗义刷新次数已经用完
+		static const errorId VipRefreshTask = 23016;
+		//厨房问题没找到
+		static const errorId NotFoundQue = 23017;
+			static const errorId KitchentimesNotEnouf =23019;
+			static const errorId BusinessCatNotEnouf = 23020;
+
+			//公会等级不足
+			static const errorId ConsortLvNotEnough = 23021;
+			static const errorId Md5Wrong = 23022;
+
+			//票友集会请求时间不对
+			static const errorId PlayerTimeError = 23023;
+			//票友集会玩法次数不足
+			static const errorId TicketJoinTimes = 23024;
+			//票友集会赞助等级不符合
+			static const errorId TicketGradeError = 23025;
+			//票友集会剧本已满员
+			static const errorId ScenePeapleFull = 23026;
+
+			//口才训练次数不足
+			static const errorId EloquenceTimes = 23027;
+			//木猫阵法时间不符合
+			static const errorId WoodCatTimeError = 23028;
+			//木猫阵法人数已满
+			static const errorId WoodPeapleFull = 23029;
+			//木猫buff被别人赞助过
+			static const errorId WoodBuffExist = 23030;
+			//木猫阵法次数不足
+			static const errorId WoodTimesLess = 23031;
+			//木猫血量为0
+			static const errorId WoodBloodLess = 23032;
+			//玩家战力不足
+			static const errorId PlayerPowerLess = 23033;
+			//被踢出工会
+			static const errorId PlayerHasKicked = 23034;
+			
+
+		//PVP
+		static const errorId PVPStateError = 24000;
+		static const errorId PlayerNotWait = 24001;
+
+		static const errorId ClienServerDataNotMatch = 30000;
 		
 
 	} // namespace LynxErrno

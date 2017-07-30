@@ -9,17 +9,17 @@ namespace Lynx
 	{
 
 
-		CharactorData() : m_nCharactorUid(0), m_nCharactorId(0),  m_nEquipFashion(0){}
+		CharactorData() :  m_nCharactorId(0),  m_nEquipFashion(0){}
 
-		//CharactorUID
-		Guid m_nCharactorUid;
+		
+		
 		//CharactorID
 		Guid m_nCharactorId;
 		//´©´÷µÄÊ±×°
 		Guid m_nEquipFashion;		
 
 
-		LYNX_S11N_3(CharactorData, Guid, m_nCharactorUid, Guid, m_nCharactorId, Guid ,m_nEquipFashion);
+		LYNX_S11N_2(CharactorData,  Guid, m_nCharactorId, Guid ,m_nEquipFashion);
 
 
 	};

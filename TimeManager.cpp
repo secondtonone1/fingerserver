@@ -4,6 +4,10 @@ using namespace Lynx;
 
 bool TimeManager::timeIsToday(UInt64 timeParam)
 {
+	if (timeParam == 0)
+	{
+		return false;
+	}
 
 	UInt32 nowDays = TimeUtil::getDate(-1);
 	 
@@ -73,13 +77,13 @@ bool TimeManager::timeIsTodayDelayHours(UInt64 timeParam,UInt32 hours)
 bool TimeManager::timeIsSameMonth(UInt32 time)
 {
 
-	time_t _t = TimeUtil::getTimeSec()*1000;	
+	time_t _t = TimeUtil::getTimeSec();	
 	struct tm now_tm;
 	struct tm _tm;
 
 	TimeUtil::localTime(now_tm, _t);	
 
-	TimeUtil::localTime(_tm, time*1000);
+	TimeUtil::localTime(_tm, time);
 
 	if (now_tm.tm_year != _tm.tm_year)//yearºÍmonË³Ðò²»ÄÜ´í
 	{

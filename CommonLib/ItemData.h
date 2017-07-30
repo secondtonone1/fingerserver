@@ -149,8 +149,38 @@ namespace Lynx
 		UInt64 resType;
 		UInt64 subType;
 		UInt32 count;
-
+		
 		LYNX_S11N_3(AllItemEle, UInt64, resType, UInt64 ,subType, UInt32, count);
+	};
+
+	//回传参数表示增加的物品数量
+	
+	//新增字段
+//addCount1,(int)(表示增加的数量，当玩家没有用佣兵A，获取到A时此字段为1，表示获取一个佣兵) 
+//addCount2,(int)(扩充字段，表示增加的数量，当玩家拥有佣兵A时，此时获取佣兵A，那么A按照配置表转化为碎片，
+	//此字段表示转化后增加的碎片数量)
+
+//客户端判断resType为佣兵时，两个参数addCount1表示增加的佣兵数量，addCount表示增加的碎片数量。
+//当客户端判断resType为碎片时，addCount1必为0，addCount2表示新增碎片数量
+//其余类型，addCount1表示该类型物品新增的数量，addCount2为0
+   class JewelryData;
+	struct ReturnItemEle
+	{
+		ReturnItemEle():resType(0),  subType(0), addCount1(0), addCount2(0), jewelryData(NULL){}
+		UInt64 resType;
+		UInt64 subType;
+		//增加的个数，低于佣兵表示增加的佣兵数
+		UInt32 addCount1;
+		//扩展字段, 对于佣兵表示增加的碎片数
+		UInt32 addCount2;
+		
+		//以下为扩充字段
+
+		//饰品字段
+		JewelryData * jewelryData;
+
+		LYNX_S11N_5(ReturnItemEle, UInt64, resType, UInt64 ,subType, UInt32 ,addCount1,
+			UInt32, addCount2, JewelryData *, jewelryData);
 	};
 
 } // namespace Lynx

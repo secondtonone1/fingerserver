@@ -29,7 +29,11 @@ namespace Lynx
 		BOC_ASSISTBATTLE_ONSET_REQ                  = sServantMsgBase + 20,
 		BOC_SERVANTGET_NOTIFY						= sServantMsgBase + 22,
 		BOC_SERVANTSWITCH_REQ						= sServantMsgBase + 23,
-		BOC_SERVANTSWITCH_RESP						= sServantMsgBase + 24
+		BOC_SERVANTSWITCH_RESP						= sServantMsgBase + 24,
+		BOC_SERVANT_EQUIPONCE_REQ				= sServantMsgBase + 25,
+		BOC_SERVANT_EQUIPONCE_RESP				= sServantMsgBase + 26,
+		BOC_SERVANT_INFOLOCK_REQ					= sServantMsgBase + 31,
+		BOC_SERVANT_INFOLOCK_RESP					= sServantMsgBase + 32
 		
 		
 		
@@ -157,6 +161,24 @@ namespace Lynx
 
 	};
 
+	struct CGServantEquipOnceReq
+	{
+		CGServantEquipOnceReq():mPacketID(0),mReqJsonStr(""){}
+		UInt16 mPacketID;
+		std::string mReqJsonStr;
+
+		LYNX_MESSAGE_2(BOC_SERVANT_EQUIPONCE_REQ, CGServantEquipOnceReq,UInt16 ,mPacketID,std::string, mReqJsonStr);
+	};
+
+	struct CGServantInfoLockReq
+	{
+		CGServantInfoLockReq():mPacketID(0),mReqJsonStr(""){}
+		UInt16 mPacketID;
+		std::string mReqJsonStr;
+
+		LYNX_MESSAGE_2(BOC_SERVANT_INFOLOCK_REQ, CGServantInfoLockReq,UInt16 ,mPacketID,std::string, mReqJsonStr);
+	};
+
 	
 
 	//-----------------GC-------------------
@@ -249,6 +271,23 @@ namespace Lynx
 		std::string mRespJsonStr;
 		LYNX_MESSAGE_2(BOC_SERVANTSWITCH_RESP,GCServantSwitchResp,UInt16, mPacketID,std::string, mRespJsonStr);
 	};
+	
+	struct GCServantEquipOnceResp
+	{
+		GCServantEquipOnceResp():mPacketID(BOC_SERVANT_EQUIPONCE_RESP),mRespJsonStr(""){}
+		UInt16 mPacketID;
+		std::string mRespJsonStr;
+		LYNX_MESSAGE_2(BOC_SERVANT_EQUIPONCE_RESP,GCServantEquipOnceResp,UInt16, mPacketID,std::string, mRespJsonStr);
+	};
+
+	struct GCServantInfoLockResp
+	{
+		GCServantInfoLockResp():mPacketID(BOC_SERVANT_INFOLOCK_RESP),mRespJsonStr(""){}
+		UInt16 mPacketID;
+		std::string mRespJsonStr;
+		LYNX_MESSAGE_2(BOC_SERVANT_INFOLOCK_RESP,GCServantInfoLockResp,UInt16, mPacketID,std::string, mRespJsonStr);
+	};
+
 	
 
 }// namespace Lynx

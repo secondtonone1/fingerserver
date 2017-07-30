@@ -1,5 +1,5 @@
-id,attr,num,keeptime,keepfloor,icon,name
-101,1,3000,,5,ui/stage/deng1.png,攻击力
-102,2,,,5,ui/stage/deng1.png,无敌
-103,3,,,5,ui/stage/deng1.png,体力不减
-104,4,20000,,5,ui/stage/deng1.png,积分翻倍
+id,attr,num,icon,icon1,name,keepfloor
+101,1,3000,#challenge_icon_buff1.png,#challenge_buff_icon_jian.png,攻击提升,5
+102,2,,#challenge_icon_buff2.png,#challenge_buff_icon_dun.png,生命锁定,5
+103,3,,#challenge_icon_buff3.png,#challenge_buff_icon_clock.png,体力锁定,5
+104,4,20000,#challenge_icon_buff4.png,#challenge_buff_icon_score.png,积分翻倍,5

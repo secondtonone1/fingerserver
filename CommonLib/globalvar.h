@@ -246,9 +246,10 @@ namespace Lynx
 		List<UInt32> refreshs;
 		List<UInt32> costs;
 		List<UInt32> buytimess;	
+		UInt32 rmbrefresh;
 
-		LYNX_S11N_8(TerritoryLuckyTemplate,UInt32, maxtimes,UInt32, recovertime,UInt32, freerefresh,List<UInt32>, refreshs,UInt32, challage,UInt32, freerefreshtimes,
-		List<UInt32>, costs,List<UInt32>, buytimess);
+		LYNX_S11N_9(TerritoryLuckyTemplate,UInt32, maxtimes,UInt32, recovertime,UInt32, freerefresh,List<UInt32>, refreshs,UInt32, challage,UInt32, freerefreshtimes,
+		List<UInt32>, costs,List<UInt32>, buytimess,UInt32, rmbrefresh);
 	};
 
 	class GlobalVarManager: public Singleton<GlobalVarManager>

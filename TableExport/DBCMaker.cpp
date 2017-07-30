@@ -531,6 +531,36 @@ DBCMaker::Convert(const String& fileName)
 			return false;
 		}
 	}
+	else if(fileName == "courageshop.csv")
+	{
+		CourageshopTable courageshopTable;
+		if(!courageshopTable.loadFromCsv(filePath))
+		{
+			LOG_WARN("Failed to load courageshop.csv file");
+			return false;
+		}
+
+		if(!courageshopTable.saveToDbc(dbcFilePath))
+		{
+			LOG_WARN("Failed to save to courageshop.dbc file");
+			return false;
+		}
+	}
+	else if(fileName == "coinshop.csv")
+	{
+		CoinshopTable coinshopTable;
+		if(!coinshopTable.loadFromCsv(filePath))
+		{
+			LOG_WARN("Failed to load coinshop.csv file");
+			return false;
+		}
+
+		if(!coinshopTable.saveToDbc(dbcFilePath))
+		{
+			LOG_WARN("Failed to save to coinshop.dbc file");
+			return false;
+		}
+	}
 
 	else if(fileName == "awardcontentshop.csv")
 	{
@@ -799,6 +829,23 @@ DBCMaker::Convert(const String& fileName)
 		}
 
 	}
+	else if(fileName == "roulette.csv")
+	{
+
+		AwardRouletteTable awardRuoletteTable;
+		if(!awardRuoletteTable.loadFromCsv(filePath))
+		{
+			LOG_WARN("Failed to load roulette.csv file");
+			return false;
+		}
+
+		if(!awardRuoletteTable.saveToDbc(dbcFilePath))
+		{
+			LOG_WARN("Failed to save to roulette.dbc file");
+			return false;
+		}
+
+	}
 	else if(fileName == "awardcard.csv")
 	{
 
@@ -833,6 +880,24 @@ DBCMaker::Convert(const String& fileName)
 		}
 
 	}
+	else if(fileName == "roulettecontent.csv")
+	{
+
+		AwardContentTable awardContentRuoletteTable;
+		if(!awardContentRuoletteTable.loadFromCsv(filePath))
+		{
+			LOG_WARN("Failed to load roulettecontent.csv file");
+			return false;
+		}
+
+		if(!awardContentRuoletteTable.saveToDbc(dbcFilePath))
+		{
+			LOG_WARN("Failed to save to roulettecontent.dbc file");
+			return false;
+		}
+
+	}
+	
 	else if(fileName == "boxcounter.csv")
 	{
 
@@ -1431,6 +1496,21 @@ DBCMaker::Convert(const String& fileName)
 			return false;
 		}
 	}
+	else if(fileName == "monsteraward.csv")
+	{
+		MonsterAwardTable monsterAwardTable;
+		if(!monsterAwardTable.loadFromCsv(filePath))
+		{
+			LOG_WARN("Failed to load monsteraward.csv file");
+			return false;
+		}
+
+		if(!monsterAwardTable.saveToDbc(dbcFilePath))
+		{
+			LOG_WARN("Failed to save to monsteraward.dbc file");
+			return false;
+		}
+	}
 	else if(fileName == "sevendaystrainning.csv")
 	{
 		SevenDayTrainningTable sevenDayTrainningTable;
@@ -1443,6 +1523,201 @@ DBCMaker::Convert(const String& fileName)
 		if(!sevenDayTrainningTable.saveToDbc(dbcFilePath))
 		{
 			LOG_WARN("Failed to save to sevendaystrainning.dbc file");
+			return false;
+		}
+	}
+	else if(fileName == "consortmsg.csv")
+	{
+		ConsortMsgTable consortMsgTable;
+		if(!consortMsgTable.loadFromCsv(filePath))
+		{
+			LOG_WARN("Failed to load consortmsg.csv file");
+			return false;
+		}
+
+		if(!consortMsgTable.saveToDbc(dbcFilePath))
+		{
+			LOG_WARN("Failed to save to consortmsg.dbc file");
+			return false;
+		}
+	}
+	else if(fileName == "guildlevel.csv")
+	{
+		ConsortLvTable consortlvTable;
+		if(!consortlvTable.loadFromCsv(filePath))
+		{
+			LOG_WARN("Failed to load guildlevel.csv file");
+			return false;
+		}
+
+		if(!consortlvTable.saveToDbc(dbcFilePath))
+		{
+			LOG_WARN("Failed to save to guildlevel.dbc file");
+			return false;
+		}
+	}
+	else if(fileName == "rankedshop.csv")
+	{
+		RankedShopTable rankedShopTable;
+		if(!rankedShopTable.loadFromCsv(filePath))
+		{
+			LOG_WARN("Failed to load rankedshop.csv file");
+			return false;
+		}
+
+		if(!rankedShopTable.saveToDbc(dbcFilePath))
+		{
+			LOG_WARN("Failed to save to rankedshop.dbc file");
+			return false;
+		}
+	}
+	else if(fileName == "rankreward.csv")
+	{
+		RankRewardTable rankRewardTable;
+		if(!rankRewardTable.loadFromCsv(filePath))
+		{
+			LOG_WARN("Failed to load rankreward.csv file");
+			return false;
+		}
+
+		if(!rankRewardTable.saveToDbc(dbcFilePath))
+		{
+			LOG_WARN("Failed to save to rankreward.dbc file");
+			return false;
+		}
+	}
+	else if(fileName == "systeminfo.csv")
+	{
+		SystemInfoTable systemInfoTable;
+		if(!systemInfoTable.loadFromCsv(filePath))
+		{
+			LOG_WARN("Failed to load systeminfo.csv file");
+			return false;
+		}
+
+		if(!systemInfoTable.saveToDbc(dbcFilePath))
+		{
+			LOG_WARN("Failed to save to systeminfo.dbc file");
+			return false;
+		}
+	}
+	else if(fileName == "guildsign.csv")
+	{
+		ConsortSignTable consortSignTable;
+		if(!consortSignTable.loadFromCsv(filePath))
+		{
+			LOG_WARN("Failed to load guildsign.csv file");
+			return false;
+		}
+
+		if(!consortSignTable.saveToDbc(dbcFilePath))
+		{
+			LOG_WARN("Failed to save to systeminfo.dbc file");
+			return false;
+		}
+	}
+	else if(fileName == "cattask.csv")
+	{
+		CatTaskTable cattaskTable;
+		if(!cattaskTable.loadFromCsv(filePath))
+		{
+			LOG_WARN("Failed to load cattask.csv file");
+			return false;
+		}
+
+		if(!cattaskTable.saveToDbc(dbcFilePath))
+		{
+			LOG_WARN("Failed to save to cattask.dbc file");
+			return false;
+		}
+	}
+	else if(fileName == "kitchenquestions.csv")
+	{
+		KitchenQuestionTable kitchenquestionTable;
+		if(!kitchenquestionTable.loadFromCsv(filePath))
+		{
+			LOG_WARN("Failed to load kitchenquestions.csv file");
+			return false;
+		}
+
+		if(!kitchenquestionTable.saveToDbc(dbcFilePath))
+		{
+			LOG_WARN("Failed to save to kitchenquestions.dbc file");
+			return false;
+		}
+	}
+	else if(fileName == "businesscat.csv")
+	{
+		BusinessCatTable businesscatTable;
+		if(!businesscatTable.loadFromCsv(filePath))
+		{
+			LOG_WARN("Failed to load businesscat.csv file");
+			return false;
+		}
+
+		if(!businesscatTable.saveToDbc(dbcFilePath))
+		{
+			LOG_WARN("Failed to save to businesscat.dbc file");
+			return false;
+		}
+	}
+	else if(fileName == "skillcompare.csv")
+	{
+		SkillConvertTable skillconvertTable;
+		if(!skillconvertTable.loadFromCsv(filePath))
+		{
+			LOG_WARN("Failed to load skillcompare.csv file");
+			return false;
+		}
+
+		if(!skillconvertTable.saveToDbc(dbcFilePath))
+		{
+			LOG_WARN("Failed to save to skillcompare.dbc file");
+			return false;
+		}
+	}
+	else if(fileName == "memoryquestionsgroup.csv")
+	{
+		EyeQuestionTable eyeQueTable;
+		if(!eyeQueTable.loadFromCsv(filePath))
+		{
+			LOG_WARN("Failed to load memoryquestionsgroup.csv file");
+			return false;
+		}
+
+		if(!eyeQueTable.saveToDbc(dbcFilePath))
+		{
+			LOG_WARN("Failed to save to memoryquestionsgroup.dbc file");
+			return false;
+		}
+	}
+	else if(fileName == "ticketfriend.csv")
+	{
+		TicketFriendTable ticketFriendTable;
+		if(!ticketFriendTable.loadFromCsv(filePath))
+		{
+			LOG_WARN("Failed to load ticketfriend.csv file");
+			return false;
+		}
+
+		if(!ticketFriendTable.saveToDbc(dbcFilePath))
+		{
+			LOG_WARN("Failed to save to ticketfriend.dbc file");
+			return false;
+		}
+	}
+	else if(fileName == "woodencat.csv")
+	{
+		ConsortWoodTable woodtable;
+		if(!woodtable.loadFromCsv(filePath))
+		{
+			LOG_WARN("Failed to load woodencat.csv file");
+			return false;
+		}
+
+		if(!woodtable.saveToDbc(dbcFilePath))
+		{
+			LOG_WARN("Failed to save to woodencat.dbc file");
 			return false;
 		}
 	}

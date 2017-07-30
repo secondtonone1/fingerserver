@@ -3,6 +3,7 @@
 #include "ConfigParser.h"
 #include "LogicSystem.h"
 #include "PersistSystem.h"
+#include "ConsortSystem/ConsortSystem.h"
 using namespace Lynx;
 
 FriendBlackManager::FriendBlackManager()
@@ -33,18 +34,34 @@ bool FriendBlackManager::initial(Player* player)
 	m_pFriendList =  &m_pFriendData->mFriendList;
 	m_pBlackList = &m_pFriendData->mBlackList;
 
-	String ip = ConfigParser::getSingleton().getMainDbIp();
-	UInt16 port = ConfigParser::getSingleton().getMainDbPort();
-	String username = ConfigParser::getSingleton().getMainDbUsername();
-	String password = ConfigParser::getSingleton().getMainDbPassword();
-	String dbname = ConfigParser::getSingleton().getMainDbName();
 
-	if (!mDBInterface.initial(ip.c_str(), port, username.c_str(),
-		password.c_str(), dbname.c_str()))
+
+	for(List<UInt64>::Iter *beApplyIter = m_pFriendData->mBeApplyList.begin(); beApplyIter != m_pFriendData->mBeApplyList.end(); 
+		beApplyIter = m_pFriendData->mBeApplyList.next(beApplyIter))
 	{
-		LOG_WARN("Failed to connect mysql server. [%s %s %s %s]",
-			ip.c_str(), username.c_str(), password.c_str(), dbname.c_str());
-		return false;
+		if (beApplyIter->mValue == 0)
+		{
+			continue;
+		}
+		BaseInfoData baseInfoData;
+		bool res = LogicSystem::getSingleton().getBaseInfo(beApplyIter->mValue, baseInfoData);
+		//没找到 
+		if(!res)
+		{
+			//没找到，从数据库里load数据，并且插入Logic管理的map
+
+			bool dbRes = ConsortSystem::getSingleton().getBaseInfoFromDb(beApplyIter->mValue, baseInfoData);
+
+			//没找到，则跳过此次循环
+			if(!dbRes)
+			{
+				continue;
+			}
+			//sql找到对应条目，放入管理map里
+			LogicSystem::getSingleton().insertBaseInfo(baseInfoData);
+
+		}
+			m_pFriendBeApplyList.insertTail(baseInfoData);
 	}
 
 	return true;
@@ -57,6 +74,7 @@ void FriendBlackManager::release()
 	m_pFriendData = NULL;
 	m_pFriendList = NULL;
 	m_pBlackList = NULL;
+	m_pFriendBeApplyList.clear();
 }
 
 List<UInt64> &FriendBlackManager::getFriendList()
@@ -169,7 +187,8 @@ std::string FriendBlackManager::convertDataToJson()
 		{
 			//没找到，从数据库里load数据，并且插入Logic管理的map
 			
-			bool dbRes = getBaseInfoFromDb(friendIter->mValue, baseInfoData);
+			bool dbRes = ConsortSystem::getSingleton().getBaseInfoFromDb(friendIter->mValue, baseInfoData);
+			
 			//没找到，则跳过此次循环
 			if(!dbRes)
 			{
@@ -188,7 +207,7 @@ std::string FriendBlackManager::convertDataToJson()
 		friendEle["power"] = baseInfoData.power;
 		friendEle["viplv"] = baseInfoData.vipLv;
 		friendEle["level"] = baseInfoData.level;
-		friendEle["leaveTime"] = baseInfoData.leaveTime;
+		friendEle["leaveTime"] = baseInfoData.leaveTime/1000;
 		
 		root["friends"].append(friendEle);
 		
@@ -206,7 +225,8 @@ std::string FriendBlackManager::convertDataToJson()
 		{
 			//没找到，从数据库里load数据，并且插入Logic管理的map
 
-			bool dbRes = getBaseInfoFromDb(blackIter->mValue, baseInfoData);
+			
+			bool dbRes = ConsortSystem::getSingleton().getBaseInfoFromDb(blackIter->mValue, baseInfoData);
 			//没找到，则跳过此次循环
 			if(!dbRes)
 			{
@@ -223,10 +243,36 @@ std::string FriendBlackManager::convertDataToJson()
 		blackEle["power"] = baseInfoData.power;
 		blackEle["viplv"] = baseInfoData.vipLv;
 		blackEle["level"] = baseInfoData.level;
-		blackEle["leaveTime"] = baseInfoData.leaveTime;
+		blackEle["leaveTime"] = baseInfoData.leaveTime/1000;
 
 		root["blacks"].append(blackEle);
 	}
+
+
+		for(List<BaseInfoData>::Iter *applyIter = m_pFriendBeApplyList.begin(); applyIter !=NULL; applyIter = m_pFriendBeApplyList.next(applyIter))
+		{
+
+			Json::Value beApplyList;
+			beApplyList["playeruid"]= applyIter->mValue.playerUid;
+			beApplyList["modelid"] =  applyIter->mValue.modelId;
+			beApplyList["name"] =  applyIter->mValue.name.c_str();
+			beApplyList["power"] =  applyIter->mValue.power;
+			beApplyList["viplv"] =  applyIter->mValue.vipLv;
+			beApplyList["level"] =  applyIter->mValue.level;
+// 			beApplyList["leaveTime"] =  applyIter->mValue.leaveTime;
+			Player *player = LogicSystem::getSingleton().getPlayerByGuid(applyIter->mValue.playerUid);
+			if (player ==  NULL)
+			{
+				beApplyList["leaveTime"] = 1;
+			}
+			else
+			{
+				beApplyList["leaveTime"] = 0;
+			}
+
+			root["friendBeApplyList"].append(beApplyList);
+		}
+
 	
 	std::string jsonStr = writer.write(root);
 	//cout << jsonStr;
@@ -234,89 +280,8 @@ std::string FriendBlackManager::convertDataToJson()
 
 }
 
-bool FriendBlackManager::getBaseInfoFromDb(UInt64 playerUid, BaseInfoData & baseInfoData)
-{
-	char basedata[2048] = {0};
-
-	snprintf(basedata, sizeof(basedata),  "call basedata_load(%llu)", playerUid);
-
-	LOG_DEBUG("Sql:%s", basedata);
-	bool result = mDBInterface.execSql(basedata);
-	MYSQL_RES* rs = mDBInterface.storeResult();
-	if(!rs)
-	{
-		// 执行失败
-		mDBInterface.freeResult(&rs);
-		LOG_INFO("sql exec failed");
-		return false;		
-	}
-
-	MYSQL_ROW row = mDBInterface.fetchRow(rs);
-
-	if(!row)
-	{
-		// 角色不存在
-		mDBInterface.freeResult(&rs);
-		return false;
-
-	}
-
-	baseInfoData.modelId  = lynxAtoi<UInt32>(row[0]);
-	baseInfoData.name = row[1];
-	baseInfoData.power = lynxAtoi<UInt64>(row[2]);
-	baseInfoData.vipLv = lynxAtoi<UInt32>(row[3]);
-	baseInfoData.level = lynxAtoi<UInt32>(row[4]);
-	baseInfoData.leaveTime = lynxAtoi<UInt64>(row[5]);
-
-	mDBInterface.freeResult(&rs); 
-
-	return true;
-}
 
 
-bool FriendBlackManager::getOtherFriendInfo(UInt64 otherUid, FriendBlackInfo & friendblackInfo)
-{
-	char sql[4096] = {0};
-	snprintf(sql, sizeof(sql), "call friendandblack_load(%llu)", otherUid);
-	bool res = mDBInterface.execSql(sql);
-
-	if(!res)
-	{
-		LOG_INFO("call friendandblack_load failed!! player: %llu",  otherUid);
-
-		return false;
-
-	}
-
-	MYSQL_RES* rs = mDBInterface.storeResult();
-	if(!rs)
-	{
-		// 执行失败
-
-		
-		mDBInterface.freeResult(&rs);
-
-		return false ;		
-	}
-
-
-	MYSQL_ROW row = mDBInterface.fetchRow(rs);
-	if(!row)
-	{
-		mDBInterface.freeResult(&rs);
-		return false;
-	}
-
-	friendblackInfo.friendstr = row[1];
-	friendblackInfo.blackstr = row[2];
-	friendblackInfo.friendCount= lynxAtoi<UInt32>(row[3]);
-	friendblackInfo.playerUid = otherUid;
-	
-
-	mDBInterface.freeResult(&rs); 
-
-	return true;
-}
 
 
 bool FriendBlackManager::judgeFriend(UInt64 playerUid)
@@ -347,3 +312,136 @@ bool FriendBlackManager::judgeBlack(UInt64 playerUid)
 
 	return false;
 }
+
+
+
+
+bool FriendBlackManager::addFriendBeApply(BaseInfoData baseInfoData)
+{
+	if (m_pFriendBeApplyList.size() >= 50)
+	{
+		return false;
+	}
+
+		for (List<BaseInfoData>::Iter * iter = m_pFriendBeApplyList.begin();iter!=NULL; iter = m_pFriendBeApplyList.next(iter))
+		{
+			if (iter->mValue.playerUid == baseInfoData.playerUid)
+			{
+				return false;
+			}
+		}
+
+	
+	m_pFriendBeApplyList.insertTail(baseInfoData);
+
+	Player *player = LogicSystem::getSingleton().getPlayerByGuid(baseInfoData.playerUid);
+
+	player->getPersistManager().setDirtyBit(FRIENDBEAPPLYDATABIT);
+	
+	return true;
+}
+
+
+
+
+bool FriendBlackManager::delFriendBeApply(UInt64 playerUid)
+{
+
+		for (List<BaseInfoData>::Iter  * iter = m_pFriendBeApplyList.begin();iter!=NULL; iter = m_pFriendBeApplyList.next(iter))
+		{
+			if (iter->mValue.playerUid == playerUid)
+			{
+				m_pFriendBeApplyList.erase(iter);
+				Player *player = LogicSystem::getSingleton().getPlayerByGuid(playerUid);
+				if (player== NULL)
+				{
+					return false;
+				}
+
+				player->getPersistManager().setDirtyBit(FRIENDBEAPPLYDATABIT);
+
+				
+				return true;
+			}
+		}
+
+
+
+
+	return false;
+}
+bool FriendBlackManager::delFriendBeAllApply()
+{
+
+	m_pFriendBeApplyList.clear();
+	
+	Player *player = LogicSystem::getSingleton().getPlayerByGuid(m_nSelfUid);
+
+	player->getPersistManager().setDirtyBit(FRIENDBEAPPLYDATABIT);
+
+
+	return true;
+}
+
+List<BaseInfoData>& FriendBlackManager::getFriendApplyList()
+{
+	return m_pFriendBeApplyList;
+	
+}
+
+bool FriendBlackManager::judgeOtherBeApply(UInt64 playerUid)
+{
+	if (m_pFriendBeApplyList.size() >= 50)
+	{
+		return true;
+	}
+
+	for (List<BaseInfoData>::Iter * iter = m_pFriendBeApplyList.begin();iter!=NULL; iter = m_pFriendBeApplyList.next(iter))
+	{
+		if (iter->mValue.playerUid == playerUid)
+		{
+			return true;
+		}
+	}
+
+	return false;
+}
+
+// 
+// bool FriendBlackManager::onGetOtherBeApplyOffLineReq(UInt64 playerUid)
+// {
+// 	if (m_pFriendBeApplyList.size() >= 50)
+// 	{
+// 		return false;
+// 	}
+// 
+// 	for (List<BaseInfoData>::Iter * iter = m_pFriendBeApplyList.begin();iter!=NULL; iter = m_pFriendBeApplyList.next(iter))
+// 	{
+// 		if (iter->mValue.playerUid == playerUid)
+// 		{
+// 			return false;
+// 		}
+// 	}
+// 
+// 	return true;
+// }
+
+// bool FriendBlackManager::onGetOtherBeApplyOffLineResp(UInt64 playerUid)
+// {
+// 	if (m_pFriendBeApplyList.size() >= 50)
+// 	{
+// 		return false;
+// 	}
+// 
+// 	for (List<BaseInfoData>::Iter * iter = m_pFriendBeApplyList.begin();iter!=NULL; iter = m_pFriendBeApplyList.next(iter))
+// 	{
+// 		if (iter->mValue.playerUid == playerUid)
+// 		{
+// 			return false;
+// 		}
+// 	}
+// 
+// 	return true;
+// }
+// 
+// 

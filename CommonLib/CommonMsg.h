@@ -72,12 +72,21 @@ namespace Lynx
             /*UInt8, mSyncTimes,*/ UInt32, mClientTime, UInt32, mServerTime);
     };
 
-    struct AccountWasLoginNotify
+ /*   struct AccountWasLoginNotify
     {
         AccountWasLoginNotify() {}
 
         LYNX_MESSAGE_0(ACCOUNT_WAS_LOGIN_NOTIFY, AccountWasLoginNotify);
-    };
+    };*/
+
+	struct AccountWasLoginNotify
+	{
+		AccountWasLoginNotify(): mPacketID(ACCOUNT_WAS_LOGIN_NOTIFY), mRespJsonStr("") {}
+
+		UInt16	mPacketID;
+		std::string	 mRespJsonStr;
+		LYNX_MESSAGE_2(ACCOUNT_WAS_LOGIN_NOTIFY, AccountWasLoginNotify, UInt16, mPacketID, std::string, mRespJsonStr);
+	};
 
     struct KeepalivePingReq
     {

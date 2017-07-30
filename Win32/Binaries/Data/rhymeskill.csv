@@ -1,4 +1,4 @@
 id,activeNeedLevel,name1,desc1,icon1,powerNeed1,skillPosition1,skillId1,effectId1,name2,desc2,icon2,powerNeed2,skillPosition2,skillId2,effectId2,name3,desc3,icon3,powerNeed3,skillPosition3,skillId3,effectId3
-1,1;0,大飞第一个,大飞第一个,image/icon_skill/Wxiangqi.png,0,300;200,9,-1,风入松,使用韵的力量，召唤猛虎，对全体敌人造成伤害。,image/icon_skill/Wxiangqi.png,0,300;200,2009,-1,白糖第一个,白糖第一个,image/icon_skill/Wxiangqi.png,0,300;200,9,-1
-2,4;0,大飞第二个,大飞第二个,image/icon_skill/Wxiangqi.png,0,300;200,8,-1,镜花水月,武崧化为5个分身，对全体敌人造成伤害。,image/icon_skill/Wxiangqi.png,0,300;200,2010,-1,白糖第二个,白糖第二个,image/icon_skill/Wxiangqi.png,0,300;200,8,-1
-3,7;0,大飞第三个,大飞第三个,image/icon_skill/Wxiangqi.png,0,300;200,7,-1,象棋乱打,武崧将棍棒化为象棋，使用棋子对全体敌人进行攻击。,image/icon_skill/Wxiangqi.png,0,300;200,2011,-1,白糖第三个,白糖第三个,image/icon_skill/Wxiangqi.png,0,300;200,7,-1
+1,1;0,千斤鼎,猛烈撼动大地，并对范围内所有对手造成伤害。,#skill_1009.png,0,546;208,1009,-1,风入松,化身猛虎冲向对方，并对沿途的对方造成伤害。,#skill_2009.png,0,546;208,2009,-1,宇宙锋,将韵力凝聚在法杖顶端，幻化成新的武器，攻击敌人。,#skill_3009.png,0,546;208,3009,-1
+2,4;0,紫雾毒蛇,召唤巴蛇喷射毒物，让所有对手中毒并造成伤害。,#skill_1010.png,0,546;208,1010,-1,镜花水月,化身千万，给予全场对方猛烈打击。,#skill_2010.png,0,546;208,2010,-1,奔龙,召唤出金龙造成大量伤害。,#skill_3010.png,0,546;208,3010,-1
+3,7;0,巴蛇乱舞,召唤巴蛇遮蔽天日，一瞬间对范围内所有对手造成大量伤害。,#skill_1011.png,0,546;208,1011,-1,象棋乱打,将韵力化为会爆炸的棋子，轰击全场区域。,#skill_2011.png,0,546;208,2011,-1,韵之觉醒,化身为守护神姿态，进行疯狂攻击。,#skill_3011.png,0,546;208,3011,-1

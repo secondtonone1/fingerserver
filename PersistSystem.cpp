@@ -31,6 +31,8 @@ PersistSystem::initial()
 
 	REGISTER_THREAD_MSG(mThreadMsgHandler, PersistLoadPlayerByAccountResp, PersistSystem::onPersistLoadPlayerByAccountResp);
 
+	REGISTER_THREAD_MSG(mThreadMsgHandler, PersistInsertRobotResp, PersistSystem::onPersistInsertRobotResp);
+
     if (!loadDatabaseData())
     {
         LOG_WARN("Failed to load database data.");
@@ -63,12 +65,23 @@ PersistSystem::initial()
 		LOG_ERROR("Failed to initial loadServerData");
 		return false;	
 	}
+
+	if (mWorkerArray[0].loadServerDailyData() != LynxErrno::None)
+	{
+		LOG_ERROR("Failed to initial loadServerDailyData");
+		return false;	
+	}
+	
+	
 	if (mWorkerArray[0].loadResetStages() != LynxErrno::None)
 	{
 		LOG_ERROR("Failed to initial ResetStages");
 		return false;	
 	}
 	
+	PersistResetAllLeaveTime leavetime;
+	leavetime.m_nLeaveTime = time(0) *1000;
+	PersistSystem::getSingleton().postThreadMsg(leavetime,1);
 	return true;
 }
 
@@ -95,6 +108,8 @@ PersistSystem::release()
 	DEREGISTER_THREAD_MSG(mThreadMsgHandler, PersistCreatePlayerResp);
 
 	DEREGISTER_THREAD_MSG(mThreadMsgHandler, PersistLoadPlayerByAccountResp);
+	
+	DEREGISTER_THREAD_MSG(mThreadMsgHandler, PersistInsertRobotResp);
 
 	LOG_INFO("Release PersistSystem");
 }
@@ -120,8 +135,8 @@ PersistSystem::update(const UInt64& accTime)
 		}
 	}
 
-	//100000ms 测试
-	if(accTime - m_nLastSyncTime >= 100000)
+	//60000ms测试
+	if(accTime - m_nLastSyncTime >= 60000)
 	{
 		//上次同步时间更新
 		m_nLastSyncTime = accTime;
@@ -155,7 +170,16 @@ void PersistSystem::checkDirtyToSave()
 			continue;
 		}
 
-		if(!iter->mValue.mDirtyBit)
+		Player * player = LogicSystem::getSingleton().getPlayerByGuid(iter->mKey);
+		if(!player)
+		{
+			iter = m_mapUid2PersistInfo.next(iter);
+			continue;
+		}
+
+		bool needDel = player->isToDel();
+
+		if(!iter->mValue.mDirtyBit && !needDel)
 		{
 			iter = m_mapUid2PersistInfo.next(iter);
 			continue;
@@ -170,6 +194,7 @@ void PersistSystem::checkDirtyToSave()
 		postThreadMsg(saveDbReq,(UInt16)saveDbReq.mPlayerUid);
 		//发送给worker后，该标记清零，方便新的数据设置
 		iter->mValue.mDirtyBit = 0;
+		iter = m_mapUid2PersistInfo.next(iter);
 	}
 
 }
@@ -263,6 +288,8 @@ PersistSystem::loadGuidData(DBInterface& dbInterface)
 		Guid emailBaseGuid = lynxAtoi<Guid>(row[4]);
 		Guid materialBaseGuid = lynxAtoi<Guid>(row[5]);
 		Guid charactorBaseGuid = lynxAtoi<Guid>(row[6]);
+		Guid consortBaseGuid = lynxAtoi<Guid>(row[7]);
+		Guid consortTicketGuid = lynxAtoi<Guid>(row[8]);
 
         LogicSystem::getSingleton().setPlayerGuid(playerGuid);
 		LogicSystem::getSingleton().setItemGuid(itemGuid);
@@ -271,6 +298,8 @@ PersistSystem::loadGuidData(DBInterface& dbInterface)
 		LogicSystem::getSingleton().setEmailGuid(emailBaseGuid);
 		LogicSystem::getSingleton().setMaterialGuid(materialBaseGuid);
 		LogicSystem::getSingleton().setCharactorGuid(charactorBaseGuid);
+		LogicSystem::getSingleton().setConsortGuid(consortBaseGuid);
+		LogicSystem::getSingleton().setTicketGuid(consortTicketGuid);
 
         dbInterface.freeResult(&rs);
         return true;
@@ -283,7 +312,8 @@ PersistSystem::loadGuidData(DBInterface& dbInterface)
 	LogicSystem::getSingleton().setGuildGuid(10000);
 	LogicSystem::getSingleton().setMaterialGuid(10000);
 	LogicSystem::getSingleton().setCharactorGuid(10000);
-
+	LogicSystem::getSingleton().setConsortGuid(10000);
+	LogicSystem::getSingleton().setTicketGuid(10000);
     return true;
 }
 
@@ -310,9 +340,23 @@ PersistSystem::onPersistLoadPlayerDataResp(PersistLoadPlayerDataResp& msg)
 void 
 PersistSystem::onPersistFindSimilarPowerResp(PersistFindSimilarPowerResp& msg)
 {
-	Guid otherPlayerID =  LogicSystem::getSingleton().listRandOne(msg.playerIDList);
+	Guid otherPlayerID = 0;
+	String playerUidStr;
+	char dest[64] = {};
 
-	if (msg.times == 10000)
+	for(UInt32 i =0;i<msg.keyValueList.size();i++)
+	{
+		otherPlayerID =  LogicSystem::getSingleton().listRandOne(msg.playerID,msg.keyValueList,msg.times,0);
+		sprintf(dest,"%llu",otherPlayerID);
+		playerUidStr = (String)dest;	
+		if(LogicSystem::getSingleton().getDetailInfo(playerUidStr.c_str()) != "")
+		{
+			break;
+		}
+	}
+
+	LOG_INFO("onPersistFindSimilarPowerResp otherPlayerID = %llu  ",otherPlayerID);
+	if (msg.times == 10001)
 	{
 		PVPSystem::getSingleton().matchingRoomResp(msg.playerID,otherPlayerID);
 	}
@@ -345,7 +389,7 @@ void PersistSystem::onPersistLoadPlayerByAccountResp(PersistLoadPlayerByAccountR
 		root["playeruid"] = msg.mPlayerUid;
 		Json::StyledWriter writer;
 		accountLoginResp.mRespStr = writer.write(root);
-		cout << accountLoginResp.mRespStr;
+		LOG_INFO("onPersistLoadPlayerByAccountResp = %s",accountLoginResp.mRespStr.c_str());
 		NetworkSystem::getSingleton().sendMsg(accountLoginResp,msg.mConnId);
 		
 }
@@ -397,6 +441,18 @@ void PersistSystem::onPersistNotifyWorkerSaveDbResp(PersistNotifyWorkerSaveDbRes
 		iterFind->mValue.mProcessState = PROCESSFREE;
 
 	}
+	
+	Player * player = LogicSystem::getSingleton().getPlayerByGuid(msg.mPlayerUid);
+	if(player)
+	{
+		bool needDel = player->isToDel();
+		if(needDel)
+		{
+			LogicSystem::getSingleton().destroyPlayerByGuid(msg.mPlayerUid);
+		}
+	}
+	
+	
 }
 
 
@@ -417,4 +473,31 @@ void PersistSystem::onPersistCreatePlayerResp(PersistCreatePlayerResp & msg)
 
 	NetworkSystem::getSingleton().sendMsg(createPlayerResp,msg.mConnId);
 
+	LOG_INFO("createend %llu !",TimeUtil::getTimeMilliSec());
+
+	if (msg.mRes == LynxErrno::None)
+	{
+		LogicSystem::getSingleton().initRoleInfoReq(msg.mPlayerUid,msg.mName.c_str(),msg.mPlayerModelId);
+
+		char dest[1024]={0};
+		snprintf(dest,sizeof(dest),"%llu",msg.mPlayerUid);
+
+		LogicSystem::getSingleton().write_server_log(LogType51,dest,LogInfo);
+
+
+	}
+	else
+	{
+		LogicSystem::getSingleton().eraseCreateSet(msg.mName.c_str());
+	}
+	
+
+	
+
+}
+
+
+void PersistSystem::onPersistInsertRobotResp(PersistInsertRobotResp & msg)
+{	
+	GameServer::getSingleton().gameExit();
 }

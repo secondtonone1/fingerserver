@@ -8,15 +8,22 @@
 #include "NetworkSystem.h"
 #include "PassportSystem.h"
 #include "PersistSystem.h"
-#include "../FireConfirm/PVPSystem.h"
-#include "../Ranking/Ranking.h"
-#include "../FireConfirm/NewException.h"
-#include "../FireConfirm/ClimbTower.h"
-#include "../FireConfirm/StageCalc.h"
-#include "../FireConfirm/Gift.h"
-#include "../FireConfirm/CourageChallenge.h"
-#include "../FireConfirm/InlineActivity.h"
-#include "../FireConfirm/Robot.h"
+#include "ServerData.h"
+#include "./FireConfirm/PVPSystem.h"
+#include "./Ranking/Ranking.h"
+#include "./FireConfirm/NewException.h"
+#include "./FireConfirm/ClimbTower.h"
+#include "./FireConfirm/StageCalc.h"
+#include "./FireConfirm/Gift.h"
+#include "./FireConfirm/CourageChallenge.h"
+#include "./FireConfirm/InlineActivity.h"
+#include "./FireConfirm/Robot.h"
+#include "./FireConfirm/GlobalValue.h"
+#include "./FireConfirm/RankGame.h"
+#include "./PKSystem/pvpthread.h"
+#include "./ConsortSystem/ConsortSystem.h"
+#include "DetailInfoMsgHandler.h"
+#include "Logcxx.h"
 
 
 namespace Lynx
@@ -34,6 +41,8 @@ namespace Lynx
 		void stop(bool isImmediate = true);
 		void shutDown();
 
+		void gameExit();
+
 
 		
 
@@ -47,6 +56,7 @@ namespace Lynx
         IOService mIOService;
         IOTimer mUpdateTimer; 
         UInt32 mExitWaitTime;
+		PVPThread mPVPThread;
 
 	};
 

@@ -15,8 +15,6 @@ namespace Lynx
 		BOC_ACCOUNT_LOGIN_RESP                = sLoginMsgBase + 6,
 
 
-		OTHER_PLAYER_ATTR_REQ          = sLoginMsgBase + 10,
-		OTHER_PLAYER_ATTR_RESP         = sLoginMsgBase + 11,
 
 	};
 
@@ -82,41 +80,7 @@ namespace Lynx
 
 
 
-	struct CGOterPlayerAttr
-	{
-		CGOterPlayerAttr(): playerID(0){}
 
-		UInt32 playerID;
-
-		std::string jsonStr;
-		void convertJsonToData(std::string jsonStr)
-		{
-			Json::Reader reader;    
-			Json::Value root;    
-			if (reader.parse(jsonStr, root))  // reader将Json字符串解析到root，root将包含Json里所有子元素      
-			{
-				playerID = root["playerID"].asUInt();				
-			}
-		}
-		LYNX_MESSAGE_1(OTHER_PLAYER_ATTR_REQ, CGOterPlayerAttr,std::string, jsonStr);
-	};
-
-	struct oterPlayerAttrResp	
-	{
-		oterPlayerAttrResp():str("") {}
-
-		std::string str;
-
-		std::string convertDataToJson()
-		{
-// 			Json::Value root;     	
-// 			root["typeID"] = Json::Value(typeID);
-// 			
-// 			Json::FastWriter writer;  
-// 			std::string strWrite = writer.write(root);
-			return str;
-		}
-	};
 
 
 

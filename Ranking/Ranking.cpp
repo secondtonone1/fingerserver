@@ -18,12 +18,12 @@ UInt32 RankingManager::initRankingData()
 	{
 		for(Map<UInt64, StageTemplate>::Iter* iter = gStageTable->mMap.begin();iter!=NULL;iter = gStageTable->mMap.next(iter))
 		{
-			if (iter->mValue.mType == STAGE_TRIAL &&iter->mValue.limittime2 > 0)
+			if (iter->mValue.mType == STAGE_TRIAL &&iter->mValue.limittime1 > 0)
 			{
 				record.playerID =0;
 				record.name ="";
 				record.modleID =0;
-				record.val = iter->mValue.limittime2;	
+				record.val = iter->mValue.limittime1;	
 				RankingManager::getSingleton().setRecord(STAGE_RECORD_TYPE,iter->mValue.mStageId,record,true);
 			}
 		}
@@ -34,12 +34,12 @@ UInt32 RankingManager::initRankingData()
 	{
 		for(Map<UInt64, StageTemplate>::Iter* iter = gStageTable->mMap.begin();iter!=NULL;iter = gStageTable->mMap.next(iter))
 		{
-			if (iter->mValue.mType == STAGE_TWELVEPALACE &&iter->mValue.limittime2 > 0)
+			if (iter->mValue.mType == STAGE_TWELVEPALACE &&iter->mValue.limittime1 > 0)
 			{
 				record.playerID =0;
 				record.name ="";
 				record.modleID =0;
-				record.val = iter->mValue.limittime2;	
+				record.val = iter->mValue.limittime1;	
 				RankingManager::getSingleton().setRecord(TWELVE_PALACE_RECORD_TYPE,iter->mValue.mStageId,record,true);
 			}
 		}
@@ -57,6 +57,8 @@ void RankingManager::onRecordReq(const  ConnId& connId,CGRecord &msg)
  	resp.recods = RankingManager::getSingleton().getRecords(msg.typeID);
 	if (resp.recods.size()==0)
 	{
+		 std::string str =  resp.convertDataToJson(); 
+		 NetworkSystem::getSingleton().sender(connId,CHAPTER_RECORD_RESP,str);
 		return;
 	}
 	 std::string str =  resp.convertDataToJson(); 
@@ -139,6 +141,8 @@ UInt32 RankingManager::setRecord(UInt32 type,UInt32 rank, Record record, bool ne
 		req.val = record.val;
 		PersistSystem::getSingleton().postThreadMsg(req, 0);
 	}
+
+	LOG_INFO("setRecord flag = %d",flag);
 	return flag;
 }
 
@@ -163,7 +167,6 @@ Record RankingManager::getRecord(UInt32 type,UInt32 rank)
 {
 
 	Record record;
-	MapRecord mapRecords;
 
 	for(Map<UInt32,MapRecord>::Iter *iter = mTypeRecords.begin();iter != NULL;iter = mTypeRecords.next(iter))
 	{

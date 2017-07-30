@@ -2,6 +2,8 @@
 #include "Player.h"
 #include "ConfigParser.h"
 #include "LogicSystem.h"
+#include "ConsortSystem/ConsortSystem.h"
+#include "RedisManager.h"
 using namespace Lynx;
 
 ChatManager::ChatManager()
@@ -28,19 +30,6 @@ bool ChatManager::initial(Player* player)
 	
 	m_pChatList = &player->mPlayerData.mChatData.chatLists;
 
-	String ip = ConfigParser::getSingleton().getMainDbIp();
-	UInt16 port = ConfigParser::getSingleton().getMainDbPort();
-	String username = ConfigParser::getSingleton().getMainDbUsername();
-	String password = ConfigParser::getSingleton().getMainDbPassword();
-	String dbname = ConfigParser::getSingleton().getMainDbName();
-
-	if (!mDBInterface.initial(ip.c_str(), port, username.c_str(),
-		password.c_str(), dbname.c_str()))
-	{
-		LOG_WARN("Failed to connect mysql server. [%s %s %s %s]",
-			ip.c_str(), username.c_str(), password.c_str(), dbname.c_str());
-		return false;
-	}
 
 	return true;
 
@@ -50,8 +39,6 @@ bool ChatManager::initial(Player* player)
 void ChatManager::release()
 {
 	m_pPlayer = NULL;
-	mDBInterface.release();
-	
 }
 
 void ChatManager::insertPlayerToChatList(UInt64 playerUid)
@@ -158,70 +145,43 @@ void ChatManager::showDetailInfo(UInt64 playeruid)
 	//玩家不在线
 	if(!player)
 	{
-		char basedata[2048] = {0};
+		
+		BaseInfoData baseInfo;
+		bool flag = LogicSystem::getSingleton().getBaseInfo(playeruid,baseInfo);
 
-		snprintf(basedata, sizeof(basedata),  "call Player_Load(%llu)", playeruid);
+			if(!flag  )
+			{
+					GCShowDetailResp showDetailResp;
+					showDetailResp.mPacketID = BOC_SHOWDETAIL_RESP;
 
-		LOG_DEBUG("Sql:%s", basedata);
-		bool result = mDBInterface.execSql(basedata);
-		MYSQL_RES* rs = mDBInterface.storeResult();
-		if(!rs)
-		{
-			// 执行失败
-			mDBInterface.freeResult(&rs);
+					Json::Value root;
+					root["errorId"] = LynxErrno::InvalidParameter;
 
-			GCShowDetailResp showDetailResp;
-			showDetailResp.mPacketID = BOC_SHOWDETAIL_RESP;
+					Json::StyledWriter writer;
+					showDetailResp.mRespJsonStr = writer.write(root);
 
-			Json::Value root;
-			root["errorId"] = LynxErrno::InvalidParameter;
-			
-			Json::StyledWriter writer;
-			showDetailResp.mRespJsonStr = writer.write(root);
+					NetworkSystem::getSingleton().sendMsg(showDetailResp, connId);
 
-			NetworkSystem::getSingleton().sendMsg(showDetailResp, connId);
-
-			return;
-
+					return;
 				
-		}
 
-		MYSQL_ROW row = mDBInterface.fetchRow(rs);
-
-		if(!row)
-		{
-			// 角色不存在
-			mDBInterface.freeResult(&rs);
-
-			GCShowDetailResp showDetailResp;
-			showDetailResp.mPacketID = BOC_SHOWDETAIL_RESP;
-
-			Json::Value root;
-			root["errorId"] = LynxErrno::InvalidParameter;
-
-			Json::StyledWriter writer;
-			showDetailResp.mRespJsonStr = writer.write(root);
-
-			NetworkSystem::getSingleton().sendMsg(showDetailResp, connId);
-
-			return;
-			
-
-		}
+			}
 
 
+
+		
 		Json::Value root;
 		root["errorId"] = LynxErrno::None;
-		root["modelid"] = lynxAtoi<UInt32>(row[1]);
-		root["name"] = row[2];
-		root["level"] = lynxAtoi<UInt32>(row[3]);
-		root["vipLv"] = lynxAtoi<UInt32>(row[5]);
+		root["modelid"] = baseInfo.modelId;
+		root["name"] = baseInfo.name.c_str();
+		root["level"] = baseInfo.level;
+		root["vipLv"] = baseInfo.vipLv;
 		root["playeruid"] = playeruid;
-		root["attack"] = lynxAtoi<Guid>(row[16]);
+		root["attack"] = baseInfo.power;
 	
 		
 
-		mDBInterface.freeResult(&rs); 
+	
 
 		GCShowDetailResp showDetailResp;
 		showDetailResp.mPacketID = BOC_SHOWDETAIL_RESP;
@@ -270,6 +230,7 @@ std::string ChatManager::convertDataToJson()
 
 	root["disableTimeLong"] = m_pPlayer->mPlayerData.mChatData.disableTimeLong;
 
+	root["nowtime"] = UInt64(time(0));
 
 	for(List<ChatData>::Iter * chatIter = m_pChatList->begin(); chatIter != NULL; 
 		chatIter = m_pChatList->next(chatIter) )
@@ -299,41 +260,9 @@ std::string ChatManager::convertDataToJson()
 		}
 		else
 		{
-			char basedata[2048] = {0};
-
-			snprintf(basedata, sizeof(basedata),  "call basedata_load(%llu)", chatIter->mValue.playerUid);
-
-			LOG_DEBUG("Sql:%s", basedata);
-			bool result = mDBInterface.execSql(basedata);
-			MYSQL_RES* rs = mDBInterface.storeResult();
-			if(!rs)
-			{
-				// 执行失败
-				mDBInterface.freeResult(&rs);
-				continue;		
-			}
-
-			MYSQL_ROW row = mDBInterface.fetchRow(rs);
-
-			if(!row)
-			{
-				// 角色不存在
-				mDBInterface.freeResult(&rs);
-				continue;
-				
-			}
-
-			chatDataRoot["lastChatTime"] = chatIter->mValue.chatTime;
-			chatDataRoot["playeruid"] = chatIter->mValue.playerUid;
 			
-			chatDataRoot["modelid"]  = lynxAtoi<UInt32>(row[0]);
-			chatDataRoot["name"] = row[1];
-
-			chatDataRoot["onLine"] = 0;
-
-			root["chatplayers"].append(chatDataRoot);
-
-			mDBInterface.freeResult(&rs); 
+			ConsortSystem::getSingleton().chatListJson(root["chatplayers"],chatIter->mValue.playerUid,
+				chatIter->mValue.chatTime);
 
 		}
 		
@@ -344,6 +273,7 @@ std::string ChatManager::convertDataToJson()
 	std::string jsonStr = writer.write(root);
 
 	//cout << jsonStr;
+	//LOG_INFO("chat list is :%s",jsonStr.c_str() );
 	return jsonStr;
 
 
@@ -354,9 +284,37 @@ void ChatManager::receiveMsg(UInt32 channelType, UInt64 fromPlayer, UInt64 toPla
 {
 	const ConnId& connId = m_pPlayer->getConnId();
 	
+	if(channelType == CONSORTMASG)
+	{
+		const PlayerConsortData & playerconsortdata = m_pPlayer->getPlayerConsortData();
+		LogicSystem::getSingleton().sendSystemMsg(10, ChatMsg, playerconsortdata.m_nConsortId);
+	}
+
 	if(channelType == WORLDCHAT)
 	{
+		//chang by cqy
+		GCClientChatResp clientChatResp;
+		clientChatResp.mPacketID = BOC_CLIENTCHAT_RESP;
+		Json::Value root;
+		root["channelType"] = channelType;
+		root["fromPlayer"] = fromPlayer;
+		root["chatMsg"] = ChatMsg;
+		root["modelid"] = m_pPlayer->getPlayerModelID();
+		root["name"] = m_pPlayer->getPlayerName();
+		root["chattime"] = TimeUtil::getTimeSec();
+
+		Json::StyledWriter writer;
+
+		clientChatResp.mRespJsonStr = writer.write(root);
+
+		std::string sdkstr = RedisManager().getSingleton().get("sdkchat");  
+		sdkstr.append("!@#$");
+		sdkstr.append(clientChatResp.mRespJsonStr);
+		RedisManager().getSingleton().set("sdkchat",sdkstr );
+
 		const Map<ConnId, Player*> connectionMap = LogicSystem::getSingleton().getPlayerConnectionMap();
+
+		LOG_WARN("connectionMap size = %d",connectionMap.size());
 
 		for( Map<ConnId, Player*>::Iter* mapIter = connectionMap.begin(); mapIter != NULL; 
 			mapIter = connectionMap.next(mapIter))
@@ -364,22 +322,8 @@ void ChatManager::receiveMsg(UInt32 channelType, UInt64 fromPlayer, UInt64 toPla
 			//不是发送者
 			if(mapIter->mKey != connId)
 			{
-				GCClientChatResp clientChatResp;
-				clientChatResp.mPacketID = BOC_CLIENTCHAT_RESP;
-				Json::Value root;
-				root["channelType"] = channelType;
-				root["fromPlayer"] = fromPlayer;
-				root["chatMsg"] = ChatMsg;
-				root["modelid"] = m_pPlayer->getPlayerModelID();
-				root["name"] = m_pPlayer->getPlayerName();
-				root["chattime"] = TimeUtil::getTimeSec();
-
-				Json::StyledWriter writer;
-
-				clientChatResp.mRespJsonStr = writer.write(root);
-
 				cout << clientChatResp.mRespJsonStr << endl;
-
+				
 				NetworkSystem::getSingleton().sendMsg(clientChatResp, mapIter->mKey);
 
 				
@@ -391,7 +335,14 @@ void ChatManager::receiveMsg(UInt32 channelType, UInt64 fromPlayer, UInt64 toPla
 
 	if(channelType == CONSORTIACHAT)
 	{
+		
+			const PlayerConsortData & consortData = m_pPlayer->getPlayerConsortData();
+		
+			ConsortSystem::getSingleton().sendConsortMsg(0, consortData.m_nConsortId, m_pPlayer->getPlayerGuid(), m_pPlayer->getPlayerName().c_str(), ChatMsg,"",
+				TimeUtil::getTimeSec());
+		
 
+		
 	}
 
 	if(channelType == PRIVATECHAT)
@@ -477,6 +428,24 @@ void ChatManager::clientForbidChat(UInt64 playerUid, UInt32 timelong, UInt64 tim
 
 	m_pPlayer->getPersistManager().setDirtyBit(CHATDATABIT);
 
+	const ConnId& connId = m_pPlayer->getConnId();
+	if(connId)
+	{
+			Json::StyledWriter writer;
+	
+			GCForbidChatNotify forbidNotify;
+			forbidNotify.mPacketID = BOC_FORBIDCHAT_NOTIFY;
+			Json::Value root;
+			root["playeruid"] = playerUid;
+			root["timelong"] = timelong;
+			root["timebegin"] = timebegin;
+			root["nowtime"] = UInt64(time(0));
+	
+			forbidNotify.mRespJsonStr = writer.write(root);
+			LOG_INFO("forbid msg is = %s",forbidNotify.mRespJsonStr.c_str())  ;
+			NetworkSystem::getSingleton().sendMsg(forbidNotify,connId);
+	}
+
 }
 
 void ChatManager::clientResetChat(UInt64 playerUid)
@@ -491,37 +460,15 @@ void ChatManager::clientResetChat(UInt64 playerUid)
 
 }
 
-void ChatManager::sendSystemMsg(std::string ChatMsg)
+
+
+
+//GM发送的公告信息
+void ChatManager::sendGMNotifyMsg(std::string msg, UInt64 dealline,  UInt64 terminal)
 {
-	const Map<ConnId, Player*> connectionMap = LogicSystem::getSingleton().getPlayerConnectionMap();
 
-	for( Map<ConnId, Player*>::Iter* mapIter = connectionMap.begin(); mapIter != NULL; 
-		mapIter = connectionMap.next(mapIter))
-	{
-		
-		
-		GCClientChatResp clientChatResp;
-		clientChatResp.mPacketID = BOC_CLIENTCHAT_RESP;
-
-		Json::Value root;
-		root["channelType"] = SYSTEMMSG;
-		root["fromPlayer"] = 0;
-		root["chatMsg"] = ChatMsg;
-		root["modelid"] = m_pPlayer->getPlayerModelID();
-		root["name"] = m_pPlayer->getPlayerName();
-		root["chattime"] = TimeUtil::getTimeSec();
-
-		Json::StyledWriter writer;
-
-		clientChatResp.mRespJsonStr = writer.write(root);
-
-		cout << clientChatResp.mRespJsonStr << endl;
-
-		NetworkSystem::getSingleton().sendMsg(clientChatResp, mapIter->mKey);
-		
-
-	}
 }
+
 
 void ChatManager::checkOnline(UInt64 playerUid)
 {

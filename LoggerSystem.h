@@ -38,6 +38,7 @@ namespace Lynx
 
 		void stringNameLog(string fileName,Guid playerID,string playerName,string str);
 
+	
 		
 	private:
 		void dispatchThreadMsg(ThreadMsg& msg);

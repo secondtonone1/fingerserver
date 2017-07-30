@@ -11,6 +11,7 @@
 #include "../FireConfirm/Shop.h"
 #include "../FireConfirm/InlineActivity.h"
 #include "ServerData.h"
+#include "../FireConfirm/RankGame.h"
 using namespace Lynx;
 
 PersistWorker::PersistWorker()
@@ -39,6 +40,9 @@ PersistWorker::initial(UInt32 index)
 	REGISTER_THREAD_MSG(mThreadMsgHandler, PersistFindSimilarPowerReq, PersistWorker::onPersistFindSimilarPower);
 
 	REGISTER_THREAD_MSG(mThreadMsgHandler, PersistServerDataReq, PersistWorker::onPersistServerDataReq);
+
+	REGISTER_THREAD_MSG(mThreadMsgHandler, PersistServerDailyDataReq, PersistWorker::onPersistServerDailyDataReq);
+
 
 	REGISTER_THREAD_MSG(mThreadMsgHandler, PersistRobotDataReq, PersistWorker::onPersistRobotDataReq);
 
@@ -89,9 +93,80 @@ PersistWorker::initial(UInt32 index)
 
 	REGISTER_THREAD_MSG(mThreadMsgHandler, PersistUpdateLeaveTime, PersistWorker::onPersistLeaveTime);
 
+	REGISTER_THREAD_MSG(mThreadMsgHandler, PersistResetAllLeaveTime, PersistWorker::onPersistAllLeaveTime);
+	
 	REGISTER_THREAD_MSG(mThreadMsgHandler, PerisistUpdateOnlineLvRank,  PersistWorker::onLoadPlayerOnlineByLv);
 	REGISTER_THREAD_MSG(mThreadMsgHandler, PersistGetPowerRank, PersistWorker::onLoadPlayerPowerRank);
+	REGISTER_THREAD_MSG(mThreadMsgHandler, PersistGetScoreRank, PersistWorker::onLoadPlayerScoreRank);
+	REGISTER_THREAD_MSG(mThreadMsgHandler, PersistRankGameScoreSave, PersistWorker::onRankGameScoreSave);
 
+	REGISTER_THREAD_MSG(mThreadMsgHandler, PersistUpdateFriendBeApplyOffLineDataToDb, PersistWorker::onPersistUpdateFriendBeApplyOffLineDataToDb);
+
+	REGISTER_THREAD_MSG(mThreadMsgHandler, PersistRankGameReportSave, PersistWorker::onRankGameReportSave);
+
+	REGISTER_THREAD_MSG(mThreadMsgHandler, PersistOnlineDaySave,  PersistWorker::onPersistOnlineDaySave);
+
+	REGISTER_THREAD_MSG(mThreadMsgHandler, PersistBaseDateSave,  PersistWorker::onPersistBaseDateSave);
+	
+
+	REGISTER_THREAD_MSG(mThreadMsgHandler, PersistPlayerConsortUpdate, PersistWorker::onLoadPlayerConsortInfo);
+	REGISTER_THREAD_MSG(mThreadMsgHandler, PersistPlayerConsortSave, PersistWorker::onSavePlayerConsort);
+	REGISTER_THREAD_MSG(mThreadMsgHandler, PersistConsortSave, PersistWorker::onSaveConsort);
+	REGISTER_THREAD_MSG(mThreadMsgHandler, PersistConsortCreate, PersistWorker::onCreateConsort);
+	REGISTER_THREAD_MSG(mThreadMsgHandler, PersistConsortApplyInsert, PersistWorker::onConsortApplyInsert);
+	REGISTER_THREAD_MSG(mThreadMsgHandler, PersistConsortApplyDel, PersistWorker::onConsortApplyDel);
+	REGISTER_THREAD_MSG(mThreadMsgHandler, PersistConsortApplyClear, PersistWorker::onConsortApplyClear);
+	REGISTER_THREAD_MSG(mThreadMsgHandler, PersistConsortApplyAllClear, PersistWorker::onConsortApplyAllClear);
+	REGISTER_THREAD_MSG(mThreadMsgHandler, PersistConsortDel, PersistWorker::onConsortDel);
+	REGISTER_THREAD_MSG(mThreadMsgHandler, PersistConsortLogInsert, PersistWorker::onConsortLogInsert);
+	REGISTER_THREAD_MSG(mThreadMsgHandler, PersistConsortSignReset, PersistWorker::onConsortSignReset);
+	REGISTER_THREAD_MSG(mThreadMsgHandler, PersistConsortSignUpdate, PersistWorker::onConsortSignUpdate);
+	REGISTER_THREAD_MSG(mThreadMsgHandler, PersistConsortActiveUpdate, PersistWorker::onConsortActiveUpdate);
+	REGISTER_THREAD_MSG(mThreadMsgHandler, PersistConsortLoyalUpdate, PersistWorker::onConsortLoyalUpdate);
+	REGISTER_THREAD_MSG(mThreadMsgHandler, PersistConsortKitQueUpdate, PersistWorker::onKitQueTimesUpdate);
+	REGISTER_THREAD_MSG(mThreadMsgHandler, PersistBusinessCatUpdate, PersistWorker::onBusinessTimesUpdate);
+	REGISTER_THREAD_MSG(mThreadMsgHandler, PersistBusinessCatTimeReset, PersistWorker::onBusinessTimeReset);
+	
+	REGISTER_THREAD_MSG(mThreadMsgHandler, PersistEyeTimesUpdate, PersistWorker::onEyeTimesUpdate);
+	
+	REGISTER_THREAD_MSG(mThreadMsgHandler, PersistTicketTimeReset, PersistWorker::onTicketTimeReset);
+	
+	REGISTER_THREAD_MSG(mThreadMsgHandler, PersistTicketFriendUpdate, PersistWorker::onTicketFriendUpdate);
+	
+	REGISTER_THREAD_MSG(mThreadMsgHandler, PersistTicketQualityUpdate, PersistWorker::onTicketQualityUpdate);
+
+	REGISTER_THREAD_MSG(mThreadMsgHandler, PersistTicketFriendInit, PersistWorker::onTicketFriendInit);
+	
+	REGISTER_THREAD_MSG(mThreadMsgHandler, PersistTicketAllDel, PersistWorker::onTicketAllDel);
+
+	REGISTER_THREAD_MSG(mThreadMsgHandler, PersistTicketDataUpdate, PersistWorker::onTicketDataUpdate);
+
+	REGISTER_THREAD_MSG(mThreadMsgHandler, PersistTicketSupport, PersistWorker::onTicketSupportUpdate);
+
+	REGISTER_THREAD_MSG(mThreadMsgHandler, PersistTicketAwardAdd, PersistWorker::onTicketAwardAdd);
+
+	REGISTER_THREAD_MSG(mThreadMsgHandler, PersistTicketAwardUpdate, PersistWorker::onTicketAwardUpdate);
+	
+	REGISTER_THREAD_MSG(mThreadMsgHandler, PersistTicketTimesUpdate, PersistWorker::onTicketTimesUpdate);
+
+	REGISTER_THREAD_MSG(mThreadMsgHandler, PersistTicketAwardDel, PersistWorker::onTicketAwardDel);
+
+	REGISTER_THREAD_MSG(mThreadMsgHandler, PersistTicketTimesReset, PersistWorker::onTicketTimesReset);
+
+	REGISTER_THREAD_MSG(mThreadMsgHandler, PersistLoyalTimesReset, PersistWorker::onLoyalTimesReset);
+
+	REGISTER_THREAD_MSG(mThreadMsgHandler, PersistKitchenTimesReset, PersistWorker::onKitchenTimesReset);
+
+	REGISTER_THREAD_MSG(mThreadMsgHandler, PersistEyeTimesReset, PersistWorker::onEyeTimesReset);
+
+	REGISTER_THREAD_MSG(mThreadMsgHandler, PersistEloquenceTimesUpdate, PersistWorker::onEloquenceUpdate);
+	REGISTER_THREAD_MSG(mThreadMsgHandler, PersistEloquenceTimesReset, PersistWorker::onEloquenceReset);
+	REGISTER_THREAD_MSG(mThreadMsgHandler, PersistWoodTimesReset, PersistWorker::onWoodTimesReset);
+	REGISTER_THREAD_MSG(mThreadMsgHandler, PersistWoodTotalUpdate, PersistWorker::onWoodTotalUpdate);
+	REGISTER_THREAD_MSG(mThreadMsgHandler, PersistWoodTotalReset, PersistWorker::onWoodTotalReset);
+	REGISTER_THREAD_MSG(mThreadMsgHandler, PersistWoodSelfUpdate, PersistWorker::onWoodSelfUpdate);
+	
+	//
 	REGISTER_THREAD_MSG(mThreadMsgHandler, PersistAddEmail, PersistWorker::onAddEmail);
 	REGISTER_THREAD_MSG(mThreadMsgHandler, PersistDelEmail, PersistWorker::onDelEmail);
 	REGISTER_THREAD_MSG(mThreadMsgHandler, PersistUpdateEmail, PersistWorker::onUpdateEmail);
@@ -107,7 +182,65 @@ PersistWorker::initial(UInt32 index)
 	REGISTER_THREAD_MSG(mThreadMsgHandler, PersistDailyActiveUpdateMsg, PersistWorker::onPersistUpdateDailyActiveDb);
 	REGISTER_THREAD_MSG(mThreadMsgHandler, PersistDailyLastTimeUpdateMsg, PersistWorker::onPersistUpdateActiveTimeDb);
 	
+	REGISTER_THREAD_MSG(mThreadMsgHandler, PersistGuidStepUpdateMsg, PersistWorker::onPersistUpdateNewGuid);
+
+	REGISTER_THREAD_MSG(mThreadMsgHandler, PersistGuidFlagUpdateMsg, PersistWorker::onPersistUpdateGuidFlag);
 	
+	REGISTER_THREAD_MSG(mThreadMsgHandler, PersistForbidChatUpdate, PersistWorker::onPersistUpdateForbidChat);
+
+	REGISTER_THREAD_MSG(mThreadMsgHandler, PersistForbidLoginTimeUpdate, PersistWorker::onPersistUpdateForbidLoginTime);
+
+	REGISTER_THREAD_MSG(mThreadMsgHandler, PersistGMResetTongbao, PersistWorker::onPersistGMResetTongbaoReq);
+
+	REGISTER_THREAD_MSG(mThreadMsgHandler, PersistGMResetMengchu, PersistWorker::onPersistGMResetMengchuReq);
+	
+	REGISTER_THREAD_MSG(mThreadMsgHandler, PersistGMResetYushiGF, PersistWorker::onPersistGMResetYushiGFReq);
+
+	REGISTER_THREAD_MSG(mThreadMsgHandler, PersistGMResetJiShiAB, PersistWorker::onPersistGMResetJishiABReq);
+
+	REGISTER_THREAD_MSG(mThreadMsgHandler, PersistGMResetBashanSL, PersistWorker::onPersistGMResetBashanSLReq);
+
+	REGISTER_THREAD_MSG(mThreadMsgHandler, PersistGMResetWXTZ, PersistWorker::onPersistGMResetWuxianTZReq);
+
+	REGISTER_THREAD_MSG(mThreadMsgHandler, PersistGMCourage, PersistWorker::onPersistGMResetCourage);
+
+	REGISTER_THREAD_MSG(mThreadMsgHandler, PersistGMPaiWei, PersistWorker::onPersistGMResetPaiWei);
+
+	REGISTER_THREAD_MSG(mThreadMsgHandler, PersistGMPaiWeiBuy, PersistWorker::onPersistGMResetPaiWeiBuy);
+	REGISTER_THREAD_MSG(mThreadMsgHandler, PersistGM12HaoJiao, PersistWorker::onPersistGMReset12HaoJiao);
+	
+	REGISTER_THREAD_MSG(mThreadMsgHandler, PersistGMCookFood, PersistWorker::onPersistGMResetFoodCook);
+
+	REGISTER_THREAD_MSG(mThreadMsgHandler, PersistGMServantOnce, PersistWorker::onPersistGMResetServantCall1);
+
+	REGISTER_THREAD_MSG(mThreadMsgHandler, PersistGMServantTen, PersistWorker::onPersistGMResetServantCall10);
+	
+	REGISTER_THREAD_MSG(mThreadMsgHandler, PersistGMResetDailyTask, PersistWorker::onPersistGMResetDailyTask);
+	
+	REGISTER_THREAD_MSG(mThreadMsgHandler, PersistGMResetMonthSign, PersistWorker::onPersistGMMonthSign);
+
+	REGISTER_THREAD_MSG(mThreadMsgHandler, PersistGMResetSevenday, PersistWorker::onPersistGMSevenDay);
+
+	REGISTER_THREAD_MSG(mThreadMsgHandler, PersistGMResetSeventrain, PersistWorker::onPersistGMSevenTrain);
+	
+	REGISTER_THREAD_MSG(mThreadMsgHandler, PersistGMResetGrowfound, PersistWorker::onPersistGMResetGrowFound);
+	
+	REGISTER_THREAD_MSG(mThreadMsgHandler, PersistGMResetFenshi, PersistWorker::onPersistGMResetFenshi);
+
+	REGISTER_THREAD_MSG(mThreadMsgHandler, PersistGMResetOnlineAward, PersistWorker::onPersistGMResetOnlineAward);
+
+	REGISTER_THREAD_MSG(mThreadMsgHandler, PersistGMResetBaiCaiShen, PersistWorker::onPersistGMResetBaiCaiShen);
+
+	REGISTER_THREAD_MSG(mThreadMsgHandler, PersistGMResetBuyStrength, PersistWorker::onPersistGMResetStrengthBuy);
+
+	REGISTER_THREAD_MSG(mThreadMsgHandler, PersistGMResetLianPu, PersistWorker::onPersistGMResetLianPu);
+
+	REGISTER_THREAD_MSG(mThreadMsgHandler, PersistGMResetTB, PersistWorker::onPersistGMResetTB);
+
+	
+
+	
+
 	String ip = ConfigParser::getSingleton().getMainDbIp();
 	UInt16 port = ConfigParser::getSingleton().getMainDbPort();
 	String username = ConfigParser::getSingleton().getMainDbUsername();
@@ -184,6 +317,25 @@ PersistWorker::release()
 
 	DEREGISTER_THREAD_MSG(mThreadMsgHandler, PersistGetPowerRank);
 
+	DEREGISTER_THREAD_MSG(mThreadMsgHandler, PersistGetScoreRank);
+	DEREGISTER_THREAD_MSG(mThreadMsgHandler, PersistRankGameScoreSave	);
+
+	DEREGISTER_THREAD_MSG(mThreadMsgHandler, PersistUpdateFriendBeApplyOffLineDataToDb	);
+
+	DEREGISTER_THREAD_MSG(mThreadMsgHandler, PersistRankGameReportSave);
+
+	DEREGISTER_THREAD_MSG(mThreadMsgHandler, PersistOnlineDaySave);
+
+ 	DEREGISTER_THREAD_MSG(mThreadMsgHandler, PersistBaseDateSave);
+
+
+	DEREGISTER_THREAD_MSG(mThreadMsgHandler, PersistPlayerConsortUpdate);
+	
+	DEREGISTER_THREAD_MSG(mThreadMsgHandler, PersistPlayerConsortSave);
+	DEREGISTER_THREAD_MSG(mThreadMsgHandler, PersistConsortSave);
+	DEREGISTER_THREAD_MSG(mThreadMsgHandler, PersistConsortCreate);
+
+
 	DEREGISTER_THREAD_MSG(mThreadMsgHandler, PersistAddEmail);
 	DEREGISTER_THREAD_MSG(mThreadMsgHandler, PersistDelEmail);
 	DEREGISTER_THREAD_MSG(mThreadMsgHandler, PersistUpdateEmail);
@@ -204,6 +356,47 @@ PersistWorker::release()
 	DEREGISTER_THREAD_MSG(mThreadMsgHandler, PersistDailyActiveUpdateMsg);
 
 	DEREGISTER_THREAD_MSG(mThreadMsgHandler, PersistDailyLastTimeUpdateMsg);
+
+	DEREGISTER_THREAD_MSG(mThreadMsgHandler, PersistConsortApplyInsert);
+	DEREGISTER_THREAD_MSG(mThreadMsgHandler, PersistConsortApplyDel);
+
+	DEREGISTER_THREAD_MSG(mThreadMsgHandler, PersistConsortApplyClear);
+
+	DEREGISTER_THREAD_MSG(mThreadMsgHandler, PersistConsortApplyAllClear);
+	
+	DEREGISTER_THREAD_MSG(mThreadMsgHandler, PersistConsortDel);
+
+	DEREGISTER_THREAD_MSG(mThreadMsgHandler, PersistConsortLogInsert);
+
+	DEREGISTER_THREAD_MSG(mThreadMsgHandler, PersistConsortSignReset);
+
+	DEREGISTER_THREAD_MSG(mThreadMsgHandler, PersistConsortSignUpdate);
+	
+	DEREGISTER_THREAD_MSG(mThreadMsgHandler, PersistConsortLoyalUpdate);
+
+	DEREGISTER_THREAD_MSG(mThreadMsgHandler, PersistConsortActiveUpdate);
+
+	DEREGISTER_THREAD_MSG(mThreadMsgHandler, PersistConsortKitQueUpdate);
+	
+	DEREGISTER_THREAD_MSG(mThreadMsgHandler, PersistBusinessCatUpdate);
+
+	DEREGISTER_THREAD_MSG(mThreadMsgHandler, PersistBusinessCatTimeReset);
+
+
+	DEREGISTER_THREAD_MSG(mThreadMsgHandler, PersistGuidStepUpdateMsg);
+	DEREGISTER_THREAD_MSG(mThreadMsgHandler, PersistGuidFlagUpdateMsg);
+
+	DEREGISTER_THREAD_MSG(mThreadMsgHandler, PersistResetAllLeaveTime);
+	
+	DEREGISTER_THREAD_MSG(mThreadMsgHandler, PersistForbidChatUpdate);
+
+	DEREGISTER_THREAD_MSG(mThreadMsgHandler, PersistForbidLoginTimeUpdate);
+
+	DEREGISTER_THREAD_MSG(mThreadMsgHandler, PersistGMResetTongbao);
+
+	DEREGISTER_THREAD_MSG(mThreadMsgHandler, PersistGMResetMengchu);
+	
+	
 
 	mDBInterface.release();
 	LOG_INFO("Shutdown PersistWorker [%u]", mWorkerIndex);
@@ -300,7 +493,7 @@ UInt16 PersistWorker::deleteResetStages()
 	MYSQL_RES* rs = mDBInterface.storeResult();
 	mDBInterface.freeResult(&rs);
 
-	return result;
+	return LynxErrno::None;
 
 }
 UInt16 PersistWorker::loadResetStages()
@@ -319,7 +512,7 @@ UInt16 PersistWorker::loadResetStages()
 	{
 		// 执行失败
 		mDBInterface.freeResult(&rs);
-		return LynxErrno::SqlExecuteFail;		
+		return LynxErrno::None;		
 	}
 
 	MYSQL_ROW row = mDBInterface.fetchRow(rs);
@@ -374,10 +567,10 @@ bool PersistWorker::updateLotteryDataToDb(UInt64 playerUid)
 	PlayerCounterData counterData;
 	counterData = player->GetPlayerCounterData();
 	
-	snprintf(sql, sizeof(sql), "call Lottery_Update('%u', '%u', '%u', '%u', '%u', '%u', '%u', '%u','%u', '%u', '%u','%u', '%u','%llu')",
-		counterData.m_RewardLotteryOnceTime,counterData.m_RewardLotteryTenTime,counterData.m_RewardLotteryOnceTicket,counterData.m_RewardLotteryTenTicket,counterData.m_RewardLotteryOnceFreeCount,
+	snprintf(sql, sizeof(sql), "REPLACE INTO  lottery VALUES('%llu','%u', '%u', '%u', '%u', '%u', '%u', '%u', '%u','%u', '%u', '%u','%u', '%u')",
+		playerUid,counterData.m_RewardLotteryOnceTime,counterData.m_RewardLotteryTenTime,counterData.m_RewardLotteryOnceTicket,counterData.m_RewardLotteryTenTicket,counterData.m_RewardLotteryOnceFreeCount,
 		counterData.m_RewardLotteryOnceTicketCount,counterData.m_RewardLotteryOnceCount,counterData.m_RewardLotteryTenFreeCount,counterData.m_RewardLotteryTenTicketCount,
-		counterData.m_RewardLotteryTenCount,counterData.m_RewardLotteryVipDefaultCount,counterData.m_RewardLotteryVipAwardID,counterData.m_RewardLotteryVipElseCount,playerUid);
+		counterData.m_RewardLotteryTenCount,counterData.m_RewardLotteryVipDefaultCount,counterData.m_RewardLotteryVipAwardID,counterData.m_RewardLotteryVipElseCount);
 
 
 	LOG_DEBUG("Sql:%s", sql);
@@ -430,7 +623,10 @@ UInt16 PersistWorker::loadCourageChallengeData(PlayerData& playerData,UInt64 pla
 		playerData.mCourageChallengeData.contentID3 = lynxAtoi<UInt32>(row[10]);
 		playerData.mCourageChallengeData.m_LightOfLife = lynxAtoi<UInt32>(row[11]);
 		playerData.mCourageChallengeData.m_RefreshTimes = lynxAtoi<UInt32>(row[12]);
-		playerData.mCourageChallengeData.m_LuckyValues = lynxAtoi<UInt32>(row[13]);
+		playerData.mCourageChallengeData.m_RefreshTime = lynxAtoi<UInt32>(row[13]);
+		playerData.mCourageChallengeData.m_LuckyValues1 = lynxAtoi<Int32>(row[14]);
+		playerData.mCourageChallengeData.m_LuckyValues2 = lynxAtoi<Int32>(row[15]);
+		playerData.mCourageChallengeData.m_LuckyValues3 = lynxAtoi<Int32>(row[16]);
 		
 		row = mDBInterface.fetchRow(rs);
 	}
@@ -460,7 +656,7 @@ bool PersistWorker::updateCourageChallengeDataToDb(UInt64 playerUid)
 
 
 
-	snprintf(sql, sizeof(sql), "REPLACE INTO  courage_challenge VALUES(%llu,%u,%u,%u,%u,%u,%u,%u,%u ,%u,%u,%u,%u ,%u)",playerUid,
+	snprintf(sql, sizeof(sql), "REPLACE INTO  courage_challenge VALUES(%llu,%u,%u,%u,%u,%u,%u,%u,%u ,%u,%u,%u,%u ,%d,%d,%d,%d)",playerUid,
 		courageChallengeData.m_LeftChallengeTimes,
 		courageChallengeData.m_BeginTime,
 		courageChallengeData.m_BuyTime,
@@ -473,7 +669,10 @@ bool PersistWorker::updateCourageChallengeDataToDb(UInt64 playerUid)
 		courageChallengeData.contentID3,
 		courageChallengeData.m_LightOfLife,
 		courageChallengeData.m_RefreshTimes,
-		courageChallengeData.m_LuckyValues
+		courageChallengeData.m_RefreshTime,
+		courageChallengeData.m_LuckyValues1,
+		courageChallengeData.m_LuckyValues2,
+		courageChallengeData.m_LuckyValues3
 		);	
 
 
@@ -508,8 +707,9 @@ bool PersistWorker::updateFoodDataToDb(UInt64 playerUid)
 	}
 	PlayerFoodsData foodsData;
 	foodsData = player->getFoodsData();
-	snprintf(sql, sizeof(sql), "call Food_Update('%u', '%u', '%u', '%u', '%u', '%u', '%u', '%u','%llu')",
-		foodsData.beginTime,foodsData.leftTimes,foodsData.food1,foodsData.food2,foodsData.food3,foodsData.vipLeftTimes,foodsData.buyTime,foodsData.vipFoodLeftNumber,playerUid);
+	snprintf(sql, sizeof(sql), "call Food_Update('%u', '%u', '%u', '%u', '%u','%u','%u','%u', '%u', '%u', '%u','%u','%llu')",
+		foodsData.beginTime,foodsData.leftTimes,foodsData.food1,foodsData.food2,foodsData.food3,foodsData.food11,foodsData.food12,foodsData.food13,
+		foodsData.vipLeftTimes,foodsData.buyTime,foodsData.vipFoodLeftNumber,foodsData.resetState,playerUid);
 
 
 	LOG_DEBUG("Sql:%s", sql);
@@ -535,9 +735,98 @@ bool PersistWorker::updateFoodDataToDb(UInt64 playerUid)
 	return result;
 }
 
+
+bool PersistWorker::updateFriendBeApplyDataToDb(UInt64 playerUid)
+{
+	char tmp[64];
+	char sql[4096];	
+	Player *player = LogicSystem::getSingleton().getPlayerByGuid(playerUid);
+
+	if(!player)
+	{
+		LOG_WARN("Failed to destroy player [%llu] for player isn't exist.", playerUid);
+		return false;
+	}
+
+	List<BaseInfoData>friendBeApplyList = player->getFriendBlackManager().getFriendApplyList();
+	if (friendBeApplyList.size() ==0)
+	{
+		return true;
+	}
+
+
+	snprintf(sql, sizeof(sql), "REPLACE INTO  friend_be_apply_list VALUES(%llu",playerUid);	
+	for (List<BaseInfoData>::Iter * iter = friendBeApplyList.begin();iter != NULL;iter = friendBeApplyList.next(iter))
+	{
+		snprintf(tmp, sizeof(tmp), ",%llu",iter->mValue.playerUid);	
+		strcat(sql,tmp);
+	}
+	for (UInt32 i = friendBeApplyList.size();i<=50;i++)
+	{
+		snprintf(tmp, sizeof(tmp), ",%llu",(UInt64)0);	
+		strcat(sql,tmp);
+	}
+
+
+
+	strcat(sql,")");
+
+	LOG_DEBUG("Sql:%s", sql);
+
+	bool result = mDBInterface.execSql(sql);
+
+	if (!result)
+	{
+		LOG_INFO("deal friend_be_apply_list fail playerUid: %llu",playerUid);
+	}
+	else
+	{
+		LOG_INFO("deal friend_be_apply_list success playerUid: %llu",playerUid);
+	}
+	return result;
+}
+
+
+
+void PersistWorker::onPersistUpdateFriendBeApplyOffLineDataToDb(PersistUpdateFriendBeApplyOffLineDataToDb &msg)
+{
+	char tmp[64];
+	char sql[4096];	
+
+	snprintf(sql, sizeof(sql), "REPLACE INTO  friend_be_apply_list VALUES(%llu",msg.m_nPlayerUid);	
+	for (List<UInt64>::Iter * iter =  msg.friendBeApplyGuidList.begin();iter != NULL;iter =  msg.friendBeApplyGuidList.next(iter))
+	{
+		snprintf(tmp, sizeof(tmp), ",%llu",iter->mValue);	
+		strcat(sql,tmp);
+	}
+
+
+
+	strcat(sql,")");
+
+	LOG_DEBUG("Sql:%s", sql);
+
+	bool result = mDBInterface.execSql(sql);
+
+	if (!result)
+	{
+		LOG_INFO("deal friend_be_apply_list fail playerUid: %llu",msg.m_nPlayerUid);
+	}
+	else
+	{
+		LOG_INFO("deal friend_be_apply_list success playerUid: %llu",msg.m_nPlayerUid);
+	}
+}
+
+
 bool PersistWorker::updateStrengthDataToDb(UInt64 playerUid)
 {
 	Player *player = LogicSystem::getSingleton().getPlayerByGuid(playerUid);
+	if (player == NULL)
+	{
+		LOG_WARN("player not found!!");
+		return false;
+	}
 
 	char sql[4096];	
 
@@ -569,6 +858,11 @@ bool PersistWorker::updateStrengthDataToDb(UInt64 playerUid)
 bool PersistWorker::updateTowerDataToDb(UInt64 playerUid)
 {
 	Player *player = LogicSystem::getSingleton().getPlayerByGuid(playerUid);
+	if (player == NULL)
+	{
+		LOG_WARN("player not found!!");
+		return false;
+	}
 
 	PlayerTowerData mTowerData = player->getPlayerTowerData();
 	char sql[4096];	
@@ -594,6 +888,11 @@ bool PersistWorker::updateTowerDataToDb(UInt64 playerUid)
 bool PersistWorker::updateLocalDataToDb(UInt64 playerUid)
 {
 	Player *player = LogicSystem::getSingleton().getPlayerByGuid(playerUid);
+	if (player == NULL)
+	{
+		LOG_WARN("player not found!!");
+		return false;
+	}
 	List<KeyValue> m_IDToSelect = player->getPlayerLocalData().m_IDToSelect;
 	char tmp[32];
 	char sql[4096];	
@@ -632,6 +931,11 @@ bool PersistWorker::updateLocalDataToDb(UInt64 playerUid)
 bool PersistWorker::updateChapterDataToDb(UInt64 playerUid)
 {
 	Player *player = LogicSystem::getSingleton().getPlayerByGuid(playerUid);
+	if (player == NULL)
+	{
+		LOG_WARN("player not found!!");
+		return false;
+	}
 	List<KeyValue> m_ChapterUnlockeded = player->getChapterUnlocked();
 	char tmp[32];
 	char sql[4096];	
@@ -848,93 +1152,97 @@ UInt16 PersistWorker::loadPlayerDailyResetData(PlayerData& playerData,UInt64 pla
 		return LynxErrno::PlayerNotExist;
 	}
 
-	UInt64 dbLastUpdateTime = lynxAtoi<UInt64>(row[11]);
+
+
+
+
+
+
+
+
+	GlobalValue globalValue = GlobalValueManager::getSingleton().getGlobalValue();
+
+	UInt64 dbLastUpdateTime = lynxAtoi<UInt64>(row[12]);
+	playerData.mDailyRestData.m_nTwelvePalaceResetFlag = dbLastUpdateTime;
 
 	bool resTodayDelay4hours =TimeManager::timeIsTodayDelayHours(dbLastUpdateTime,4);
 	bool resTodayDelay5hours =TimeManager::timeIsTodayDelayHours(dbLastUpdateTime,5);
+	bool resTodayDelay6hours =TimeManager::timeIsTodayDelayHours(dbLastUpdateTime,6);
+
+	playerData.mDailyRestData.m_nDailyMultipleCopyCount = lynxAtoi<UInt32>(row[13]);
+	playerData.mDailyRestData.m_nTwelvePalaceUnlockCount = lynxAtoi<UInt32>(row[14]);
 
 	if (resTodayDelay4hours)
 	{
-		playerData.mDailyRestData.m_nDailyMultipleCopyCount = lynxAtoi<UInt32>(row[12]);
-		playerData.mDailyRestData.m_nTwelvePalaceUnlockCount = lynxAtoi<UInt32>(row[13]);
-		playerData.mDailyRestData.m_nTwelvePalaceResetFlag = lynxAtoi<UInt32>(row[14]);
+	
+// 		 lynxAtoi<UInt32>(row[15]);
 	}	
 	else
 	{
-		playerData.mDailyRestData.m_nDailyMultipleCopyCount = 0;		
-		if (lynxAtoi<UInt32>(row[13]) > GlobalVarManager::getSingleton().getTwelvePalace().resetlowerlimit)
-		{
-			playerData.mDailyRestData.m_nTwelvePalaceUnlockCount = lynxAtoi<UInt32>(row[13]);
-			
-		}
-		else
-		{
-			playerData.mDailyRestData.m_nTwelvePalaceUnlockCount = GlobalVarManager::getSingleton().getTwelvePalace().resetlowerlimit;			
-		}
+		
 
 
-		playerData.mDailyRestData.m_nTwelvePalaceResetFlag = 1;
 
-		playerData.mDailyRestData.m_nLastUpdateTime = TimeUtil::getTimeSec();
+
 	}
+
+	playerData.mDailyRestData.m_nCoinBuyTimes = lynxAtoi<UInt32>(row[19]);
+
+	playerData.mDailyRestData.m_nCoinFreeBuyTimes = lynxAtoi<UInt32>(row[20]);
+	playerData.mDailyRestData.m_nTwelvePalaceBuyTimes = lynxAtoi<UInt32>(row[21]);
 
 	if (resTodayDelay5hours)
 	{
-		playerData.mDailyRestData.spare5 = lynxAtoi<UInt32>(row[17]);
-		playerData.mDailyRestData.m_nCoinBuyTimes = lynxAtoi<UInt32>(row[18]);
-		playerData.mDailyRestData.m_nCoinFreeBuyTimes = lynxAtoi<UInt32>(row[19]);
-		playerData.mDailyRestData.notUsed3 = lynxAtoi<UInt32>(row[20]);
-		playerData.mDailyRestData.notUsed4 = lynxAtoi<UInt32>(row[21]);
-		playerData.mDailyRestData.notUsed5 = lynxAtoi<UInt32>(row[22]);
-		playerData.mDailyRestData.notUsed6 = lynxAtoi<UInt32>(row[23]);
-		playerData.mDailyRestData.notUsed7 = lynxAtoi<UInt32>(row[24]);
+	
+// 		playerData.mDailyRestData.m_nCoinFreeBuyTimes = lynxAtoi<UInt32>(row[20]);
+		playerData.mDailyRestData.notUsed7 = lynxAtoi<UInt32>(row[25]);
 
 	}
 	else
 	{
-		playerData.mDailyRestData.spare5 = 0;
-		playerData.mDailyRestData.m_nCoinBuyTimes = 0;
-		playerData.mDailyRestData.m_nCoinFreeBuyTimes = 0;
-		playerData.mDailyRestData.notUsed3 = 0;
-		playerData.mDailyRestData.notUsed4 = 0;
-		playerData.mDailyRestData.notUsed5 = 0;
-		playerData.mDailyRestData.notUsed6 = 0;
 		playerData.mDailyRestData.notUsed7 = 0;
-
 	}
-	
+
+	playerData.mDailyRestData.m_nTowerBuyTimes = lynxAtoi<UInt32>(row[17]);
+	playerData.mDailyRestData.m_RewardLotteryDailyOnceFreeCount = lynxAtoi<UInt32>(row[18]);
+	playerData.mDailyRestData.m_nRankGameLeftTimes = lynxAtoi<UInt32>(row[23]);
+	playerData.mDailyRestData.m_nRankGameBuyTimes = lynxAtoi<UInt32>(row[24]);
+
 
 	bool resToday = TimeManager::timeIsToday(dbLastUpdateTime);
 	//如果上次更新的时间和现在是同一天，那么取出数据
+	playerData.mDailyRestData.m_nDailyChaiCount = lynxAtoi<UInt16>(row[5]);
+	playerData.mDailyRestData.m_nDailyMiCount = lynxAtoi<UInt16>(row[6]);
+	playerData.mDailyRestData.m_nDailyYouCount = lynxAtoi<UInt16>(row[7]);
+	playerData.mDailyRestData.m_nDailyYanCount = lynxAtoi<UInt16>(row[8]);
+
+	playerData.mDailyRestData.m_nLastUpdateTime = lynxAtoi<UInt64>(row[12]);
+
 	if(resToday)
 	{
-		playerData.mDailyRestData.m_nArenaEnterCount = lynxAtoi<UInt16>(row[0]);
-		playerData.mDailyRestData.m_nAmphitheaterEnterCount = lynxAtoi<UInt16>(row[1]);
-		playerData.mDailyRestData.m_nAmphitheaterWinCount = lynxAtoi<UInt16>(row[2]);
-		playerData.mDailyRestData.m_nAmphitheaterLoseCount = lynxAtoi<UInt16>(row[3]);
-		playerData.mDailyRestData.m_nDailyChaiCount = lynxAtoi<UInt16>(row[4]);
-		playerData.mDailyRestData.m_nDailyMiCount = lynxAtoi<UInt16>(row[5]);
-		playerData.mDailyRestData.m_nDailyYouCount = lynxAtoi<UInt16>(row[6]);
-		playerData.mDailyRestData.m_nDailyYanCount = lynxAtoi<UInt16>(row[7]);
-		playerData.mDailyRestData.m_nCouragetrialDailyPoint = lynxAtoi<UInt16>(row[8]);
+		playerData.mDailyRestData.m_nArenaEnterCount = lynxAtoi<UInt16>(row[1]);
+		playerData.mDailyRestData.m_nAmphitheaterEnterCount = lynxAtoi<UInt16>(row[2]);
+		playerData.mDailyRestData.m_nAmphitheaterWinCount = lynxAtoi<UInt16>(row[3]);
+		playerData.mDailyRestData.m_nAmphitheaterLoseCount = lynxAtoi<UInt16>(row[4]);
+		
+		playerData.mDailyRestData.m_nCouragetrialDailyPoint = lynxAtoi<UInt16>(row[9]);
 
-		if(row[9])
+		if(row[10])
 		{
-			playerData.mDailyRestData.m_strCourageData = row[9];
+			playerData.mDailyRestData.m_strCourageData = row[10];
 		}
 
-		playerData.mDailyRestData.m_nActivepoint = lynxAtoi<UInt32>(row[10]);
-		playerData.mDailyRestData.m_nLastUpdateTime = lynxAtoi<UInt64>(row[11]);
+		playerData.mDailyRestData.m_nActivepoint = lynxAtoi<UInt32>(row[11]);
 //m_nDailyMultipleCopyCount
 //m_nTwelvePalaceUnlockCount		
-// 		playerData.mDailyRestData.m_nspare2 = lynxAtoi<UInt32>(row[14]);
+// 		playerData.mDailyRestData.m_nspare2 = lynxAtoi<UInt32>(row[15]);
 
-		playerData.mDailyRestData.m_nClimbTowerTimes = lynxAtoi<UInt32>(row[15]);
+		playerData.mDailyRestData.m_nClimbTowerTimes = lynxAtoi<UInt32>(row[16]);
 
 		
 
-		playerData.mDailyRestData.m_nTowerBuyTimes = lynxAtoi<UInt32>(row[16]);
-// 		playerData.mDailyRestData.m_nTwelvePalaceBuyTimes = lynxAtoi<UInt32>(row[17]);
+	
+		playerData.mDailyRestData.m_nFishEatTimes = lynxAtoi<UInt32>(row[22]);
 
 		
 		mDBInterface.freeResult(&rs); 
@@ -946,10 +1254,7 @@ UInt16 PersistWorker::loadPlayerDailyResetData(PlayerData& playerData,UInt64 pla
 		playerData.mDailyRestData.m_nAmphitheaterEnterCount = 0;
 		playerData.mDailyRestData.m_nAmphitheaterWinCount = 0;
 		playerData.mDailyRestData.m_nAmphitheaterLoseCount = 0;
-		playerData.mDailyRestData.m_nDailyChaiCount = 0;
-		playerData.mDailyRestData.m_nDailyMiCount = 0;
-		playerData.mDailyRestData.m_nDailyYouCount = 0;
-		playerData.mDailyRestData.m_nDailyYanCount = 0;
+	
 		playerData.mDailyRestData.m_nTwelvepalaceEnterCount = 0;
 
 		playerData.mDailyRestData.m_strTwelvepalaceData = "";
@@ -958,70 +1263,34 @@ UInt16 PersistWorker::loadPlayerDailyResetData(PlayerData& playerData,UInt64 pla
 		playerData.mDailyRestData.m_nCouragetrialDailyPoint = 10;
 
 		playerData.mDailyRestData.m_nActivepoint = 0;
-		playerData.mDailyRestData.m_nLastUpdateTime = TimeUtil::getTimeSec();
 		//m_nDailyMultipleCopyCount
 		//m_nTwelvePalaceUnlockCount		
 		
 		
 // 		playerData.mDailyRestData.m_nspare2 = 0;
-		playerData.mDailyRestData.m_nTowerBuyTimes = 0;
-		if (lynxAtoi<UInt32>(row[15]) > GlobalVarManager::getSingleton().getclimbtower().resetlowerlimit)
+		if (lynxAtoi<UInt32>(row[16]) > globalValue.uTPresetlowerlimit)
 		{
-			playerData.mDailyRestData.m_nClimbTowerTimes = lynxAtoi<UInt32>(row[15]);
+			playerData.mDailyRestData.m_nClimbTowerTimes = lynxAtoi<UInt32>(row[16]);
 
 		}
 		else
 		{
-			playerData.mDailyRestData.m_nClimbTowerTimes = GlobalVarManager::getSingleton().getclimbtower().resetlowerlimit;			
+			playerData.mDailyRestData.m_nClimbTowerTimes = globalValue.uTPresetlowerlimit;			
 		}
 // 		playerData.mDailyRestData.m_nTwelvePalaceBuyTimes = 0;
 		//先加载周更新的数据，之后根据判断进行
-		if(row[9])
+		if(row[10])
 		{
-			playerData.mDailyRestData.m_strCourageData = row[9];
+			playerData.mDailyRestData.m_strCourageData = row[10];
 		}
 
+		playerData.mDailyRestData.m_nFishEatTimes = globalValue.uFISHEATmaxtimes;
 		
 		
 
 		mDBInterface.freeResult(&rs); 
 
-// 		char sql1[2048] = {0};//修改再存盘
-// 		snprintf(sql1, sizeof(sql1), "call DailyReset_Update(%llu,%u,%u,%u,%u,%u,%u,%u,%u,%u,'%s',%u,%u,%llu)",
-// 			playerGuid,0,0,0,0,0,0,0,0,0,"",10,0,playerData.mDailyRestData.m_nLastUpdateTime);
-// 
-// 		LOG_DEBUG("Sql:%s", sql1);
-// 
-// 		bool result1 = mDBInterface.execSql(sql1);
-// 		if(!result1)
-// 		{
-// 			LOG_INFO("DailyReset_Update %llu %s from DB failed!", 
-// 				playerGuid, playerData.mBaseData.m_strPlayerName.c_str());
-// 
-// 			return LynxErrno::SqlExecuteFail;
-// 		}
-
-// 		bool result = mDBInterface.execSql(sql);
-// 		MYSQL_RES* rs = mDBInterface.storeResult();
-// 		if(!rs)
-// 		{
-// 			// 执行失败
-// 			mDBInterface.freeResult(&rs);
-// 			return LynxErrno::SqlExecuteFail;		
-// 		}
-// 
-// 		MYSQL_ROW row = mDBInterface.fetchRow(rs);
-// 
-// 		if(!row)
-// 		{
-// 			// 角色不存在
-// 			mDBInterface.freeResult(&rs);
-// 			return LynxErrno::PlayerNotExist;
-// 		}
-// 
-// 		dbLastUpdateTime = lynxAtoi<UInt64>(row[13]);
-
-
+		//修改再存盘
 
 		bool resToWeek = TimeManager::timeIsToWeek(dbLastUpdateTime);
 
@@ -1048,7 +1317,13 @@ UInt16 PersistWorker::loadPlayerDailyResetData(PlayerData& playerData,UInt64 pla
 
 		}
 
+
+
+
 	}
+
+
+	
 
 
 	LOG_INFO("Load DailyResetData %llu %s from DB successful!", 
@@ -1103,9 +1378,18 @@ UInt16 PersistWorker::loadPlayerBaseData(PlayerData& playerData, UInt64 playerGu
 	playerData.mBaseData.m_nFame = lynxAtoi<Guid>(row[15]);
 	playerData.mBaseData.m_nPower = lynxAtoi<Guid>(row[16]);
 	playerData.mBaseData.m_nLeavTime = lynxAtoi<Guid>(row[17]);
-	playerData.mBaseData.m_strOldName = lynxAtoi<Guid>(row[18]);
+	playerData.mBaseData.m_strOldName =row[18];
+	playerData.mBaseData.m_strGuid = row[19];
+	playerData.mBaseData.m_nGuidGift = lynxAtoi<UInt32>(row[20]);
+	playerData.mBaseData.m_nFirstLoinTime = lynxAtoi<UInt32>(row[21]);
+	playerData.mBaseData.m_nLoginTime = lynxAtoi<UInt32>(row[22]);
+	playerData.mBaseData.m_nForbidLoginTime = lynxAtoi<Guid>(row[23]);
+	playerData.mBaseData.m_nForbidBeginTime = lynxAtoi<Guid>(row[24]);
 	LOG_INFO("Load playerBaseData %llu %s from DB successful!", 
 		playerGuid, playerData.mBaseData.m_strPlayerName.c_str());
+
+
+	playerData.mInlineActivityData.m_LastLeaveTime = playerData.mBaseData.m_nLeavTime;
 
 
 	mDBInterface.freeResult(&rs); 
@@ -1218,10 +1502,10 @@ UInt16 PersistWorker::loadPlayerFashionList(PlayerData& playerData,UInt64 player
 	while(rowFashions)
 	{
 		UInt64 fashionId = lynxAtoi<UInt64>(rowFashions[0]);
-		UInt64 fashionUid = lynxAtoi<UInt64>(rowFashions[1]);
+		
 		FashionData fashionData;
 		fashionData.m_nFahionID  = fashionId;
-		fashionData.m_nFashionUid = fashionUid;
+		
 		playerData.mFashionData.m_listFashionDatas.insertTail(fashionData);
 		rowFashions = mDBInterface.fetchRow(rsFashions);
 	}
@@ -1401,6 +1685,11 @@ UInt32 PersistWorker::getPAQuality(const UInt32 &equipLv, const RandomAttribute 
 	//从attrRandom表格里查找属性值在那个范围 sec
 
 	AttrRandomTemplate * whiteTemplate = ATTRRANDOM_TABLE().get(whiteKey);
+	if (whiteTemplate == NULL)
+	{
+		LOG_WARN("whiteTemplate not found!!");
+		return White;
+	}
 	if(randomAttr.m_nValue <= whiteTemplate->mPAMax)
 	{
 		return White;
@@ -1408,6 +1697,11 @@ UInt32 PersistWorker::getPAQuality(const UInt32 &equipLv, const RandomAttribute 
 	else 
 	{
 		AttrRandomTemplate * greenTemplate = ATTRRANDOM_TABLE().get(greenKey);
+		if (greenTemplate == NULL)
+		{
+			LOG_WARN("greenTemplate not found!!");
+			return Green;
+		}
 		if(randomAttr.m_nValue <= greenTemplate->mPAMax)
 		{
 			return Green;
@@ -1415,6 +1709,11 @@ UInt32 PersistWorker::getPAQuality(const UInt32 &equipLv, const RandomAttribute 
 		else
 		{
 			AttrRandomTemplate * blueTemplate = ATTRRANDOM_TABLE().get(blueKey);
+			if (blueTemplate == NULL)
+			{
+				LOG_WARN("blueTemplate not found!!");
+				return Blue;
+			}
 			if(randomAttr.m_nValue <= blueTemplate->mPAMax)
 			{
 				return Blue;
@@ -1422,6 +1721,11 @@ UInt32 PersistWorker::getPAQuality(const UInt32 &equipLv, const RandomAttribute 
 			else
 			{
 				AttrRandomTemplate * purpleTemplate = ATTRRANDOM_TABLE().get(purpleKey);
+				if (purpleTemplate == NULL)
+				{
+					LOG_WARN("purpleTemplate not found!!");
+					return Purple;
+				}
 				if(randomAttr.m_nValue <= purpleTemplate->mPAMax)
 				{
 					return Purple;
@@ -1445,6 +1749,11 @@ UInt32 PersistWorker::getMAQuality(const UInt32 &equipLv, const RandomAttribute 
 	//从attrRandom表格里查找属性值在那个范围 sec
 
 	AttrRandomTemplate * whiteTemplate = ATTRRANDOM_TABLE().get(whiteKey);
+	if (whiteTemplate == NULL)
+	{
+		LOG_WARN("whiteTemplate not found!!");
+		return White;
+	}
 	if(randomAttr.m_nValue <= whiteTemplate->mMAMax)
 	{
 		return White;
@@ -1452,6 +1761,11 @@ UInt32 PersistWorker::getMAQuality(const UInt32 &equipLv, const RandomAttribute 
 	else 
 	{
 		AttrRandomTemplate * greenTemplate = ATTRRANDOM_TABLE().get(greenKey);
+		if (greenTemplate == NULL)
+		{
+			LOG_WARN("greenTemplate not found!!");
+			return Green;
+		}
 		if(randomAttr.m_nValue <= greenTemplate->mMAMax)
 		{
 			return Green;
@@ -1459,6 +1773,11 @@ UInt32 PersistWorker::getMAQuality(const UInt32 &equipLv, const RandomAttribute 
 		else
 		{
 			AttrRandomTemplate * blueTemplate = ATTRRANDOM_TABLE().get(blueKey);
+			if (blueTemplate == NULL)
+			{
+				LOG_WARN("blueTemplate not found!!");
+				return Blue;
+			}
 			if(randomAttr.m_nValue <= blueTemplate->mMAMax)
 			{
 				return Blue;
@@ -1466,6 +1785,11 @@ UInt32 PersistWorker::getMAQuality(const UInt32 &equipLv, const RandomAttribute 
 			else
 			{
 				AttrRandomTemplate * purpleTemplate = ATTRRANDOM_TABLE().get(purpleKey);
+				if (purpleTemplate == NULL)
+				{
+					LOG_WARN("purpleTemplate not found!!");
+					return Purple;
+				}
 				if(randomAttr.m_nValue <= purpleTemplate->mMAMax)
 				{
 					return Purple;
@@ -1489,6 +1813,11 @@ UInt32 PersistWorker::getPFQuality(const UInt32 &equipLv, const RandomAttribute 
 	//从attrRandom表格里查找属性值在那个范围 sec
 
 	AttrRandomTemplate * whiteTemplate = ATTRRANDOM_TABLE().get(whiteKey);
+	if (whiteTemplate == NULL)
+	{
+		LOG_WARN("whiteTemplate not found!!");
+		return White;
+	}
 	if(randomAttr.m_nValue <= whiteTemplate->mPFMax)
 	{
 		return White;
@@ -1496,6 +1825,11 @@ UInt32 PersistWorker::getPFQuality(const UInt32 &equipLv, const RandomAttribute 
 	else 
 	{
 		AttrRandomTemplate * greenTemplate = ATTRRANDOM_TABLE().get(greenKey);
+		if (greenTemplate == NULL)
+		{
+			LOG_WARN("greenTemplate not found!!");
+			return Green;
+		}
 		if(randomAttr.m_nValue <= greenTemplate->mPFMax)
 		{
 			return Green;
@@ -1503,6 +1837,11 @@ UInt32 PersistWorker::getPFQuality(const UInt32 &equipLv, const RandomAttribute 
 		else
 		{
 			AttrRandomTemplate * blueTemplate = ATTRRANDOM_TABLE().get(blueKey);
+			if (blueTemplate == NULL)
+			{
+				LOG_WARN("blueTemplate not found!!");
+				return Blue;
+			}
 			if(randomAttr.m_nValue <= blueTemplate->mPFMax)
 			{
 				return Blue;
@@ -1510,6 +1849,11 @@ UInt32 PersistWorker::getPFQuality(const UInt32 &equipLv, const RandomAttribute 
 			else
 			{
 				AttrRandomTemplate * purpleTemplate = ATTRRANDOM_TABLE().get(purpleKey);
+				if (purpleTemplate == NULL)
+				{
+					LOG_WARN("purpleTemplate not found!!");
+					return Purple;
+				}
 				if(randomAttr.m_nValue <= purpleTemplate->mPFMax)
 				{
 					return Purple;
@@ -1876,7 +2220,7 @@ UInt16 PersistWorker::loadPlayerStageData(PlayerData& playerData,UInt64 playerGu
 		{
 			StageData stageData;
 			stageData.m_nStageID = lynxAtoi<UInt32>(row[i*4+5]);
-			stageData.m_nGetStar = lynxAtoi<UInt8>(row[i*4+6]);
+			stageData.m_nGetStar = lynxAtoi<UInt32>(row[i*4+6]);
 			stageData.m_nChallengTimes = lynxAtoi<UInt32>(row[i*4+7]);
 			stageData.m_nLastChallengTime = lynxAtoi<UInt64>(row[i*4+8]);
 			chapterData.m_listStageDatas.insertTail(stageData);
@@ -2575,6 +2919,8 @@ UInt16 PersistWorker::loadServantList(PlayerData& playerData,UInt64 playerUid)
 		servantData.equipTreasures.insertTail(lynxAtoi<UInt32>(row[9]));
 		servantData.equipTreasures.insertTail(lynxAtoi<UInt32>(row[10]));
         servantData.lvexp = lynxAtoi<UInt32>(row[11]);
+		servantData.infolock = lynxAtoi<UInt32>(row[12]);
+
 		playerData.mServantData.servantList.insertTail(servantData);
 
 		row = mDBInterface.fetchRow(storeRes);
@@ -2879,9 +3225,9 @@ UInt16 PersistWorker::loadCharactorData(PlayerData& playerData, UInt64 playerUid
 	while(row)
 	{
 		CharactorData charactorData;
-		charactorData.m_nCharactorUid = lynxAtoi<UInt64>(row[0]);
-		charactorData.m_nCharactorId = lynxAtoi<UInt64>(row[1]);
-		charactorData.m_nEquipFashion = lynxAtoi<UInt32>(row[2]);
+		
+		charactorData.m_nCharactorId = lynxAtoi<UInt64>(row[0]);
+		charactorData.m_nEquipFashion = lynxAtoi<UInt32>(row[1]);
 	
 		playerData.mPlayerCharactorData.charactorList.insertTail(charactorData);
 		
@@ -2966,7 +3312,7 @@ UInt16 PersistWorker::loadDailyTaskData(PlayerData& playerData, UInt64 playerUid
 		UInt32 fieldCount = mDBInterface.getNumFields(storeRes);
 			
 		//获取上次重置时间
-		UInt64 resetTime = lynxAtoi<UInt64>(row[45]);
+		UInt64 resetTime = lynxAtoi<UInt64>(row[51]);
 		lastresetTime = resetTime;
 		//判断现在时间和数据库时间是否处于同一天
 		bool isOneDay = TimeManager::timeIsOneDay(times, resetTime);
@@ -3131,6 +3477,200 @@ UInt16 PersistWorker::loadDailyActiveData(PlayerData& playerData, UInt64 playerU
 	return LynxErrno::None;
 }
 
+UInt16  PersistWorker::loadConsortData(PlayerData& playerData, UInt64 playerUid)
+{
+	char consortsql[4096] = {0};
+	snprintf(consortsql,sizeof(consortsql),"call playerconsort_load(%llu)", playerUid);
+
+	LOG_DEBUG("Sql:%s", consortsql);
+
+	bool result = mDBInterface.execSql(consortsql);
+	MYSQL_RES* storeRes = mDBInterface.storeResult();
+	if(!storeRes)
+	{
+		mDBInterface.freeResult(&storeRes);
+		return LynxErrno::SqlExecuteFail;
+	}
+
+	
+
+
+	MYSQL_ROW row = mDBInterface.fetchRow(storeRes);
+	if(row)
+	{
+		playerData.mConsortData.m_nConsortId = lynxAtoi<UInt64>(row[1]);
+		playerData.mConsortData.m_nCurContribute = lynxAtoi<UInt32>(row[2]);
+		playerData.mConsortData.m_nTotalContribute = lynxAtoi<UInt32>(row[3]);
+		playerData.mConsortData.m_nConsortJob = lynxAtoi<UInt32>(row[4]);
+		playerData.mConsortData.m_nLeaveTime = lynxAtoi<UInt64>(row[5]);
+		
+		
+	}
+	else
+	{
+		mDBInterface.freeResult(&storeRes);
+		return LynxErrno::PlayerConsortNotFind;
+	}
+	
+
+	mDBInterface.freeResult(&storeRes);
+
+	//load 玩家申请列表 王戊辰
+
+	char applysql[4096] = {0};
+	snprintf(applysql,sizeof(applysql),"call playerapply_load(%llu)", playerUid);
+
+	LOG_DEBUG("Sql:%s", applysql);
+
+	bool applyresult = mDBInterface.execSql(applysql);
+	MYSQL_RES* applystoreRes = mDBInterface.storeResult();
+	if(!applystoreRes)
+	{
+		mDBInterface.freeResult(&applystoreRes);
+		return LynxErrno::SqlExecuteFail;
+	}
+
+	
+	MYSQL_ROW applyrow = mDBInterface.fetchRow(applystoreRes);
+	while(applyrow)
+	{
+	
+		playerData.mConsortData.m_nApplyList.insertTail( lynxAtoi<UInt64>(applyrow[1]));
+		applyrow = mDBInterface.fetchRow(applystoreRes);
+		
+		
+	}
+	
+
+	mDBInterface.freeResult(&applystoreRes);
+
+
+	//签到活动相关数据
+	
+	char signsql[4096] = {0};
+	snprintf(signsql,sizeof(signsql),"call consortsign_load(%llu)", playerUid);
+
+	LOG_DEBUG("Sql:%s", signsql);
+
+	bool signresult = mDBInterface.execSql(signsql);
+	MYSQL_RES* signRes = mDBInterface.storeResult();
+	if(!signRes)
+	{
+		mDBInterface.freeResult(&signRes);
+		return LynxErrno::SqlExecuteFail;
+	}
+
+	
+	MYSQL_ROW signrow = mDBInterface.fetchRow(signRes);
+	if(signrow)
+	{
+	
+		playerData.mConsortData.m_nSignAwards.insertTail( lynxAtoi<UInt32>(signrow[2]));
+		playerData.mConsortData.m_nSignAwards.insertTail(lynxAtoi<UInt32>(signrow[3]));
+		playerData.mConsortData.m_nSignAwards.insertTail(lynxAtoi<UInt32>(signrow[4]) );
+		playerData.mConsortData.m_nSignAwards.insertTail(lynxAtoi<UInt32>(signrow[5]) );
+
+		playerData.mConsortData.m_nSign =  lynxAtoi<UInt32>(signrow[1]);
+		playerData.mConsortData.m_nKitchenTimes = lynxAtoi<UInt32>(signrow[6]);
+		playerData.mConsortData.m_nBusinessCatTimes = lynxAtoi<UInt32>(signrow[7]);
+		playerData.mConsortData.m_nBuyList.insertTail( lynxAtoi<UInt32>(signrow[8]) );
+			playerData.mConsortData.m_nBuyList.insertTail( lynxAtoi<UInt32>(signrow[9]) );
+				playerData.mConsortData.m_nBuyList.insertTail( lynxAtoi<UInt32>(signrow[10]) );
+					playerData.mConsortData.m_nBuyList.insertTail( lynxAtoi<UInt32>(signrow[11]) );
+						playerData.mConsortData.m_nBuyList.insertTail( lynxAtoi<UInt32>(signrow[12]) );
+							playerData.mConsortData.m_nBuyList.insertTail( lynxAtoi<UInt32>(signrow[13]) );
+								playerData.mConsortData.m_nBuyList.insertTail( lynxAtoi<UInt32>(signrow[14]) );
+									playerData.mConsortData.m_nBuyList.insertTail( lynxAtoi<UInt32>(signrow[15]) );
+									playerData.mConsortData.m_nEyeSightTimes = lynxAtoi<UInt32>(signrow[16]);
+									playerData.mConsortData.m_nTicketTimes = lynxAtoi<UInt32>(signrow[17]);
+										playerData.mConsortData.m_nEloquenceTimes = lynxAtoi<UInt32>(signrow[18]);
+										playerData.mConsortData.m_nWoodCatFlag = lynxAtoi<UInt32>(signrow[19]);
+									    playerData.mConsortData.m_nWoodCatTimes = lynxAtoi<UInt32>(signrow[20]);
+								
+
+		signrow = mDBInterface.fetchRow(signRes);
+		
+		
+	}
+	
+
+	mDBInterface.freeResult(&signRes);
+
+	//////////////////////////////////////////////////////////
+	//行侠仗义数据
+
+	char loyalsql[4096] = {0};
+	snprintf(loyalsql,sizeof(loyalsql),"call consortloyal_load(%llu)", playerUid);
+
+	LOG_DEBUG("Sql:%s", loyalsql);
+
+	bool loyalresult = mDBInterface.execSql(loyalsql);
+	MYSQL_RES* loyalRes = mDBInterface.storeResult();
+	if(!loyalRes)
+	{
+		mDBInterface.freeResult(&loyalRes);
+		return LynxErrno::SqlExecuteFail;
+	}
+
+	
+	MYSQL_ROW loyalRow = mDBInterface.fetchRow(loyalRes);
+	if(loyalRow)
+	{
+		for(UInt32 i = 0; i < 4; i ++)
+		{
+			   UInt32 index = (i+1)*2;
+				XingxiaTask xingxiaTask;
+				xingxiaTask.m_nTaskId = lynxAtoi<UInt32>(loyalRow[index]);
+				xingxiaTask.m_nGettime = lynxAtoi<UInt64>(loyalRow[index +1]);
+				playerData.mConsortData.m_listXingxiaTasks.insertTail(xingxiaTask);
+		}
+	
+		playerData.mConsortData.m_nRefreshTimes = lynxAtoi<UInt32>(loyalRow[1]);
+		
+		loyalRow = mDBInterface.fetchRow(loyalRes);
+		
+		
+	}
+	
+
+	mDBInterface.freeResult(&loyalRes);
+
+
+	/////////////////////////////////////////////////////////////
+	char ticketsql[4096] = {0};
+	snprintf(ticketsql,sizeof(ticketsql),"select * from  ticketaward where playeruid = %llu", playerUid);
+
+	LOG_DEBUG("Sql:%s", ticketsql);
+
+	bool ticketbool = mDBInterface.execSql(ticketsql);
+	MYSQL_RES* ticketRes = mDBInterface.storeResult();
+	if(!ticketRes)
+	{
+		mDBInterface.freeResult(&ticketRes);
+		return LynxErrno::SqlExecuteFail;
+	}
+
+	
+	MYSQL_ROW ticketRow = mDBInterface.fetchRow(ticketRes);
+	if(ticketRow)
+	{
+		TicketAward ticketAward;
+		ticketAward.m_nTicketId = lynxAtoi<UInt32>(ticketRow[1]);
+		ticketAward.m_nAwardId = lynxAtoi<UInt64>(ticketRow[2]);
+		ticketAward.m_nPeapleCnt = lynxAtoi<UInt32>(ticketRow[3]);
+		ticketAward.m_nActiveTime = lynxAtoi<UInt64>(ticketRow[4]);
+		ticketRow = mDBInterface.fetchRow(ticketRes);	
+		playerData.mConsortData.m_nTicketAwardList.insertTail(ticketAward);
+	}
+	
+	mDBInterface.freeResult(&ticketRes);
+
+	//////////////////////////////////////////////////////////////////
+
+	return LynxErrno::None;
+}
+
+
 void PersistWorker::onPersistLoadPlayerDataReq(PersistLoadPlayerDataReq& msg)
 {
 
@@ -3226,6 +3766,13 @@ void PersistWorker::onPersistLoadPlayerDataReq(PersistLoadPlayerDataReq& msg)
 		}
 
 		ret = loadFoods(playerData,playerGuid);
+		if(ret != LynxErrno::None)
+		{
+			resp.merrorId = ret;
+			break;
+		}
+
+		ret = loadFriendBeApplyData(playerData,playerGuid);
 		if(ret != LynxErrno::None)
 		{
 			resp.merrorId = ret;
@@ -3379,21 +3926,20 @@ void PersistWorker::onPersistLoadPlayerDataReq(PersistLoadPlayerDataReq& msg)
 			resp.merrorId = resTowerData;
 			break;
 		}
+		
 
 		resTowerData = loadInlineActivityList(playerData,playerGuid);
 		if(resTowerData != LynxErrno::None)
 		{
 			resp.merrorId = resTowerData;
 			break;
-		}
-
+		}		
 		resTowerData = loadSevenDayTask(playerData,playerGuid);
 		if(resTowerData != LynxErrno::None)
 		{
 			resp.merrorId = resTowerData;
 			break;
 		}
-		
 
 		UInt16 resInlineActivity = loadInlineActivity(playerData,playerGuid);
 		if(resInlineActivity != LynxErrno::None)
@@ -3444,7 +3990,40 @@ void PersistWorker::onPersistLoadPlayerDataReq(PersistLoadPlayerDataReq& msg)
 			break;
 		}
 
+		UInt16 resConsortData = loadConsortData(playerData, playerGuid);
+		if(resConsortData != LynxErrno::None)
+		{
+			resp.merrorId = resConsortData;
+			break;
+		}
+		UInt16 resRankGame = loadRankGameData(playerData,playerGuid);
+		if(resRankGame != LynxErrno::None)
+		{
+			resp.merrorId = resRankGame;
+			break;
+		}
+		UInt16 resOnlineDay = loadOnlineDayData(playerData,playerGuid);
+		if(resOnlineDay != LynxErrno::None)
+		{
+			resp.merrorId = resOnlineDay;
+			break;
+		}
 
+		UInt16 resBuyCoin = loadBuyCoinData(playerData,playerGuid);
+		if(resBuyCoin != LynxErrno::None)
+		{
+			resp.merrorId = resBuyCoin;
+			break;
+		}
+		
+
+
+		UInt16 resRankGameReport = loadRankGameReport(playerData,playerGuid);
+		if(resRankGameReport != LynxErrno::None)
+		{
+			resp.merrorId = resRankGameReport;
+			break;
+		}
 		resp.merrorId = LynxErrno::None;
 		resp.mPlayerData = playerData;
 		postMsgToOutputQueue(resp, 0);
@@ -3459,8 +4038,8 @@ void
 PersistWorker::onPersistSyncBaseGuidNotify(PersistSyncBaseGuidNotify& msg)
 {
 	char sql[2048];
-	snprintf(sql, sizeof(sql), "call BaseGuid_Update(%llu,%llu,%llu,%llu,%llu,%llu, %llu)", msg.mPlayerGuid,msg.mItemGuid,msg.mLansquenetGuid,
-		msg.mGuildGuid,msg.mEmailGuid,msg.mMaterialGuid, msg.mCharactorGuid);
+	snprintf(sql, sizeof(sql), "call BaseGuid_Update(%llu,%llu,%llu,%llu,%llu,%llu, %llu, %llu, %llu)", msg.mPlayerGuid,msg.mItemGuid,msg.mLansquenetGuid,
+		msg.mGuildGuid,msg.mEmailGuid,msg.mMaterialGuid, msg.mCharactorGuid, msg.mConsortGuid, msg.mTicketGuid);
 	//LOG_DEBUG("Sql:%s", sql);
 	bool result = mDBInterface.execSql(sql);
 	if (!result)
@@ -3520,6 +4099,52 @@ PersistWorker::onPersistLoadPlayerGuidReq(PersistLoadPlayerGuidReq& msg)
 void PersistWorker::onPersistCreatePlayerReq(PersistCreatePlayerReq& msg)
 {
 	UInt32 modelId = msg.mPlayerModelId;
+	char checksql[4096];
+	
+	snprintf(checksql, sizeof(checksql), "select * from playerBaseData where accountID = %llu", msg.mAccountId );
+	LOG_DEBUG("Sql:%s", checksql);
+	bool checkRes = mDBInterface.execSql(checksql);
+	
+	MYSQL_RES* checkrs = mDBInterface.storeResult();
+	if(!checkRes)
+	{
+		mDBInterface.freeResult(&checkrs);
+		PersistCreatePlayerResp createPlayerResp;
+		createPlayerResp.mRes = LynxErrno::SqlExecuteFail;
+		createPlayerResp.mPlayerUid = 0;
+		createPlayerResp.mConnId = msg.mConnId;
+		createPlayerResp.mName = msg.mName.c_str();
+
+		postMsgToOutputQueue(createPlayerResp, 0);
+		LOG_INFO("failed to create Player!");
+
+		
+		return;
+	}
+	else
+	{
+
+		MYSQL_ROW row = mDBInterface.fetchRow(checkrs);
+		if(row)
+		{
+			PersistCreatePlayerResp createPlayerResp;
+			createPlayerResp.mRes = LynxErrno::AccountHasExist;
+			createPlayerResp.mPlayerUid = 0;
+			createPlayerResp.mConnId = msg.mConnId;
+			createPlayerResp.mName = msg.mName.c_str();
+
+			postMsgToOutputQueue(createPlayerResp, 0);
+			LOG_INFO("failed to create Player!");
+
+			
+
+			mDBInterface.freeResult(&checkrs);
+			return;
+		}
+
+		mDBInterface.freeResult(&checkrs);
+	}
+
 	char sql[4096];
 	snprintf(sql,sizeof(sql),"call create_player(%u,'%s',%llu)",modelId, msg.mName.c_str(), msg.mAccountId);
 	LOG_DEBUG("Sql:%s", sql);
@@ -3534,9 +4159,12 @@ void PersistWorker::onPersistCreatePlayerReq(PersistCreatePlayerReq& msg)
 		createPlayerResp.mRes = LynxErrno::SqlExecuteFail;
 		createPlayerResp.mPlayerUid = 0;
 		createPlayerResp.mConnId = msg.mConnId;
+		createPlayerResp.mName = msg.mName.c_str();
 
 		postMsgToOutputQueue(createPlayerResp, 0);
 		LOG_INFO("failed to create Player!");
+
+		
 		return;
 
 	}
@@ -3557,10 +4185,11 @@ void PersistWorker::onPersistCreatePlayerReq(PersistCreatePlayerReq& msg)
 			createPlayerResp.mRes = LynxErrno::SqlExecuteFail;
 			createPlayerResp.mPlayerUid = 0;
 			createPlayerResp.mConnId = msg.mConnId;
+			createPlayerResp.mName = msg.mName.c_str();
 
 			postMsgToOutputQueue(createPlayerResp, 0);
 			LOG_INFO("failed to create Player!");
-
+			
 			return;
 		}
 
@@ -3573,10 +4202,11 @@ void PersistWorker::onPersistCreatePlayerReq(PersistCreatePlayerReq& msg)
 			createPlayerResp.mRes = LynxErrno::SqlExecuteFail;
 			createPlayerResp.mPlayerUid = 0;
 			createPlayerResp.mConnId = msg.mConnId;
+			createPlayerResp.mName = msg.mName.c_str();
 
 			postMsgToOutputQueue(createPlayerResp, 0);
 			LOG_INFO("failed to create Player!");
-
+			
 			return;
 		}
 
@@ -3588,10 +4218,11 @@ void PersistWorker::onPersistCreatePlayerReq(PersistCreatePlayerReq& msg)
 			createPlayerResp.mRes = LynxErrno::SqlExecuteFail;
 			createPlayerResp.mPlayerUid = 0;
 			createPlayerResp.mConnId = msg.mConnId;
+			createPlayerResp.mName = msg.mName.c_str();
 
 			postMsgToOutputQueue(createPlayerResp, 0);
 			LOG_INFO("failed to create Player!");
-
+			
 			return;
 		}
 
@@ -3603,10 +4234,11 @@ void PersistWorker::onPersistCreatePlayerReq(PersistCreatePlayerReq& msg)
 			createPlayerResp.mRes = LynxErrno::SqlExecuteFail;
 			createPlayerResp.mPlayerUid = 0;
 			createPlayerResp.mConnId = msg.mConnId;
+			createPlayerResp.mName = msg.mName.c_str();
 
 			postMsgToOutputQueue(createPlayerResp, 0);
 			LOG_INFO("failed to create Player!");
-
+			
 			return;
 		}
 
@@ -3618,10 +4250,11 @@ void PersistWorker::onPersistCreatePlayerReq(PersistCreatePlayerReq& msg)
 			createPlayerResp.mRes = LynxErrno::SqlExecuteFail;
 			createPlayerResp.mPlayerUid = 0;
 			createPlayerResp.mConnId = msg.mConnId;
+			createPlayerResp.mName = msg.mName.c_str();
 
 			postMsgToOutputQueue(createPlayerResp, 0);
 			LOG_INFO("failed to create Player!");
-
+		
 			return;
 		}
 
@@ -3633,12 +4266,16 @@ void PersistWorker::onPersistCreatePlayerReq(PersistCreatePlayerReq& msg)
 			createPlayerResp.mRes = LynxErrno::SqlExecuteFail;
 			createPlayerResp.mPlayerUid = 0;
 			createPlayerResp.mConnId = msg.mConnId;
+			createPlayerResp.mName = msg.mName.c_str();
 
 			postMsgToOutputQueue(createPlayerResp, 0);
 			LOG_INFO("failed to create Player!");
-
+			
 			return;
 		}
+
+		UInt64 achtime = TimeUtil::getTimeMilliSec();
+		
 
 		bool resInitAchieve = onInitAchieveData(playerUid, modelId);
 		if(!resInitAchieve)
@@ -3647,12 +4284,16 @@ void PersistWorker::onPersistCreatePlayerReq(PersistCreatePlayerReq& msg)
 			createPlayerResp.mRes = LynxErrno::SqlExecuteFail;
 			createPlayerResp.mPlayerUid = 0;
 			createPlayerResp.mConnId = msg.mConnId;
+			createPlayerResp.mName = msg.mName.c_str();
 
 			postMsgToOutputQueue(createPlayerResp, 0);
 			LOG_INFO("failed to create Player!");
-
+			
 			return;
 		}
+
+		UInt64 achtime2 = TimeUtil::getTimeMilliSec();
+		LOG_INFO("end initachievedata cost ! %llu",achtime2-achtime);
 
 		bool resInitDailyTask = onInitDailyTaskData(playerUid, modelId);
 		if(!resInitDailyTask)
@@ -3661,21 +4302,27 @@ void PersistWorker::onPersistCreatePlayerReq(PersistCreatePlayerReq& msg)
 			createPlayerResp.mRes = LynxErrno::SqlExecuteFail;
 			createPlayerResp.mPlayerUid = 0;
 			createPlayerResp.mConnId = msg.mConnId;
+			createPlayerResp.mName = msg.mName.c_str();
 
 			postMsgToOutputQueue(createPlayerResp, 0);
 			LOG_INFO("failed to create Player!");
-
+			
 			return;
 		}
-
+	
+		UInt64 achtime3 = TimeUtil::getTimeMilliSec();
+		LOG_INFO("end initdailytask cost ! %llu",achtime3-achtime2);
+		
 		PersistCreatePlayerResp createPlayerResp;
 		createPlayerResp.mPlayerUid = playerUid;
 		createPlayerResp.mRes = LynxErrno::None;
 		createPlayerResp.mConnId = msg.mConnId;
+		createPlayerResp.mName = msg.mName.c_str();
+		createPlayerResp.mPlayerModelId = msg.mPlayerModelId;
 
 		postMsgToOutputQueue(createPlayerResp, 0);
 		LOG_INFO("succeed to create Player %llu !",createPlayerResp.mPlayerUid);
-
+		
 	
 	}
 		
@@ -3701,7 +4348,7 @@ void PersistWorker::onLoadPlayerByAccount(PersistLoadPlayerByAccount & msg)
 		loadPlayerResp.mErrorId  = LynxErrno::SqlExecuteFail;
 
 		postMsgToOutputQueue(loadPlayerResp, 0);
-		LOG_INFO("failed to load Player!");
+		LOG_INFO("player_loadbyaccount() table fail ");
 		return;
 
 	}
@@ -3718,7 +4365,7 @@ void PersistWorker::onLoadPlayerByAccount(PersistLoadPlayerByAccount & msg)
 			loadPlayerResp.mErrorId  = LynxErrno::PlayerNotExist;
 
 			postMsgToOutputQueue(loadPlayerResp, 0);
-			LOG_INFO("failed to load Player, not exits!");
+			LOG_INFO("have not create Player!");
 			return;
 		}
 
@@ -3769,8 +4416,6 @@ bool PersistWorker::onInitHeroEquipData(UInt64 &playerUid, UInt32 &modelId, UInt
 	{
 		LOG_INFO("update HeroEquipDb failed playerUid: %llu",playerUid);
 
-	
-
 		return false;
 
 	}
@@ -3798,12 +4443,13 @@ bool PersistWorker::onInitSkillData(UInt64 &playerUid, UInt32 &modelId, UInt64& 
 	{
 		SkillLevelTemplate * skillLvTemp = SKILLLEVEL_TABLE().reverseGet(originSkillIter->mValue,1);
 		
-		//普攻或者跳跃，跳过这个循环
-		if(skillLvTemp->mEquip)
+		//普攻或者跳跃，跳过这个循环 1是普工，2是跳跃
+		if(skillLvTemp->mEquip == 1 || skillLvTemp->mEquip == 2)
 		{
 			continue;
 		}
 		
+		//11,12,13分别表示技能固定位置，未装备的表示0
 		SkillData skillData;
 		
 		skillData.m_nCD = skillLvTemp->mCD1;
@@ -4078,7 +4724,7 @@ bool PersistWorker::onInitFashionData(UInt64 &playerUid, UInt32 &modelId)
 
 	UInt64 fashionUid = LogicSystem::getSingleton().generateItemGuid();
 
-	snprintf(herofashionSql,sizeof(herofashionSql),"call fashions_insert(%llu, %llu, %llu)",playerUid, fashionUid, heroFashionTemp->mFashionId);
+	snprintf(herofashionSql,sizeof(herofashionSql),"call fashions_insert(%llu, %llu)",playerUid, heroFashionTemp->mFashionId);
 
 
 	LOG_DEBUG("Sql:%s", herofashionSql);
@@ -4109,9 +4755,7 @@ bool PersistWorker::onInitCharactorData(UInt64 &playerUid, UInt32 &modelId)
 	HeroFashionTemplate * heroFashionTemp = HEROFASHION_TABLE().get(modelId);
 	char charactorsql[4096] = {0};
 
-	UInt64 charactorUid = LogicSystem::getSingleton().generateCharactorGuid();
-
-	snprintf(charactorsql,sizeof(charactorsql),"call charactor_insert(%llu, %llu, %u, %llu)",charactorUid, heroFashionTemp->mFashionId,
+	snprintf(charactorsql,sizeof(charactorsql),"call charactor_insert(%llu, %u,%llu)", heroFashionTemp->mFashionId,
 		modelId, playerUid);
 
 
@@ -4139,64 +4783,142 @@ bool PersistWorker::onInitCharactorData(UInt64 &playerUid, UInt32 &modelId)
 
 bool PersistWorker::onInitAchieveData(UInt64 &playerUid, UInt32 &modelId)
 {
-		const FirstAchievementMap& firstAchMap = ACHIEVEMENT_TABLE().getFirstAchMap();
-		//初始化所有成就项目到数据库
-		for(FirstAchievementMap::Iter * achIter = firstAchMap.begin();  achIter != NULL; 
-			achIter = firstAchMap.next(achIter))
+		//const FirstAchievementMap& firstAchMap = ACHIEVEMENT_TABLE().getFirstAchMap();
+		////初始化所有成就项目到数据库
+		//for(FirstAchievementMap::Iter * achIter = firstAchMap.begin();  achIter != NULL; 
+		//	achIter = firstAchMap.next(achIter))
+		//{
+		//	AchieveData achdata;
+		//	achdata.m_nEventId = achIter->mValue.mEvent;
+		//	achdata.m_nAchieveId = achIter->mValue.mId;
+		//	achdata.m_nArg = 0;
+		//	achdata.m_nFlag = 0;
+		//	bool res = initAchieveDb(playerUid, achdata);
+		//	if(!res)
+		//	{
+		//		return false;
+		//	}
+		//}
+
+	const Vector<AchieveData>& achvec = LogicSystem::getSingleton().getAchieveVec();
+		char achsql[8192] = {0};
+
+		char tmp[32]={0};
+	
+
+	snprintf(achsql, sizeof(achsql), "call initachiveall(%llu",playerUid);
+	for(UInt32 i = 0; i < achvec.size(); i++)
+	{
+		memset(tmp, 0, sizeof(tmp));
+		snprintf(tmp, sizeof(tmp), ",%llu,%llu",achvec[i].m_nEventId, achvec[i].m_nAchieveId);	
+			strcat(achsql,tmp);
+	}
+
+	
+
+	strcat(achsql,")");
+
+	LOG_DEBUG("Sql:%s", achsql);
+
+
+	
+
+		bool achRes = mDBInterface.execSql(achsql);
+
+		if (!achRes)
 		{
-			AchieveData achdata;
-			achdata.m_nEventId = achIter->mValue.mEvent;
-			achdata.m_nAchieveId = achIter->mValue.mId;
-			achdata.m_nArg = 0;
-			achdata.m_nFlag = 0;
-			bool res = initAchieveDb(playerUid, achdata);
-			if(!res)
-			{
-				return false;
-			}
-		}
-
-		return true;
-}
-
-bool PersistWorker::onInitDailyTaskData(UInt64 &playerUid, UInt32 &modelId)
-{
-		DailyTaskTempMap* dailyTaskMap = DAILYTASK_TABLE().getDailyTaskMap();
-		
-		
-		for(DailyTaskTempMap::Iter * dailyIter = dailyTaskMap->begin(); dailyIter != NULL; 
-			dailyIter = dailyTaskMap->next(dailyIter))
-		{
-			DailyTaskData dailyTaskData;
-			dailyTaskData.m_nTempId = dailyIter->mValue.mId;
-			dailyTaskData.m_nEventId = dailyIter->mValue.mEvent;
-			dailyTaskData.m_nArg = 0;
-			dailyTaskData.m_nFlag = 0;
-			bool res = initDailyTaskDb(playerUid, dailyTaskData);
-			if(!res)
-			{
-				return false;
-			}
-		}
-
-		//并且更新日常刷新时间到数据库
-		char timesql[4096] = {0};
-		UInt64 times = time(0);
-		snprintf(timesql,sizeof(timesql),"call dailyactive_reset(%llu, %llu)",playerUid, times);
-
-		LOG_DEBUG("Sql:%s", timesql);
-
-		bool dlyRes = mDBInterface.execSql(timesql);
-
-		if (!dlyRes)
-		{
-			LOG_INFO("dailyactive_reset failed playerUid: %llu",playerUid);
+			LOG_INFO("acvbarrier_update failed playerUid: %llu",playerUid);
 
 			return false;
 
 		}
+		else
+		{
+			//创建玩家成功，需要初始化装备列表和装备信息
+
+			return true;
+
+		}
+
+
+	
+}
+
+bool PersistWorker::onInitDailyTaskData(UInt64 &playerUid, UInt32 &modelId)
+{
+		//DailyTaskTempMap* dailyTaskMap = DAILYTASK_TABLE().getDailyTaskMap();
+		//
+		//
+		//for(DailyTaskTempMap::Iter * dailyIter = dailyTaskMap->begin(); dailyIter != NULL; 
+		//	dailyIter = dailyTaskMap->next(dailyIter))
+		//{
+		//	DailyTaskData dailyTaskData;
+		//	dailyTaskData.m_nTempId = dailyIter->mValue.mId;
+		//	dailyTaskData.m_nEventId = dailyIter->mValue.mEvent;
+		//	dailyTaskData.m_nArg = 0;
+		//	dailyTaskData.m_nFlag = 0;
+		//	bool res = initDailyTaskDb(playerUid, dailyTaskData);
+		//	if(!res)
+		//	{
+		//		return false;
+		//	}
+		//}
+
+		////并且更新日常刷新时间到数据库
+		//char timesql[4096] = {0};
+		//UInt64 times = time(0);
+		//snprintf(timesql,sizeof(timesql),"call dailyactive_reset(%llu, %llu)",playerUid, times);
+
+		//LOG_DEBUG("Sql:%s", timesql);
+
+		//bool dlyRes = mDBInterface.execSql(timesql);
+
+		//if (!dlyRes)
+		//{
+		//	LOG_INFO("dailyactive_reset failed playerUid: %llu",playerUid);
+
+		//	return false;
+
+		//}
+	
+		const Vector<DailyTaskData> & dailyTaskVec = LogicSystem::getSingleton().getDailyTaskVec();
+
 	
 
+		char achsql[8192] = {0};
+
+		char tmp[32]={0};
+	
+
+	snprintf(achsql, sizeof(achsql), "call initalldailytask(%llu",playerUid);
+	for(UInt32 i = 0; i < dailyTaskVec.size(); i++)
+	{
+		memset(tmp, 0, sizeof(tmp));
+		snprintf(tmp, sizeof(tmp), ",%llu",dailyTaskVec[i].m_nTempId);	
+			strcat(achsql,tmp);
+	}
+
+	
+
+	strcat(achsql,")");
+
+	LOG_DEBUG("Sql:%s", achsql);
+
+
+	
+
+		bool achRes = mDBInterface.execSql(achsql);
+
+		if (!achRes)
+		{
+			LOG_INFO("dailytask failed playerUid: %llu",playerUid);
+
+			return false;
+
+		}
+		
+	
+		UInt64 times = time(0);
 		char timesactive[4096] = {0};
 		snprintf(timesactive,sizeof(timesactive),"call dailytask_reset(%llu, %llu)",playerUid, times);
 
@@ -4301,6 +5023,12 @@ bool PersistWorker::initDailyTaskDb(UInt64 &playerUid, const DailyTaskData & dly
 		case DLYBUYENERGE:
 			return updateBuyEnergy(playerUid, dlydata);
 			break;
+		case DLYFOODCOOK:
+			return updateFoodCook(playerUid, dlydata);
+			break;
+		case DLYCONSORTSIGN:
+			return updateConsortSign(playerUid, dlydata);
+			break;
 			
 	
 	default:
@@ -4360,7 +5088,12 @@ bool PersistWorker::updateDailyTaskDb(UInt64 &playerUid, const DailyTaskData & d
 		case DLYBUYENERGE:
 			return updateBuyEnergy(playerUid, dlydata);
 			break;
-			
+		case DLYFOODCOOK:
+			return updateFoodCook(playerUid, dlydata);
+			break;
+		case DLYCONSORTSIGN:
+			return updateConsortSign(playerUid, dlydata);
+			break;
 	
 	default:
 		break;
@@ -4540,7 +5273,7 @@ bool PersistWorker::updateActPlayerLvDb(const UInt64 &playerUid,  const AchieveD
 	char achsql[4096] = {0};
 
 	snprintf(achsql,sizeof(achsql),"call acvlvup_update(%llu, %llu, %llu, %u, %u)",playerUid, achdata.m_nEventId,
-		achdata.m_nAchieveId, (UInt32)1, achdata.m_nFlag);
+		achdata.m_nAchieveId, achdata.m_nArg, achdata.m_nFlag);
 
 	LOG_DEBUG("Sql:%s", achsql);
 
@@ -5078,6 +5811,62 @@ bool PersistWorker::updateBuyEnergy(const UInt64 &playerUid,  const DailyTaskDat
 
 	}
 }
+
+bool PersistWorker::updateFoodCook(const UInt64 &playerUid,  const DailyTaskData& dailydata)
+{
+	char dlysql[4096] = {0};
+
+	snprintf(dlysql,sizeof(dlysql),"call dlyfoodcook_update(%llu, %llu, %u, %u)",playerUid, dailydata.m_nTempId,
+		dailydata.m_nArg, dailydata.m_nFlag);
+
+	LOG_DEBUG("Sql:%s", dlysql);
+
+	bool dlyRes = mDBInterface.execSql(dlysql);
+
+	if (!dlyRes)
+	{
+		LOG_INFO("dlyfoodcook_update failed playerUid: %llu",playerUid);
+
+		return false;
+
+	}
+	else
+	{
+		//创建玩家成功，需要初始化装备列表和装备信息
+
+		return true;
+
+	}
+}
+
+		
+bool PersistWorker::updateConsortSign(const UInt64 &playerUid,  const DailyTaskData& dailydata)
+{
+	char dlysql[4096] = {0};
+
+	snprintf(dlysql,sizeof(dlysql),"call dlyconsortsign_update(%llu, %llu, %u, %u)",playerUid, dailydata.m_nTempId,
+		dailydata.m_nArg, dailydata.m_nFlag);
+
+	LOG_DEBUG("Sql:%s", dlysql);
+
+	bool dlyRes = mDBInterface.execSql(dlysql);
+
+	if (!dlyRes)
+	{
+		LOG_INFO("dlyconsortsign_update failed playerUid: %llu",playerUid);
+
+		return false;
+
+	}
+	else
+	{
+		//创建玩家成功，需要初始化装备列表和装备信息
+
+		return true;
+
+	}
+}
+
 
 
 bool PersistWorker::updateAssistUnlockDb(const UInt64 &playerUid,  const AchieveData& achdata)
@@ -6059,16 +6848,20 @@ void PersistWorker::onPersistJewelryAddReq(PersistAddJewelryNotify & msg)
 	
 	if (!jewelryRes)
 	{
-		LOG_INFO("insert jewelrydata failed playerUid: %llu",msg.m_nPlayerUid);
+		LOG_INFO("insert jewelrydata failed playerUid: %llu,   msg.m_jewelryData.m_nJewelryUId ",msg.m_nPlayerUid,
+			msg.m_jewelryData.m_nJewelryUid);
+
+		cout << "now memory baseGuid is :  " << LogicSystem::getSingleton().getItemGuid() <<endl;
 		assert(false);
 
 	}
 	else
 	{
-		//创建玩家成功，需要初始化装备列表和装备信息
+		//插入饰品成功
 
-		LOG_INFO("insert jewelrydata success playerUid: %llu",msg.m_nPlayerUid);
-
+		LOG_INFO("insert jewelrydata success playerUid: %llu,    msg.m_jewelryData.m_nJewelryUId ",msg.m_nPlayerUid,
+			msg.m_jewelryData.m_nJewelryUid);
+		cout << "now memory baseGuid is :  " << LogicSystem::getSingleton().getItemGuid() <<endl;
 	}
 
 
@@ -6356,6 +7149,71 @@ void PersistWorker::onPersistUpdateActiveTimeDb(PersistDailyLastTimeUpdateMsg &m
 		}
 }
 
+void PersistWorker::onPersistUpdateNewGuid(PersistGuidStepUpdateMsg & msg)
+{
+	char resetsql[4096]={0};
+	snprintf(resetsql,sizeof(resetsql),"call guid_update(%llu, '%s')", msg.playerUid, msg.guidStr.c_str());
+
+		LOG_DEBUG("Sql:%s", resetsql);
+
+		bool result = mDBInterface.execSql(resetsql);
+		if(!result)
+		{
+			LOG_INFO("guid_update failed playerUid: %llu",msg.playerUid);
+		}
+	
+		
+
+}
+
+void PersistWorker::onPersistUpdateGuidFlag(PersistGuidFlagUpdateMsg & msg)
+{
+	char resetsql[4096]={0};
+	snprintf(resetsql,sizeof(resetsql),"call guidgift_update(%llu, %u)", msg.playerUid, msg.giftflag);
+
+		LOG_DEBUG("Sql:%s", resetsql);
+
+		bool result = mDBInterface.execSql(resetsql);
+		if(!result)
+		{
+			LOG_INFO("guidflag_update failed playerUid: %llu",msg.playerUid);
+		}
+}
+
+//更新禁止登录时间
+void PersistWorker::onPersistUpdateForbidLoginTime(PersistForbidLoginTimeUpdate & msg)
+{
+	char resetsql[4096]={0};
+	snprintf(resetsql,sizeof(resetsql),"call forbidlogin_update(%llu, %llu, %llu)", msg.playerUid, msg.forbidlogintime, msg.forbidbegintime);
+
+		LOG_DEBUG("Sql:%s", resetsql);
+
+		bool result = mDBInterface.execSql(resetsql);
+		if(!result)
+		{
+			LOG_INFO("forbidlogin_update failed playerUid: %llu",msg.playerUid);
+		}
+}
+
+
+//更新禁言
+void PersistWorker::onPersistUpdateForbidChat(PersistForbidChatUpdate & msg)
+{
+	char resetsql[4096]={0};
+	snprintf(resetsql,sizeof(resetsql),"call forbidchat_update(%llu, %u, %llu, %llu)", msg.playerUid, msg.disableflag,
+		msg.begintime, msg.timelong);
+
+		LOG_DEBUG("Sql:%s", resetsql);
+
+		bool result = mDBInterface.execSql(resetsql);
+		if(!result)
+		{
+			LOG_INFO("forbidchat_update failed playerUid: %llu",msg.playerUid);
+		}
+}
+
+
+
 
 void PersistWorker::onPersistServantUpdateReq(PersistUpdateServantNotify & msg)
 {
@@ -6369,10 +7227,10 @@ void PersistWorker::onPersistServantUpdateReq(PersistUpdateServantNotify & msg)
 	}
 
 
-	snprintf(servantSql,sizeof(servantSql),"call servant_update(%llu,%llu,%llu, %u,%u,%u,%u,  %llu,%llu,%llu,%llu,%u)",
+	snprintf(servantSql,sizeof(servantSql),"call servant_update(%llu,%llu,%llu, %u,%u,%u,%u,  %llu,%llu,%llu,%llu,%u,%u)",
 		msg.m_servantData.servantUid, msg.m_nPlayerUid, msg.m_servantData.servantId, 
 		msg.m_servantData.pieceCount, msg.m_servantData.level, msg.m_servantData.star, msg.m_servantData.floor,
-		treasureVec[0], treasureVec[1], treasureVec[2], treasureVec[3], msg.m_servantData.lvexp
+		treasureVec[0], treasureVec[1], treasureVec[2], treasureVec[3], msg.m_servantData.lvexp, msg.m_servantData.infolock
 	);
 
 
@@ -6639,7 +7497,7 @@ bool PersistWorker::dealBaseDataSaveDb(UInt64 playerUid)
 	}
 
 
-	snprintf(sql, sizeof(sql), "call BaseData_Update(%llu,%u,'%s',%u,%llu,%u,%llu,%llu,%llu,%u,'%s',%u,%u,%u,%llu,%llu,%u,'%s')",
+	snprintf(sql, sizeof(sql), "call BaseData_Update(%llu,%u,'%s',%u,%llu,%u,%llu,%llu,%llu,%u,'%s',%u,%u,%u,%llu,%llu,%u,'%s',%u,%u)",
 		playerUid,pBaseData->m_nModelID,
 		pBaseData->m_strPlayerName.c_str(),pBaseData->m_nLevel,
 		pBaseData->m_nLevelExp, pBaseData->m_nVipLevel,
@@ -6647,7 +7505,8 @@ bool PersistWorker::dealBaseDataSaveDb(UInt64 playerUid)
 		pBaseData->m_nCoin, pBaseData->m_nStrength,
 		pBaseData->m_strMood.c_str(),sweepCountArry[0],sweepCountArry[1],sweepCountArry[2],
 		pBaseData->m_accountID,
-		pBaseData->m_nFame,pBaseData->m_nPower, pBaseData->m_strOldName.c_str());
+		pBaseData->m_nFame,pBaseData->m_nPower, pBaseData->m_strOldName.c_str(),
+		pBaseData->m_nFirstLoinTime,pBaseData->m_nLoginTime);
 
 	LOG_DEBUG("Sql:%s", sql);
 
@@ -6873,6 +7732,90 @@ bool PersistWorker::dealChatSaveDb(UInt64 playerUid)
 }
 
 
+bool PersistWorker::dealRankGameSaveDb(UInt64 playerUid)
+{
+	char sql[4096] = {0};
+	Player* mPlayer	= LogicSystem::getSingleton().getPlayerByGuid(playerUid);
+
+	if(!mPlayer)
+	{
+		LOG_INFO("Can't find the player %llu",playerUid);
+		return false;
+	}
+	PlayerRankGameData rankGameData = mPlayer->getRankGameData();
+	 LOG_INFO("rankGameData3 =  %d",rankGameData.m_Sessions);
+	  LOG_INFO("rankGameData31 =  %d",rankGameData.m_WinSessions);
+
+	snprintf(sql,sizeof(sql),"REPLACE INTO rankgame VALUES(%llu, %u,%u,%u,%u,%u,%u,%u,%u,'%s',%llu,%u)",
+		playerUid,
+		rankGameData.m_Score,
+		rankGameData.m_Point,
+		rankGameData.m_Time,
+		rankGameData.m_Sessions,
+		rankGameData.m_WinSessions,
+		rankGameData.m_MaskNum,
+		rankGameData.m_LastIndex,
+		rankGameData.m_LastTime,
+		rankGameData.m_PlayerIds.c_str()	,
+		rankGameData.m_LastChallengeGuid,
+		rankGameData.newReportFlag
+		);
+	
+
+	LOG_DEBUG("Sql:%s", sql);
+
+	bool res = mDBInterface.execSql(sql);
+
+	if (!res)
+	{
+		LOG_INFO("update rankGameData failed playerUid: %llu",playerUid);
+		return false;
+	}
+	else
+	{
+		return true;
+	}
+}
+
+
+bool PersistWorker::dealBuyCoinSaveDb(UInt64 playerUid)
+{
+	char sql[4096] = {0};
+	Player* mPlayer	= LogicSystem::getSingleton().getPlayerByGuid(playerUid);
+
+	if(!mPlayer)
+	{
+		LOG_INFO("Can't find the player %llu",playerUid);
+		return false;
+	}
+	PlayerBuyCoinData buyCoinData = mPlayer->getBuyCoinData();
+	
+
+	snprintf(sql,sizeof(sql),"REPLACE INTO buycoin VALUES(%llu, %u,%u,%u,%u)",
+		playerUid,
+		buyCoinData.m_box1,
+		buyCoinData.m_box2,
+		buyCoinData.m_box3,	
+		buyCoinData.m_refreshTime	
+		);
+
+
+	LOG_DEBUG("Sql:%s", sql);
+
+	bool res = mDBInterface.execSql(sql);
+
+	if (!res)
+	{
+		LOG_INFO("update rankGameData failed playerUid: %llu",playerUid);
+		return false;
+	}
+	else
+	{
+		return true;
+	}
+}
+
+
 bool PersistWorker::dealDailyResetDataSaveDb(UInt64 playerUid)
 {
 	char sql[4096] = {0};
@@ -6905,14 +7848,14 @@ bool PersistWorker::dealDailyResetDataSaveDb(UInt64 playerUid)
 		dailyResetData.m_nTwelvePalaceResetFlag,
 		dailyResetData.m_nClimbTowerTimes,
 		dailyResetData.m_nTowerBuyTimes,
-		dailyResetData.spare5,
+		dailyResetData.m_RewardLotteryDailyOnceFreeCount,
 
 		dailyResetData.m_nCoinBuyTimes,
 		dailyResetData.m_nCoinFreeBuyTimes,
-		dailyResetData.notUsed3,
-		dailyResetData.notUsed4,
-		dailyResetData.notUsed5,
-		dailyResetData.notUsed6,
+		dailyResetData.m_nTwelvePalaceBuyTimes,
+		dailyResetData.m_nFishEatTimes,
+		dailyResetData.m_nRankGameLeftTimes,
+		dailyResetData.m_nRankGameBuyTimes,
 		dailyResetData.notUsed7
 	
 		);
@@ -7373,58 +8316,9 @@ void PersistWorker::updateGemToDb(List<GemData>::Iter* iter, bool &exeFailed,UIn
 
 void PersistWorker::onPersistOffLineSaveReq(PersistOffLineSaveReq& msg)
 {
-	PersistSystem::getSingleton().SaveAllDirty();
-	Player* mPlayer	= LogicSystem::getSingleton().getPlayerByGuid(msg.mPlayerUid);
-
-	if(!mPlayer)
-	{
-		LOG_WARN("Failed to destroy player [%llu] for player isn't exist.", msg.mPlayerUid);
-		return;
-	}
-
-	UInt64 connectCloseTime = mPlayer->getConnectCloseTime();
-	if(connectCloseTime)
-	{
-		return;
-	}
-	//进行存盘操作
-	//一次进行不同模块的存盘操作，要求全部更新一遍
-	List<ItemData>* itemsList = mPlayer->getItemManager().getItemDatasList();
-
-	bool exeFailed = false;
-
-	for(List<ItemData>::Iter* iter = itemsList->begin(); iter != NULL; iter = itemsList->next(iter))
-	{
-
-		if(iter->mValue.m_nDirtyType == NODIRTY)
-		{
-			continue;
-		}
-
-		if(iter->mValue.m_nDirtyType == ADDDIRTY)
-		{
-			insertItemToDb(iter,exeFailed,msg.mPlayerUid);
-		}
-
-		else if(iter->mValue.m_nDirtyType == DELDIRTY)
-		{
-			delItemToDb(iter,exeFailed,msg.mPlayerUid);
-		}
-
-		else if(iter->mValue.m_nDirtyType == UPDATEDIRTY)
-		{
-			updateItemToDb(iter, exeFailed, msg.mPlayerUid);
-		}
-
-	}
-
-	if (mPlayer->getConnId() != 0)
-	{
-		LogicSystem::getSingleton().closeConnection(mPlayer);
-	}
-
 	
-	LogicSystem::getSingleton().destroyPlayerByGuid(msg.mPlayerUid);
+
+
 }
 
 
@@ -7643,6 +8537,19 @@ void PersistWorker::onPersistNotifyWorkerSaveDbReq(PersistNotifyWorkerSaveDbReq 
 		}
 	}
 
+
+	if(dirtyBit & FRIENDBEAPPLYDATABIT)
+	{
+		bool result = updateFriendBeApplyDataToDb(playerUid);
+		if(result)
+		{
+			dirtyBitRt = dirtyBitRt & (~FRIENDBEAPPLYDATABIT);
+		}
+		else
+		{
+			exeFailed = true;
+		}
+	}
 	
 
 	if(dirtyBit & FOODDATABIT)
@@ -7761,10 +8668,35 @@ void PersistWorker::onPersistNotifyWorkerSaveDbReq(PersistNotifyWorkerSaveDbReq 
 			exeFailed = true;
 		}
 	}
-	
+
+	if(dirtyBit & RANKGAMEDATABIT)
+	{
+		bool result = dealRankGameSaveDb(playerUid);
+		if(result)
+		{
+			dirtyBitRt = dirtyBitRt & (~RANKGAMEDATABIT);
+		}
+		else
+		{
+			exeFailed = true;
+		}
+	}
+	if(dirtyBit & BUYCOINDATABIT)
+	{
+		bool result = dealBuyCoinSaveDb(playerUid);
+		if(result)
+		{
+			dirtyBitRt = dirtyBitRt & (~BUYCOINDATABIT);
+		}
+		else
+		{
+			exeFailed = true;
+		}
+	}
+
 	PersistNotifyWorkerSaveDbResp saveDbResp;
 
-	saveDbResp.mDirtyBit = dirtyBitRt;
+	saveDbResp.mDirtyBit = dirtyBit;
 	if(exeFailed)
 	{
 		saveDbResp.merrorId = LynxErrno::SqlExecuteFail;
@@ -7831,7 +8763,7 @@ PersistWorker::onPersistUpdateSingleProperty(PersistPlayerSinglePropertySaveReq&
 		snprintf(sql, sizeof(sql), "call BaseData_Update(%llu,%u,'%s',%u,%llu,%u,%llu,%llu,%llu,%u,'%s',%u,%u,%u,%llu,%llu,%u,'%s')",
 			baseData.m_nPlayerID,baseData.m_nModelID,baseData.m_strPlayerName.c_str(),baseData.m_nLevel,baseData.m_nLevelExp,baseData.m_nVipLevel,baseData.m_nVipExp,baseData.m_nGold,
 			baseData.m_nCoin,baseData.m_nStrength,baseData.m_strMood.c_str(),7,8,9,66,baseData.m_nFame,baseData.m_nPower,
-			baseData.m_strOldName);		
+			baseData.m_strOldName.c_str());		
 	}
 	else if (msg.strFlag == "20")
 	{
@@ -8121,13 +9053,64 @@ UInt16 PersistWorker::loadFoods(PlayerData& playerData,UInt64 playerGuid)
 		playerData.mFoodsData .food1 = lynxAtoi<UInt32>(row[2]);
 		playerData.mFoodsData .food2 = lynxAtoi<UInt32>(row[3]);
 		playerData.mFoodsData .food3 = lynxAtoi<UInt32>(row[4]);
-		playerData.mFoodsData .vipLeftTimes = lynxAtoi<UInt32>(row[5]);
-		playerData.mFoodsData .buyTime = lynxAtoi<UInt32>(row[6]);
-		playerData.mFoodsData .vipFoodLeftNumber = lynxAtoi<UInt32>(row[7]);
+		playerData.mFoodsData .food11 = lynxAtoi<UInt32>(row[5]);
+		playerData.mFoodsData .food12 = lynxAtoi<UInt32>(row[6]);
+		playerData.mFoodsData .food13 = lynxAtoi<UInt32>(row[7]);
+		playerData.mFoodsData .vipLeftTimes = lynxAtoi<UInt32>(row[8]);
+		playerData.mFoodsData .buyTime = lynxAtoi<UInt32>(row[9]);
+		playerData.mFoodsData .vipFoodLeftNumber = lynxAtoi<UInt32>(row[10]);
+		playerData.mFoodsData .resetState = lynxAtoi<UInt32>(row[11]);
 		row = mDBInterface.fetchRow(rs);
+	}
+	if (playerData.mFoodsData .beginTime == 0&& playerData.mFoodsData .leftTimes == 0)
+	{
+		playerData.mFoodsData .beginTime = TimeUtil::getTimeSec();
 	}
 
 	LOG_INFO("Load mFoodsData %llu  from DB successful!", playerGuid);
+	mDBInterface.freeResult(&rs); 
+	return LynxErrno::None;
+
+}	
+
+
+
+UInt16 PersistWorker::loadFriendBeApplyData(PlayerData& playerData,UInt64 playerGuid)
+{
+
+	char sql[2048] = {0};
+
+	snprintf(sql, sizeof(sql), "SELECT * FROM friend_be_apply_list WHERE playerGuid = %llu", playerGuid);
+
+	LOG_DEBUG("Sql:%s", sql);
+	bool result = mDBInterface.execSql(sql);
+	MYSQL_RES* rs = mDBInterface.storeResult();
+	if(!rs)
+	{
+		// 执行失败
+		mDBInterface.freeResult(&rs);
+		return LynxErrno::SqlExecuteFail;		
+	}
+
+	MYSQL_ROW row = mDBInterface.fetchRow(rs);
+
+	List<UInt64> playerIDList;
+	UInt64 playerId;
+	while(row)
+	{
+		for (UInt32 i = 1;i<51;i++)
+		{
+			playerId =  lynxAtoi<UInt64>(row[i]);
+			playerIDList.insertTail( playerId);
+		}	
+		row = mDBInterface.fetchRow(rs);
+	}
+
+	playerData.mFriendData.mBeApplyList = playerIDList;
+
+
+
+	LOG_INFO("Load friend_be_apply_list %llu  from DB successful!", playerGuid);
 	mDBInterface.freeResult(&rs); 
 	return LynxErrno::None;
 
@@ -8260,6 +9243,12 @@ bool PersistWorker::updateStageData(UInt64 playerUid,UInt32 chapterID,UInt32 sta
 
 	LOG_DEBUG("Sql:%s", sql);
 
+	if (stageData.m_nGetStar %10 >5)
+	{
+		LOG_DEBUG("error star ----------------------- /n --------------------------------------- :%s", sql);
+		assert(false);
+	}
+
 	result = mDBInterface.execSql(sql);
 	if(!result)
 	{
@@ -8338,7 +9327,7 @@ bool PersistWorker::updateRewardCounterData(UInt64 playerUid,UInt32 rewardID,UIn
 UInt16 PersistWorker::loadPersonalRangking(PlayerData &playerData,UInt64 playerUid)
 {
 	MapRecord mapRecords;
-	Player *player = LogicSystem::getSingleton().getPlayerByGuid(playerUid);
+	
 	char sql[2048] = {0};
 	snprintf(sql, sizeof(sql), 
 		"CALL RankingPersonal_load(%llu)",playerUid);
@@ -8388,11 +9377,319 @@ UInt16 PersistWorker::loadPersonalRangking(PlayerData &playerData,UInt64 playerU
 }
 
 
+UInt16 PersistWorker::loadRankGameData(PlayerData &playerData,UInt64 playerUid)
+{
+
+	char sql[2048] = {0};
+	snprintf(sql, sizeof(sql), "SELECT * FROM rankgame WHERE playerID = %llu",playerUid);
+
+	LOG_DEBUG("Sql:%s", sql);
+	bool result = mDBInterface.execSql(sql);
+	MYSQL_RES* rs = mDBInterface.storeResult();
+	if(!rs)
+	{
+		// 执行失败
+		mDBInterface.freeResult(&rs);
+		return LynxErrno::SqlExecuteFail;		
+	}
+
+	MYSQL_ROW row = mDBInterface.fetchRow(rs);
+
+	if(!row)
+	{
+		// 角色不存在
+		mDBInterface.freeResult(&rs);
+		LOG_WARN("rankgame table empty");
+		return LynxErrno::None;
+// 		return LynxErrno::PlayerNotExist;
+	}
+
+	while(row)
+	{
+		PlayerRankGameData rankGame;
+	
+		Guid playerID = lynxAtoi<UInt64>(row[0]);
+		rankGame.m_Score = lynxAtoi<UInt32>(row[1]);
+		rankGame.m_Point = lynxAtoi<UInt32>(row[2]);
+		rankGame.m_Time = lynxAtoi<UInt32>(row[3]);
+		rankGame.m_Sessions = lynxAtoi<UInt32>(row[4]);
+		rankGame.m_WinSessions = lynxAtoi<UInt32>(row[5]);
+		rankGame.m_MaskNum = lynxAtoi<UInt32>(row[6]);
+		rankGame.m_LastIndex = lynxAtoi<UInt32>(row[7]);
+		rankGame.m_LastTime = lynxAtoi<UInt32>(row[8]);
+		rankGame.m_PlayerIds = row[9];
+		rankGame.m_LastChallengeGuid = lynxAtoi<UInt64>(row[10]);
+		rankGame.newReportFlag = lynxAtoi<UInt32>(row[11]);
+		
+		playerData.mRankGameData = rankGame;
+
+		row = mDBInterface.fetchRow(rs);
+	}
+	mDBInterface.freeResult(&rs); 
+	return LynxErrno::None;
+
+}
+
+
+UInt16 PersistWorker::loadOnlineDayData(PlayerData &playerData,UInt64 playerUid)
+{
+
+	char sql[2048] = {0};
+	snprintf(sql, sizeof(sql), "SELECT * FROM online_day WHERE playerUid = %llu",playerUid);
+
+	LOG_DEBUG("Sql:%s", sql);
+	bool result = mDBInterface.execSql(sql);
+	MYSQL_RES* rs = mDBInterface.storeResult();
+	if(!rs)
+	{
+		// 执行失败
+		mDBInterface.freeResult(&rs);
+		return LynxErrno::None;		
+	}
+
+	MYSQL_ROW row = mDBInterface.fetchRow(rs);
+
+	if(!row)
+	{
+		// 角色不存在
+		mDBInterface.freeResult(&rs);
+		LOG_WARN("rankgame table empty");
+		return LynxErrno::None;
+		// 		return LynxErrno::PlayerNotExist;
+	}
+
+	while(row)
+	{
+		PlayerOnlineDay mPlayerOnlineDay ;
+
+		Guid playerID = lynxAtoi<UInt64>(row[0]);
+		mPlayerOnlineDay.day1 = lynxAtoi<UInt32>(row[1]);
+		mPlayerOnlineDay.day2 = lynxAtoi<UInt32>(row[2]);
+		mPlayerOnlineDay.day3 = lynxAtoi<UInt32>(row[3]);
+		mPlayerOnlineDay.day4 = lynxAtoi<UInt32>(row[4]);
+		mPlayerOnlineDay.day5 = lynxAtoi<UInt32>(row[5]);
+		mPlayerOnlineDay.day6 = lynxAtoi<UInt32>(row[6]);
+		mPlayerOnlineDay.day7 = lynxAtoi<UInt32>(row[7]);
+		mPlayerOnlineDay.day8 = lynxAtoi<UInt32>(row[8]);
+		mPlayerOnlineDay.day9 = lynxAtoi<UInt32>(row[9]);
+		mPlayerOnlineDay.day10 = lynxAtoi<UInt32>(row[10]);
+
+		mPlayerOnlineDay.day11 = lynxAtoi<UInt32>(row[11]);
+		mPlayerOnlineDay.day12 = lynxAtoi<UInt32>(row[12]);
+		mPlayerOnlineDay.day13 = lynxAtoi<UInt32>(row[13]);
+		mPlayerOnlineDay.day14 = lynxAtoi<UInt32>(row[14]);
+		mPlayerOnlineDay.day15 = lynxAtoi<UInt32>(row[15]);
+		mPlayerOnlineDay.day16 = lynxAtoi<UInt32>(row[16]);
+		mPlayerOnlineDay.day17 = lynxAtoi<UInt32>(row[17]);
+		mPlayerOnlineDay.day18 = lynxAtoi<UInt32>(row[18]);
+		mPlayerOnlineDay.day19 = lynxAtoi<UInt32>(row[19]);
+		mPlayerOnlineDay.day20 = lynxAtoi<UInt32>(row[20]);
+
+		mPlayerOnlineDay.day21 = lynxAtoi<UInt32>(row[21]);
+		mPlayerOnlineDay.day22 = lynxAtoi<UInt32>(row[22]);
+		mPlayerOnlineDay.day23 = lynxAtoi<UInt32>(row[23]);
+		mPlayerOnlineDay.day24 = lynxAtoi<UInt32>(row[24]);
+		mPlayerOnlineDay.day25 = lynxAtoi<UInt32>(row[25]);
+		mPlayerOnlineDay.day26 = lynxAtoi<UInt32>(row[26]);
+		mPlayerOnlineDay.day27 = lynxAtoi<UInt32>(row[27]);
+		mPlayerOnlineDay.day28 = lynxAtoi<UInt32>(row[28]);
+		mPlayerOnlineDay.day29 = lynxAtoi<UInt32>(row[29]);
+		mPlayerOnlineDay.day30 = lynxAtoi<UInt32>(row[30]);
+		
+		playerData.mPlayerOnlineDay = mPlayerOnlineDay;
+
+
+		
+		row = mDBInterface.fetchRow(rs);
+	}
+	mDBInterface.freeResult(&rs); 
+	return LynxErrno::None;
+
+}
+
+
+UInt16 PersistWorker::getRankGameData(PlayerRankGameData &rankGame,UInt64 playerUid)
+{
+
+	char sql[2048] = {0};
+	snprintf(sql, sizeof(sql), "SELECT * FROM rankgame WHERE playerID = %llu",playerUid);
+
+	LOG_DEBUG("Sql:%s", sql);
+	bool result = mDBInterface.execSql(sql);
+	MYSQL_RES* rs = mDBInterface.storeResult();
+	if(!rs)
+	{
+		// 执行失败
+		mDBInterface.freeResult(&rs);
+		return LynxErrno::SqlExecuteFail;		
+	}
+
+	MYSQL_ROW row = mDBInterface.fetchRow(rs);
+
+	if(!row)
+	{
+		// 角色不存在
+		mDBInterface.freeResult(&rs);
+		LOG_WARN("rankgame table empty");
+		return LynxErrno::None;
+		// 		return LynxErrno::PlayerNotExist;
+	}
+
+	while(row)
+	{
+		Guid playerID = lynxAtoi<UInt64>(row[0]);
+		rankGame.m_Score = lynxAtoi<UInt32>(row[1]);
+		rankGame.m_Point = lynxAtoi<UInt32>(row[2]);
+		rankGame.m_Time = lynxAtoi<UInt32>(row[3]);
+		rankGame.m_Sessions = lynxAtoi<UInt32>(row[4]);
+		rankGame.m_WinSessions = lynxAtoi<UInt32>(row[5]);
+		rankGame.m_MaskNum = lynxAtoi<UInt32>(row[6]);
+		rankGame.m_LastIndex = lynxAtoi<UInt32>(row[7]);
+		rankGame.m_LastTime = lynxAtoi<UInt32>(row[8]);
+		rankGame.m_PlayerIds = row[9];
+		rankGame.m_LastChallengeGuid = lynxAtoi<UInt64>(row[10]);
+		rankGame.newReportFlag = lynxAtoi<UInt32>(row[11]);
+
+// 		playerData.mRankGameData = rankGame;
+
+		row = mDBInterface.fetchRow(rs);
+	}
+	mDBInterface.freeResult(&rs); 
+	return LynxErrno::None;
+
+}
+
+
+
+
+UInt16 PersistWorker::loadBuyCoinData(PlayerData &playerData,UInt64 playerUid)
+{
+
+	char sql[2048] = {0};
+	snprintf(sql, sizeof(sql), "SELECT * FROM buycoin WHERE playerID = %llu",playerUid);
+
+	LOG_DEBUG("Sql:%s", sql);
+	bool result = mDBInterface.execSql(sql);
+	MYSQL_RES* rs = mDBInterface.storeResult();
+	if(!rs)
+	{
+		// 执行失败
+		mDBInterface.freeResult(&rs);
+		return LynxErrno::SqlExecuteFail;		
+	}
+
+	MYSQL_ROW row = mDBInterface.fetchRow(rs);
+
+	if(!row)
+	{
+		// 角色不存在
+		mDBInterface.freeResult(&rs);
+		LOG_WARN("loadBuyCoinData table empty");
+		return LynxErrno::None;
+		// 		return LynxErrno::PlayerNotExist;
+	}
+
+	while(row)
+	{
+		
+		PlayerBuyCoinData buyCoinData;
+
+		Guid playerID = lynxAtoi<UInt64>(row[0]);
+		buyCoinData.m_box1 = lynxAtoi<UInt32>(row[1]);
+		buyCoinData.m_box2 = lynxAtoi<UInt32>(row[2]);
+		buyCoinData.m_box3 = lynxAtoi<UInt32>(row[3]);
+		buyCoinData.m_refreshTime = lynxAtoi<UInt32>(row[4]);
+	
+
+		playerData.mPlayerBuyCoinData = buyCoinData;
+
+		row = mDBInterface.fetchRow(rs);
+	}
+	mDBInterface.freeResult(&rs); 
+	return LynxErrno::None;
+
+}
+
+UInt16 PersistWorker::loadRankGameReport(PlayerData &playerData,UInt64 playerUid)
+{
+	char sql[2048] = {0};
+	char sql1[2048] = {0};
+	snprintf(sql, sizeof(sql), 	"SELECT * FROM rankgame_report WHERE playerID = %llu",playerUid);
+
+	LOG_DEBUG("Sql:%s", sql);
+	bool result = mDBInterface.execSql(sql);
+	MYSQL_RES* rs = mDBInterface.storeResult();
+	if(!rs)
+	{
+		// 执行失败
+		mDBInterface.freeResult(&rs);
+		return LynxErrno::SqlExecuteFail;		
+	}
+
+	MYSQL_ROW row = mDBInterface.fetchRow(rs);
+
+	if(!row)
+	{
+		// 角色不存在
+		mDBInterface.freeResult(&rs);
+		LOG_WARN("rankgame table empty");
+		return LynxErrno::None;
+		// 		return LynxErrno::PlayerNotExist;
+	}
+
+	while(row)
+	{
+		ReportData reportData;
+		reportData.id = lynxAtoi<UInt32>(row[1]);
+		reportData.roleId = lynxAtoi<UInt64>(row[2]);
+		reportData.modelID = lynxAtoi<UInt32>(row[3]);
+		reportData.score = lynxAtoi<UInt32>(row[4]);
+		reportData.name = row[5];
+		reportData.level = lynxAtoi<UInt32>(row[6]);
+		reportData.vipLv = lynxAtoi<UInt32>(row[7]);
+		reportData.happenTime =  lynxAtoi<UInt32>(row[8]);
+		reportData.power = lynxAtoi<UInt32>(row[9]);
+		reportData.attackType =  lynxAtoi<UInt32>(row[10]);
+		reportData.rank =  lynxAtoi<UInt32>(row[11]);
+		reportData.flag =  lynxAtoi<UInt32>(row[12]);
+
+		playerData.mRankGameData.m_ReportData.insertTail(reportData);
+
+		row = mDBInterface.fetchRow(rs);
+	}
+
+	int size = playerData.mRankGameData.m_ReportData.size();
+	if (size >10)
+	{
+		int i = 0;
+		for (List<ReportData>::Iter *it = playerData.mRankGameData.m_ReportData.begin();it !=NULL;it = playerData.mRankGameData.m_ReportData.next(it) )
+		{
+			i++;
+			if ( (size-10) >= i)
+			{
+				playerData.mRankGameData.m_ReportData.erase(it);
+
+				snprintf(sql, sizeof(sql1), "DELETE FROM   rankgame_report WHERE playerID = %llu AND id = %u",playerUid,it->mValue.id);
+				LOG_DEBUG("sql1:%s", sql1);
+				result = mDBInterface.execSql(sql1);
+				if(!result)
+				{
+					LOG_WARN("DELETE rankgame_report failed:%llu", playerUid);
+				}
+			}			
+		}
+	}
+
+	mDBInterface.freeResult(&rs); 
+	return LynxErrno::None;
+
+}
+
+
 UInt16 PersistWorker::loadTowerData(PlayerData &playerData,UInt64 playerUid)
 {
 	PlayerTowerData towerData;
-	MapRecord mapRecords;
-	Player *player = LogicSystem::getSingleton().getPlayerByGuid(playerUid);
+	
 	char sql[2048] = {0};
 	snprintf(sql, sizeof(sql), 
 		"SELECT * FROM towerData WHERE playerguid = (%llu)",playerUid);
@@ -8476,6 +9773,8 @@ UInt16 PersistWorker::loadInlineActivity(PlayerData &playerData,UInt64 playerUid
 		inlineActivityData.m_LastGetTime = lynxAtoi<UInt32>(row[8]);
 		inlineActivityData.m_LoginTime = lynxAtoi<UInt32>(row[9]);
 		inlineActivityData.m_TimeAwardRefreshTime = lynxAtoi<UInt32>(row[10]);
+		inlineActivityData.m_LogoutTime = lynxAtoi<UInt32>(row[11]);
+		inlineActivityData.m_onlieFinishTime = lynxAtoi<UInt32>(row[12]);
 
 		playerData.mInlineActivityData = inlineActivityData;
 		row = mDBInterface.fetchRow(rs);
@@ -8490,6 +9789,7 @@ UInt16 PersistWorker::loadInlineActivity(PlayerData &playerData,UInt64 playerUid
 UInt16 PersistWorker::loadInlineActivityList(PlayerData &playerData,UInt64 playerUid)
 {
 	List<ActivityData>activityDataList;
+	PersistWorker::initActivityData(playerData,activityDataList);
 
 	char sql[2048] = {0};
 	snprintf(sql, sizeof(sql), "SELECT * FROM inline_activity_list WHERE playerguid = (%llu)",playerUid);
@@ -8536,7 +9836,7 @@ UInt16 PersistWorker::loadInlineActivityList(PlayerData &playerData,UInt64 playe
 UInt16 PersistWorker::loadSevenDayTask(PlayerData &playerData,UInt64 playerUid)
 {
 	List<ActivityData>activityDataList;
-	PersistWorker::initActivityData(playerData,activityDataList);
+	
 
 	char sql[2048] = {0};
 	snprintf(sql, sizeof(sql), "SELECT * FROM sevenday_task WHERE playerguid = (%llu)",playerUid);
@@ -8582,11 +9882,15 @@ UInt16 PersistWorker::loadSevenDayTask(PlayerData &playerData,UInt64 playerUid)
 }
 void PersistWorker::initActivityData(PlayerData &playerData,List<ActivityData>activityDataList)
 {
-	for (UInt32 i =0;i<7;i++)
+	if (playerData.mInlineActivityData.m_SevenDayTaskGotList.size() == 0)
 	{
-		KeyValue keyValue;
-		playerData.mInlineActivityData.m_SevenDayTaskGotList.insertTail(keyValue);
+		for (UInt32 i =0;i<7;i++)
+		{
+			KeyValue keyValue;
+			playerData.mInlineActivityData.m_SevenDayTaskGotList.insertTail(keyValue);
+		}
 	}
+
 	
 	for( Map<UInt64, InlineActivityTemplate>::Iter *it = gInlineActivityTable->mMap.begin();it!= NULL;it = gInlineActivityTable->mMap.next(it))
 	{
@@ -8679,7 +9983,8 @@ void PersistWorker::setActivityData(PlayerData &playerData,List<ActivityData>act
 
 		}
 		else if (iter->mValue.type == SEVENDAY_TASK)
-		{			
+		{		
+			UInt32 gotIt = 0;
 			UInt32 count = 0;
 			for(List<KeyValue>::Iter*it1 = inlineActivityData.m_SevenDayTaskGotList.begin();it1!=NULL;it1 = inlineActivityData.m_SevenDayTaskGotList.next(it1) )
 			{
@@ -8689,8 +9994,17 @@ void PersistWorker::setActivityData(PlayerData &playerData,List<ActivityData>act
 					keyValue.key = iter->mValue.key;
 					keyValue.value = iter->mValue.value;
 					it1->mValue = keyValue;
+					gotIt = 1;
+					break;
 				}
 				count ++;
+			}
+			if (gotIt == 0)
+			{
+				KeyValue keyValue;
+				keyValue.key = iter->mValue.key;
+				keyValue.value = iter->mValue.value;
+				inlineActivityData.m_SevenDayTaskGotList.insertTail(keyValue);
 			}
 
 		}
@@ -8812,9 +10126,11 @@ UInt16 PersistWorker::loadStageRangking()
 
 UInt16 PersistWorker::loadServerData()
 {
+	UInt32 nowTime = TimeUtil::getTimeSec();
 	char sql[2048] = {0}; 
-	snprintf(sql, sizeof(sql),"SELECT * from server_data ");
+	ServerPublicData  serverPublicData;
 
+	snprintf(sql, sizeof(sql),"SELECT * from server_data ");
 	LOG_DEBUG("Sql:%s", sql);
 	bool result = mDBInterface.execSql(sql);
 	MYSQL_RES* rs = mDBInterface.storeResult();
@@ -8830,26 +10146,79 @@ UInt16 PersistWorker::loadServerData()
 	if(!row)
 	{
 		// 角色不存在
-		mDBInterface.freeResult(&rs);
+// 		mDBInterface.freeResult(&rs);
 		LOG_WARN("server_data table empty");
-		return LynxErrno::PlayerNotExist;
+		
 	}
 
-	ServerPublicData  serverPublicData;
+	
 
 	while(row)
 	{
-		serverPublicData.gRechargeNum = lynxAtoi<UInt32>(row[0]);
-		serverPublicData.gServerRobotRefreshFlag = lynxAtoi<UInt32>(row[1]);
-		serverPublicData.gServerSpare2 = lynxAtoi<UInt32>(row[2]);
-		serverPublicData.gServerSpare3 = lynxAtoi<UInt32>(row[3]);	
-		serverPublicData.gServerSpare4 = lynxAtoi<UInt32>(row[4]);
+		serverPublicData.gServerID = lynxAtoi<UInt32>(row[0]);
+		serverPublicData.gRechargeNum = lynxAtoi<UInt32>(row[1]);
+		serverPublicData.gServerRobotRefreshFlag = lynxAtoi<UInt32>(row[2]);		
+		serverPublicData.gRankGameRewardresetTime = lynxAtoi<UInt32>(row[3]);	
+		serverPublicData.gServerFirstOpenTime = lynxAtoi<UInt32>(row[4]);
 		serverPublicData.gServerSpare5 = lynxAtoi<UInt32>(row[5]);
-		//	serverPublicData.gServerSpare6 = lynxAtoi<UInt32>(row[6]);//serverID
-		ServerData::getSingleton().setServerPublicData(serverPublicData);
+		ServerData::getSingleton().setServerPublicData(serverPublicData,false);
 
 		row = mDBInterface.fetchRow(rs);
 	}
+	if(serverPublicData.gServerFirstOpenTime == 0)
+	{
+		serverPublicData.gServerID = 0;
+		serverPublicData.gRechargeNum = 0;
+		serverPublicData.gServerRobotRefreshFlag = 0;		
+		serverPublicData.gRankGameRewardresetTime = 0;	
+		serverPublicData.gServerFirstOpenTime = nowTime;
+		serverPublicData.gServerSpare5 = 0;
+		ServerData::getSingleton().setServerPublicData(serverPublicData,true);	
+
+	}
+	mDBInterface.freeResult(&rs); 
+	return LynxErrno::None;
+}
+
+
+UInt16 PersistWorker::loadServerDailyData()
+{
+	UInt32 nowTime = TimeUtil::getTimeSec();
+	char sql[2048] = {0}; 
+	ServerDailyData  serverDailyData;
+
+	snprintf(sql, sizeof(sql),"SELECT * from server_daily_data ");
+	LOG_DEBUG("Sql:%s", sql);
+	bool result = mDBInterface.execSql(sql);
+	MYSQL_RES* rs = mDBInterface.storeResult();
+	if(!rs)
+	{
+		// 执行失败
+		mDBInterface.freeResult(&rs);
+		return LynxErrno::SqlExecuteFail;		
+	}
+
+	MYSQL_ROW row = mDBInterface.fetchRow(rs);
+
+	if(!row)
+	{
+		// 角色不存在
+		// 		mDBInterface.freeResult(&rs);
+	}
+
+	while(row)
+	{
+		serverDailyData.gServerOnlineNum = lynxAtoi<UInt32>(row[0]);
+		serverDailyData.gServerOnlineMaxNum = lynxAtoi<UInt32>(row[1]);
+		serverDailyData.gServerOnlineNumSetTime = lynxAtoi<UInt32>(row[2]);		
+		serverDailyData.gSSpare1 = lynxAtoi<UInt32>(row[3]);	
+		serverDailyData.gSSpare2 = lynxAtoi<UInt32>(row[4]);
+		serverDailyData.gSSpare3 = lynxAtoi<UInt32>(row[5]);
+		ServerData::getSingleton().setServerDailyData(serverDailyData,false);
+
+		row = mDBInterface.fetchRow(rs);
+	}
+
 	mDBInterface.freeResult(&rs); 
 	return LynxErrno::None;
 }
@@ -9232,8 +10601,32 @@ void PersistWorker::onPersistServerDataReq( PersistServerDataReq &msg)
 	ServerPublicData  serverPublicData = ServerData::getSingleton().getServerPublicData();
 	char sql[2048];
 	
-	snprintf(sql, sizeof(sql), "REPLACE INTO server_data VALUES('%u','%u','%u','%u','%u','%u','%u')",serverPublicData.gRechargeNum,serverPublicData.gServerRobotRefreshFlag,
-		serverPublicData.gServerSpare2,serverPublicData.gServerSpare3,serverPublicData.gServerSpare4,serverPublicData.gServerSpare5,0);
+	snprintf(sql, sizeof(sql), "REPLACE INTO server_data VALUES('%u','%u','%u','%u','%u','%u')",serverPublicData.gServerID,serverPublicData.gRechargeNum,serverPublicData.gServerRobotRefreshFlag,
+		serverPublicData.gRankGameRewardresetTime,serverPublicData.gServerFirstOpenTime,serverPublicData.gServerSpare5);
+
+	LOG_DEBUG("Sql:%s", sql);
+
+	bool result = mDBInterface.execSql(sql);
+
+	MYSQL_RES* rs = mDBInterface.storeResult();
+
+	mDBInterface.freeResult(&rs);
+	return;
+
+}
+
+
+void PersistWorker::onPersistServerDailyDataReq( PersistServerDailyDataReq &msg)
+{
+
+	ServerDailyData  serverDailyData = ServerData::getSingleton().getServerDailyData();
+	char sql[2048];
+
+	snprintf(sql, sizeof(sql), "REPLACE INTO server_daily_data VALUES('%u','%u','%u','%u','%u','%u')",serverDailyData.gServerOnlineNum,serverDailyData.gServerOnlineMaxNum,
+		serverDailyData.gServerOnlineNumSetTime,serverDailyData.gSSpare1,serverDailyData.gSSpare2,serverDailyData.gSSpare3);
+
+
+
 
 	LOG_DEBUG("Sql:%s", sql);
 
@@ -9249,57 +10642,83 @@ void PersistWorker::onPersistServerDataReq( PersistServerDataReq &msg)
 void PersistWorker::onPersistRobotDataReq( PersistRobotDataReq &msg)
 {
 
-	ServerPublicData  serverPublicData = ServerData::getSingleton().getServerPublicData();
-	char sql[2048];
-	//INSERT INTO robot(uuid,uid,name,level,viplevel,power)VALUES(1111,1,"1111",33,4,1312)
-	snprintf(sql, sizeof(sql), "REPLACE INTO robot(uuid,uid,name,level,viplevel,power)VALUES(%llu,%u,'%s',%u,%u,%u)",
-		msg.uuid,msg.uid,msg.name.c_str(),msg.level,msg.viplevel,msg.power);
+	char sql[1024] = {0};
+	UInt32 time = TimeUtil::getTimeSec();
+	UInt64 robotGuid = 0;
+	bool result = 0;
+	MYSQL_RES* rs =NULL;
 
-	LOG_DEBUG("Sql:%s", sql);
-
-	bool result = mDBInterface.execSql(sql);
-
-	MYSQL_RES* rs = mDBInterface.storeResult();
-
+	
+	snprintf(sql, sizeof(sql), "DELETE FROM robot");
+	LOG_INFO("Sql:%s", sql);
+	result = mDBInterface.execSql(sql);
+	rs = mDBInterface.storeResult();
 	mDBInterface.freeResult(&rs);
-	return;
+
+
+	for(Map<UInt64, RobotTableTemplate>::Iter *iter = gRobotTable->mMap.begin();iter != NULL;iter = gRobotTable->mMap.next(iter))
+	{
+ 		memset(sql,0,sizeof(sql));
+		robotGuid = iter->mValue.roleID;
+
+		snprintf(sql, sizeof(sql), " INSERT DELAYED INTO robot(uuid,uid,name,level,viplevel,power,time,score)VALUES(%llu,%u,'%s',%u,%u,%u,%u,%u)",
+			robotGuid,iter->mValue.modelID,iter->mValue.name.c_str(),iter->mValue.level, iter->mValue.vipLv,iter->mValue.power,time, iter->mValue.score);
+	
+		LOG_INFO("Sql:%s", sql);
+
+		result = mDBInterface.execSql(sql);
+		 rs = mDBInterface.storeResult();
+	}
+	
+	mDBInterface.freeResult(&rs);
+
+	
+
+	PersistInsertRobotResp resp;
+
+	postMsgToOutputQueue(resp, 0);
+
 
 }
 
 void PersistWorker::onPersistFindSimilarPower( PersistFindSimilarPowerReq &msg)
 {
-	List<Guid> playerIDList;
 	PlayerBaseData mBaseData;
 	Player *player = LogicSystem::getSingleton().getPlayerByGuid(msg.playerGuid);
-	playerIDList = player->getStageManager().getMatchingPlayers();
-
-	char sql[2048] = {0};
-	char sql2[2048] = {0};
-	char tmp[2048] = {0};
-	snprintf(sql, sizeof(sql), "SELECT uuid FROM playerBaseData WHERE power <=%u AND power >=%u AND uuid not in (%llu ", msg.high,msg.low,msg.playerGuid);//in ()不能为空所有填个0
-
-	for (List<Guid>::Iter * iter = playerIDList.begin();iter != NULL;iter = playerIDList.next(iter))
+	if (player == NULL)
 	{
-		snprintf(tmp, sizeof(tmp), ",%llu",iter->mValue);	
-		strcat(sql,tmp);
+		LOG_WARN("player not found!!");
+		return;
 	}
-	strcat(sql,") UNION ");
+
+	char sql[1024] = {0};
+	char sql2[2048] = {0};
+	if (msg.times == 10001 ||msg.times == 2)
+	{
+		//leaveTime 有可能一直在登录没有时间的
+		snprintf(sql, sizeof(sql), "SELECT uuid,level FROM playerBaseData WHERE level <=%u AND level >=%u AND uuid not in (%llu)", msg.high,msg.low,msg.playerGuid);//in ()不能为空所有填个0
+	}
+	else
+	{
+		snprintf(sql, sizeof(sql), "SELECT uuid,power FROM playerBaseData WHERE power <=%u AND power >=%u AND uuid not in (%llu) ", msg.high,msg.low,msg.playerGuid);//in ()不能为空所有填个0
+	}
+	
+	strcat(sql," UNION ");
 
 	strcat(sql2,sql);
 	sql[0] = '\0';
-	tmp[0] = '\0';	
 
-	snprintf(sql, sizeof(sql), "SELECT uuid FROM robot WHERE power <=%u AND power >=%u AND uuid not in (%llu ", msg.high,msg.low,msg.playerGuid);//in ()不能为空所有填个0
-
-	for (List<Guid>::Iter * iter = playerIDList.begin();iter != NULL;iter = playerIDList.next(iter))
+	if (msg.times == 10001||msg.times == 2)
 	{
-		snprintf(tmp, sizeof(tmp), ",%llu",iter->mValue);	
-		strcat(sql,tmp);
+		snprintf(sql, sizeof(sql), "SELECT uuid,level FROM robot WHERE level <=%u AND level >=%u AND uuid not in (%llu)", msg.high,msg.low,msg.playerGuid);//in ()不能为空所有填个0
 	}
-	strcat(sql,")");
+	else
+	{
+		snprintf(sql, sizeof(sql), "SELECT uuid,power FROM robot WHERE power <=%u AND power >=%u AND uuid not in (%llu)", msg.high,msg.low,msg.playerGuid);//in ()不能为空所有填个0
+	}
+
 	strcat(sql2,sql);
 
-	playerIDList.clear();
 	LOG_DEBUG("Sql:%s", sql2);
 	bool result = mDBInterface.execSql(sql2);
 	MYSQL_RES* rs = mDBInterface.storeResult();
@@ -9312,9 +10731,13 @@ void PersistWorker::onPersistFindSimilarPower( PersistFindSimilarPowerReq &msg)
 
 	MYSQL_ROW row = mDBInterface.fetchRow(rs);
 
+	List<GuidValue> keyValueList;
 	while(row)
 	{
-		playerIDList.insertTail( lynxAtoi<Guid>(row[0]));
+		GuidValue keyvalue;
+		keyvalue.guid = lynxAtoi<Guid>(row[0]);
+		keyvalue.value = lynxAtoi<UInt32>(row[1]);
+		keyValueList.insertTail(keyvalue);
 		row = mDBInterface.fetchRow(rs);
 
 	}
@@ -9324,8 +10747,9 @@ void PersistWorker::onPersistFindSimilarPower( PersistFindSimilarPowerReq &msg)
 
 	PersistFindSimilarPowerResp resp;
 	resp.playerID = msg.playerGuid;
-	resp.playerIDList = playerIDList;
+	resp.keyValueList = keyValueList;
 	resp.times = msg.times;
+	resp.initialValue = msg.initialValue;
 
 	postMsgToOutputQueue(resp, 0);
 
@@ -9340,9 +10764,19 @@ void PersistWorker::onPersistInlineActivityPower( PersistInlineActivityReq  &msg
 	char sql[2048] = {0};
 	char sql1[2048] = {0};
 	char tmp[2048] = {0};
-	snprintf(sql, sizeof(sql), "REPLACE INTO inline_activity VALUES(%llu,%u,%u,%u,%u,%u,%u,%u,%u,%u,%u)",msg.playerGuid, msg.m_GrowFoundBuyFlag,msg.m_MonthSignCount,
-		msg.m_MonthSignTime,msg.m_OnlineWelFareOnlineTime,msg.m_PeopleWelfareRechargeNum,msg.m_FirstLoginTime,msg.m_SevenLoginGotCount,
-		msg.m_LastGetTime,msg.m_LoginTime,msg.m_TimeAwardRefreshTime);
+	snprintf(sql, sizeof(sql), "REPLACE INTO inline_activity VALUES(%llu,%u,%u,%u,%u,%u,%u,%u,%u,%u,%u,%u,%u)",msg.playerGuid, 
+		msg.m_GrowFoundBuyFlag,
+		msg.m_MonthSignCount,
+		msg.m_MonthSignTime,
+		msg.m_OnlineWelFareOnlineTime,
+		msg.m_PeopleWelfareRechargeNum,
+		msg.m_FirstLoginTime,
+		msg.m_SevenLoginGotCount,
+		msg.m_LastGetTime,
+		msg.m_LoginTime,
+		msg.m_TimeAwardRefreshTime,
+		msg.m_LogoutTime,
+		msg.m_onlieFinishTime);
 
 	LOG_DEBUG("Sql:%s", sql);
 	bool result = mDBInterface.execSql(sql);
@@ -9704,6 +11138,22 @@ void PersistWorker::onPersistFriendUpdate(PersistUpdateFriendNotify & msg)
 
 }
 
+void PersistWorker::onPersistAllLeaveTime(PersistResetAllLeaveTime &msg)
+{
+	char sql[2048] = {0};
+	snprintf(sql, sizeof(sql), "call onlineallleave_update (%llu)", msg.m_nLeaveTime);
+
+	LOG_DEBUG("Sql:%s", sql);
+	bool result = mDBInterface.execSql(sql);
+	
+	if(!result)
+	{
+		LOG_WARN("update onlineallleave_update failed:%llu", msg.m_nLeaveTime);
+	}
+	
+}
+
+
 
 void PersistWorker::onPersistLeaveTime(PersistUpdateLeaveTime &msg)
 {
@@ -9719,6 +11169,302 @@ void PersistWorker::onPersistLeaveTime(PersistUpdateLeaveTime &msg)
 	}
 	
 
+}
+//m_time >0 保存积分 m_lastTime 保存所有玩家的上次名次
+void PersistWorker::onRankGameScoreSave(PersistRankGameScoreSave &msg)
+{
+	char sql[1024] = {0};
+	char sql1[100*1024] = {0};
+	UInt32 time = TimeUtil::getTimeSec();
+
+	if (msg.m_time > 0)
+	{
+		if (msg.m_nPlayerUid  > RobotMinRoleID && msg.m_nPlayerUid  <RobotMaxRoleID)
+		{
+			snprintf(sql, sizeof(sql), "UPDATE  robot SET score = %u,time = %u WHERE uuid = %llu",  msg.m_score, msg.m_time,msg.m_nPlayerUid);
+
+			LOG_DEBUG("Sql:%s", sql);
+			bool result = mDBInterface.execSql(sql);
+
+			if(!result)
+			{
+				LOG_WARN("update rankgame failed:%llu", msg.m_nPlayerUid);
+			}
+		}
+		if( msg.m_nPlayerUid  >= RobotMaxRoleID)
+		{
+			//只保存不在线的情况
+
+			PlayerRankGameData rankGame;
+			UInt32 flag = getRankGameData(rankGame,msg.m_nPlayerUid);
+			rankGame.m_Sessions ++;
+			rankGame.m_WinSessions += msg.m_addWinCount;
+			rankGame.m_Time =msg.m_time;
+			rankGame.m_Score = msg.m_score;
+			rankGame.newReportFlag = 1;
+
+			snprintf(sql,sizeof(sql),"REPLACE INTO rankgame VALUES(%llu, %u,%u,%u,%u,%u,%u,%u,%u,'%s',%llu,%u)",
+				msg.m_nPlayerUid,
+				rankGame.m_Score,
+				rankGame.m_Point,
+				rankGame.m_Time,
+				rankGame.m_Sessions,
+				rankGame.m_WinSessions,
+				rankGame.m_MaskNum,
+				rankGame.m_LastIndex,
+				rankGame.m_LastTime,
+				rankGame.m_PlayerIds.c_str(),
+				rankGame.m_LastChallengeGuid,
+				rankGame.newReportFlag
+				);
+
+			LOG_DEBUG("Sql:%s", sql);
+			bool result = mDBInterface.execSql(sql);
+
+			if(!result)
+			{
+				LOG_WARN("update rankgame failed:%llu", msg.m_nPlayerUid);
+			}
+		}
+	}
+
+	UInt32 count = 0;
+	if (msg.m_lastTime > 0)
+	{			
+		bool result = true;
+		MYSQL_RES* res = NULL;
+		Map<UInt32,RankData*>rankingIndexID = RankGameManager::getSingleton().getRankingIndexID();
+		for (Map<UInt32,RankData*>::Iter *iter = rankingIndexID.begin();iter!=NULL;iter = rankingIndexID.next(iter) )
+		{
+
+// 			if (iter->mValue->playerUid  > RobotMinRoleID &&iter->mValue->playerUid   <RobotMaxRoleID)
+// 			{
+// 			}
+			if(iter->mValue->playerUid   >= RobotMaxRoleID)
+			{
+				memset(sql, 0, sizeof(sql));
+				snprintf(sql, sizeof(sql), "UPDATE  rankgame SET lastindex = %u WHERE playerID = %llu", iter->mValue->index ,iter->mValue->playerUid );
+
+				strcat(sql1,sql);
+				strcat(sql1,";");
+
+				count ++;
+				if (count%50 == 0)
+				{	
+					mDBInterface.execFreeSql(sql1,res);
+					LOG_DEBUG("Sql:%s", sql1);
+
+					memset(sql1, 0, sizeof(sql1));
+				}			
+			}
+		}
+		mDBInterface.execFreeSql(sql1,res);	
+	}
+
+}
+
+
+
+void PersistWorker::onRankGameReportSave(PersistRankGameReportSave &msg)
+{
+	char sql[1024] = {0};
+	char sql1[1024] = {0};
+	int index = 1;
+	bool result  = true;
+
+	if (msg. deleteID > 0)
+	{
+		snprintf(sql, sizeof(sql), "DELETE FROM   rankgame_report WHERE playerID = %llu AND id = %u",msg.m_nPlayerUid,msg.deleteID);
+
+		LOG_DEBUG("Sql:%s", sql);
+		 result = mDBInterface.execSql(sql);
+
+		if(!result)
+		{
+			LOG_WARN("DELETE rankgame_report failed:%llu", msg.m_nPlayerUid);
+		}
+	}
+
+	if (msg.saveID > 0)
+	{
+		if(msg.saveID == 100000000)
+		{
+			do 
+			{
+				snprintf(sql1, sizeof(sql1), 	" SELECT max(id)+1  FROM rankgame_report  WHERE  playerID =  %llu",msg.m_nPlayerUid);
+				LOG_DEBUG("sql1:%s", sql1);
+				result = mDBInterface.execSql(sql1);
+				MYSQL_RES* rs = mDBInterface.storeResult();		
+				if(!rs)
+				{
+					// 执行失败
+					mDBInterface.freeResult(&rs);
+					break;	
+				}
+				
+				MYSQL_ROW row = mDBInterface.fetchRow(rs);
+				if(!row || !(row[0]))
+				{
+					// 角色不存在
+					mDBInterface.freeResult(&rs);
+					LOG_WARN("rankgame table empty");
+					break;
+				}
+				while(row)
+				{
+			
+					index = lynxAtoi<UInt32>(row[0]);
+					row = mDBInterface.fetchRow(rs);
+				}
+			} while (false);
+		
+			snprintf(sql, sizeof(sql), "REPLACE INTO  rankgame_report values(%llu,%u,%llu,%u,%u,'%s',%u,%u,%u,%u,%u,%u,%u)", 
+				msg.m_nPlayerUid,index,msg.reportData.roleId,msg.reportData.modelID,msg.reportData.score,msg.reportData.name.c_str(),msg.reportData.level,
+				msg.reportData.vipLv,msg.reportData.happenTime,msg.reportData.power,msg.reportData.attackType,msg.reportData.rank,msg.reportData.flag);
+
+			LOG_DEBUG("Sql:%s", sql);
+			bool result = mDBInterface.execSql(sql);
+
+			if(!result)
+			{
+				LOG_WARN("REPLACE rankgame_report failed:%llu", msg.m_nPlayerUid);
+			}
+		}
+		else
+		{
+			snprintf(sql, sizeof(sql), "REPLACE INTO  rankgame_report values(%llu,%u,%llu,%u,%u,'%s',%u,%u,%u,%u,%u,%u,%u)", 
+				msg.m_nPlayerUid,msg.reportData.id,msg.reportData.roleId,msg.reportData.modelID,msg.reportData.score,msg.reportData.name.c_str(),msg.reportData.level,
+				msg.reportData.vipLv,msg.reportData.happenTime,msg.reportData.power,msg.reportData.attackType,msg.reportData.rank,msg.reportData.flag);
+
+			LOG_DEBUG("Sql:%s", sql);
+			bool result = mDBInterface.execSql(sql);
+
+			if(!result)
+			{
+				LOG_WARN("REPLACE rankgame_report failed:%llu", msg.m_nPlayerUid);
+			}
+		}
+
+
+	}	
+
+	
+}
+
+void PersistWorker::onPersistBaseDateSave(PersistBaseDateSave & msg)
+{
+	char sql[4096] = {0};
+	Player* mPlayer	= LogicSystem::getSingleton().getPlayerByGuid(msg.m_nPlayerUid);
+
+	if(!mPlayer)
+	{
+		LOG_INFO("Can't find the player %llu",msg.m_nPlayerUid);
+		return;
+	}
+
+	PlayerBaseData * pBaseData = mPlayer->getPlayerInfoManager().getPlayerBaseData();
+
+	UInt32 sweepCountArry[3] = {0};
+	int arryIndex = 0;
+	for(List<UInt32>::Iter* iterList = pBaseData->m_listSweepCount.begin();
+		iterList != NULL; iterList = pBaseData->m_listSweepCount.next(iterList))
+	{
+		sweepCountArry[arryIndex] = iterList->mValue;
+		arryIndex++;
+	}
+
+
+	snprintf(sql, sizeof(sql), "call BaseData_Update(%llu,%u,'%s',%u,%llu,%u,%llu,%llu,%llu,%u,'%s',%u,%u,%u,%llu,%llu,%u,'%s',%u,%u)",
+		msg.m_nPlayerUid,pBaseData->m_nModelID,
+		pBaseData->m_strPlayerName.c_str(),pBaseData->m_nLevel,
+		pBaseData->m_nLevelExp, pBaseData->m_nVipLevel,
+		pBaseData->m_nVipExp,pBaseData->m_nGold,
+		pBaseData->m_nCoin, pBaseData->m_nStrength,
+		pBaseData->m_strMood.c_str(),sweepCountArry[0],sweepCountArry[1],sweepCountArry[2],
+		pBaseData->m_accountID,
+		pBaseData->m_nFame,pBaseData->m_nPower, pBaseData->m_strOldName.c_str(),
+		pBaseData->m_nFirstLoinTime,pBaseData->m_nLoginTime);
+
+	LOG_DEBUG("Sql:%s", sql);
+
+	bool result = mDBInterface.execSql(sql);
+	if(!result)
+	{
+		
+
+		return ;
+	}
+	else
+	{
+		return ;
+	}
+}
+
+void PersistWorker::onPersistOnlineDaySave(PersistOnlineDaySave & msg)
+{
+	char sql[4096] = {0};
+	Player *player = LogicSystem::getSingleton().getPlayerByGuid(msg.m_nPlayerUid);
+	if (player == NULL)
+	{
+		return;
+	}
+	PlayerOnlineDay mPlayerOnlineDay =	mPlayerOnlineDay = player->getPlayerOnlineDay();
+
+
+	snprintf(sql,sizeof(sql),"REPLACE INTO  online_day values(%llu,%u,%u,%u,%u,%u,%u,%u,%u,%u,%u, %u,%u,%u,%u,%u,%u,%u,%u,%u,%u, %u,%u,%u,%u,%u,%u,%u,%u,%u,%u)",
+		msg.m_nPlayerUid, 
+		mPlayerOnlineDay.day1,
+		mPlayerOnlineDay.day2,
+		mPlayerOnlineDay.day3,
+		mPlayerOnlineDay.day4,
+		mPlayerOnlineDay.day5,
+		mPlayerOnlineDay.day6,
+		mPlayerOnlineDay.day7,
+		mPlayerOnlineDay.day8,
+		mPlayerOnlineDay.day9,
+		mPlayerOnlineDay.day10,
+		
+		mPlayerOnlineDay.day11,
+		mPlayerOnlineDay.day12,
+		mPlayerOnlineDay.day13,
+		mPlayerOnlineDay.day14,
+		mPlayerOnlineDay.day15,
+		mPlayerOnlineDay.day16,
+		mPlayerOnlineDay.day17,
+		mPlayerOnlineDay.day18,
+		mPlayerOnlineDay.day19,
+		mPlayerOnlineDay.day20,
+
+		mPlayerOnlineDay.day21,
+		mPlayerOnlineDay.day22,
+		mPlayerOnlineDay.day23,
+		mPlayerOnlineDay.day24,
+		mPlayerOnlineDay.day25,
+		mPlayerOnlineDay.day26,
+		mPlayerOnlineDay.day27,
+		mPlayerOnlineDay.day28,
+		mPlayerOnlineDay.day29,
+		mPlayerOnlineDay.day30
+		);
+
+	LOG_DEBUG("Sql:%s", sql);
+
+	bool achRes = mDBInterface.execSql(sql);
+
+	if (!achRes)
+	{
+		LOG_INFO("online_day failed playerUid: %llu",msg.m_nPlayerUid);
+
+		return;
+
+	}
+	else
+	{
+		//创建玩家成功，需要初始化装备列表和装备信息
+
+		return ;
+
+	}
 }
 
 void PersistWorker::onLoadPlayerOnlineByLv(PerisistUpdateOnlineLvRank & msg)
@@ -9755,7 +11501,7 @@ void PersistWorker::onLoadPlayerOnlineByLv(PerisistUpdateOnlineLvRank & msg)
 		baseInfoData.power = lynxAtoi<UInt32>(row[3]);
 		baseInfoData.vipLv = lynxAtoi<UInt32>(row[4]);
 		baseInfoData.level = lynxAtoi<UInt32>(row[5]);
-		baseInfoData.leaveTime = lynxAtoi<UInt32>(row[6]);
+		baseInfoData.leaveTime = lynxAtoi<UInt64>(row[6]);
 
 		playerInfos.insertTail(baseInfoData);
 		LogicSystem::getSingleton().updateBaseInfo(baseInfoData);
@@ -9805,7 +11551,7 @@ void PersistWorker::onLoadPlayerPowerRank(PersistGetPowerRank & msg)
 		baseInfoData.power = lynxAtoi<UInt32>(row[3]);
 		baseInfoData.vipLv = lynxAtoi<UInt32>(row[4]);
 		baseInfoData.level = lynxAtoi<UInt32>(row[5]);
-		baseInfoData.leaveTime = lynxAtoi<UInt32>(row[6]);
+		baseInfoData.leaveTime = lynxAtoi<UInt64>(row[6]);
 
 		playerInfos.insertTail(baseInfoData);
 		LogicSystem::getSingleton().updateBaseInfo(baseInfoData);
@@ -9814,8 +11560,676 @@ void PersistWorker::onLoadPlayerPowerRank(PersistGetPowerRank & msg)
 		rank ++;
 
 	}
+
+	mDBInterface.freeResult(&rs); 
+}
+
+
+void PersistWorker::onLoadPlayerScoreRank(PersistGetScoreRank & msg)
+{
+	char sql[2048] = {0};
+	snprintf(sql, sizeof(sql), "call playerscorerank_load()" );
+	LOG_DEBUG("sql:%s", sql);
+	UInt32 systemOpenLevel = 0;
+
+	SystemInfoTemplate *systemInfoTemplate  = SYSTEMINFO_TABLE().get(SYSTEM_FOOD);
+	if (systemInfoTemplate != NULL)
+	{
+		systemOpenLevel = systemInfoTemplate->openConditionValue;
+	}
+
+
+
+	bool result = mDBInterface.execSql(sql);
+	if(!result)
+	{
+		LOG_WARN("load player score rank  failed");
+		return;
+	}
+
+	MYSQL_RES* rs = mDBInterface.storeResult();
+	if(!rs)
+	{
+		// 执行失败
+		mDBInterface.freeResult(&rs);
+		return ;		
+	}
+
+	MYSQL_ROW row = mDBInterface.fetchRow(rs);
+	UInt32 rank = 1;
+	while(row)
+	{
+
+		RankData rankData;
+
+		rankData.playerUid = lynxAtoi<Guid>(row[0]);
+		rankData.modelId = lynxAtoi<UInt32>(row[1]);
+		rankData.name = row[2];
+		rankData.score = lynxAtoi<UInt32>(row[3]);
+		rankData.vipLv = lynxAtoi<UInt32>(row[4]);
+		rankData.level = lynxAtoi<UInt32>(row[5]);
+		rankData.time = lynxAtoi<UInt32>(row[6]);
+		rankData.power =  lynxAtoi<UInt32>(row[7]);
+		rankData.index = rank;
+		if (rankData.level >= systemOpenLevel&&rankData.score > 0)
+		{
+			RankGameManager::getSingleton().addNewRankGamePlayer(rankData);
+			rank ++;
+		}
+
+		row = mDBInterface.fetchRow(rs);
+	}
+
+	mDBInterface.freeResult(&rs); 
+	
+	RankGameManager::getSingleton().getNullPlayerID();
+}
+
+
+
+
+
+void PersistWorker::onLoadPlayerConsortInfo(PersistPlayerConsortUpdate &msg)
+{
+	char sql[2048] = {0};
+	snprintf(sql, sizeof(sql), "call playerconsortall_load()");
+	LOG_DEBUG("sql:%s", sql);
+
+	bool result = mDBInterface.execSql(sql);
+	if(!result)
+	{
+		LOG_WARN("load player consort  failed");
+		return;
+	}
+
+	MYSQL_RES* rs = mDBInterface.storeResult();
+	if(!rs)
+	{
+		// 执行失败
+		mDBInterface.freeResult(&rs);
+		return ;		
+	}
+
+	MYSQL_ROW row = mDBInterface.fetchRow(rs);
+	
+	while(row)
+	{
+		//select uuid, uid, name , power, viplevel, level ,leaveTime
+		ConsortInfoData consortInfoData;
+		consortInfoData.playerUid = lynxAtoi<UInt64>(row[0]);
+		consortInfoData.consortId = lynxAtoi<UInt64>(row[1]);
+		consortInfoData.curContribute = lynxAtoi<UInt32>(row[2]);
+		consortInfoData.totalContribute = lynxAtoi<UInt32>(row[3]);
+		consortInfoData.consortJob = lynxAtoi<UInt32>(row[4]);
+		
+	
+		LogicSystem::getSingleton().updateConsortInfo(consortInfoData.playerUid,consortInfoData);
+	
+		row = mDBInterface.fetchRow(rs);
+	
+	}
 	
 	mDBInterface.freeResult(&rs); 
+}
+
+void PersistWorker::onSavePlayerConsort(PersistPlayerConsortSave &msg)
+{
+	char sql[4096] = {0};
+	snprintf(sql, sizeof(sql), "call playerconsort_update(%llu, %llu, %u, %u, %u, %llu)", msg.m_nPlayerUid,
+		msg.m_nConsortId, msg.m_nCurContribute, msg.m_nTotalContribute, msg.m_nConsortJob, msg.m_nLeaveTime);
+	LOG_DEBUG("sql:%s", sql);
+
+	bool result = mDBInterface.execSql(sql);
+	if(!result)
+	{
+		LOG_WARN("playerconsort_update  failed");
+		return;
+	}
+
+}
+
+void PersistWorker::onSaveConsort(PersistConsortSave & msg)
+{
+	char sql[4096] = {0};
+	snprintf(sql, sizeof(sql), "call consort_update (%llu, %u, '%s', %u, %llu, '%s', %u, %u, %u, %llu)", msg.m_nConsortId,
+		msg.m_nConsortLv, msg.m_strConsortName.c_str(), msg.m_nCount, msg.m_nPower, msg.m_strDescs.c_str(),
+		msg.m_nRes, msg.m_nExp, msg.m_nCheck, msg.m_nPowerLimit);
+	LOG_DEBUG("sql:%s", sql);
+
+	bool result = mDBInterface.execSql(sql);
+	if(!result)
+	{
+		LOG_WARN("playerconsort_update  failed");
+		return;
+	}
+
+}
+
+void PersistWorker::onCreateConsort(PersistConsortCreate & msg)
+{
+	char sql[4096] = {0};
+	snprintf(sql, sizeof(sql), "call consort_insert (%llu, %u, '%s', %u, %llu, '%s', %u, %llu, %u, %u, %llu)", msg.m_nConsortId,
+		msg.m_nConsortLv, msg.m_strConsortName.c_str(), msg.m_nCount, msg.m_nPower, msg.m_strDescs.c_str(),
+		msg.m_nRes, msg.m_nLeader,   msg.m_nExp, msg.m_nCheck, msg.m_nPowerLimit);
+	LOG_DEBUG("sql:%s", sql);
+
+	bool result = mDBInterface.execSql(sql);
+	if(!result)
+	{
+		LOG_WARN("consort insert  failed");
+		return;
+	}
+
+}
+
+void PersistWorker::onConsortApplyInsert(PersistConsortApplyInsert & msg)
+{
+	char sql[4096] = {0};
+	snprintf(sql, sizeof(sql), "call consortapply_insert (%llu, %llu,  %llu)", msg.m_nPlayerUid, msg.m_nConsortId, msg.m_nTime);
+	LOG_DEBUG("sql:%s", sql);
+
+	bool result = mDBInterface.execSql(sql);
+	if(!result)
+	{
+		LOG_WARN("consortapply insert  failed");
+		return;
+	}
+}
+
+void PersistWorker::onConsortApplyDel(PersistConsortApplyDel & msg)
+{
+	char sql[4096] = {0};
+	snprintf(sql, sizeof(sql), "call consortapply_del (%llu, %llu)", msg.m_nPlayerUid,
+		msg.m_nConsortId);
+	LOG_DEBUG("sql:%s", sql);
+
+	bool result = mDBInterface.execSql(sql);
+	if(!result)
+	{
+		LOG_WARN("consortapply del  failed");
+		return;
+	}
+}
+
+void PersistWorker::onConsortApplyClear(PersistConsortApplyClear & msg)
+{
+	char sql[4096] = {0};
+	snprintf(sql, sizeof(sql), "call consortapply_clear (%llu)", msg.m_nPlayerUid);
+	LOG_DEBUG("sql:%s", sql);
+
+	bool result = mDBInterface.execSql(sql);
+	if(!result)
+	{
+		LOG_WARN("consortapply clear  failed");
+		return;
+	}
+}
+
+void PersistWorker::onConsortApplyAllClear(PersistConsortApplyAllClear & msg)
+{
+	char sql[4096] = {0};
+	snprintf(sql, sizeof(sql), "call consortapply_allclear(%llu)", msg.m_nConsortId);
+	LOG_DEBUG("sql:%s", sql);
+
+	bool result = mDBInterface.execSql(sql);
+	if(!result)
+	{
+		LOG_WARN("consortapply clear  failed");
+		return;
+	}
+    
+
+}
+
+void PersistWorker::onConsortDel(PersistConsortDel & msg)
+{
+	char sql[4096] = {0};
+	snprintf(sql, sizeof(sql), "call consort_del(%llu)", msg.m_nConsortId);
+	LOG_DEBUG("sql:%s", sql);
+
+	bool result = mDBInterface.execSql(sql);
+	if(!result)
+	{
+		LOG_WARN("consort_del   failed");
+		return;
+	}
+}
+
+void PersistWorker::onConsortLogInsert(PersistConsortLogInsert & msg)
+{
+	char sql[4096] = {0};
+	snprintf(sql, sizeof(sql), "call consortlog_insert(%llu, %llu, %llu,'%s', '%s', '%s', %llu)", msg.m_nTempId, msg.m_nConsortId,
+		msg.m_nPlayerUid, msg.m_strPlayerName.c_str(), msg.m_strParam1.c_str(), msg.m_strParam2.c_str(), msg.m_nTime);
+	LOG_DEBUG("sql:%s", sql);
+
+	bool result = mDBInterface.execSql(sql);
+	if(!result)
+	{
+		LOG_WARN("consortlog isnertfailed   failed");
+		return;
+	}
+}
+
+void PersistWorker::onConsortSignReset(PersistConsortSignReset & msg)
+{
+	char sql[4096] = {0};
+	snprintf(sql, sizeof(sql), "call activereset_update(%llu)", msg.m_nResetTime);
+	LOG_DEBUG("sql:%s", sql);
+
+	bool result = mDBInterface.execSql(sql);
+	if(!result)
+	{
+		LOG_WARN("activereset update   failed");
+		return;
+	}
+}
+
+void PersistWorker::onConsortSignUpdate(PersistConsortSignUpdate & msg)
+{
+	Vector<UInt32>  awardvec;
+	for(List<UInt32>::Iter * awardIter = msg.m_nSignAwards.begin();  awardIter != NULL; 
+		awardIter = msg.m_nSignAwards.next(awardIter))
+	{
+		awardvec.push_back(awardIter->mValue);
+	}
+
+	char sql[4096] = {0};
+	snprintf(sql, sizeof(sql), "call consortsign_update(%llu,%u,%u,%u,%u,%u)", msg.m_nPlayerUid, msg.m_nSign, awardvec[0],
+		awardvec[1], awardvec[2], awardvec[3]);
+	LOG_DEBUG("sql:%s", sql);
+
+	bool result = mDBInterface.execSql(sql);
+	if(!result)
+	{
+		LOG_WARN("consortsign_update   failed");
+		return;
+	}
+}
+
+void PersistWorker::onConsortActiveUpdate(PersistConsortActiveUpdate & msg)
+{
+	char sql[4096] = {0};
+	snprintf(sql, sizeof(sql), "call consortactive_update(%llu,%u)", msg.m_nConsortId, msg.m_nActive);
+	LOG_DEBUG("sql:%s", sql);
+
+	bool result = mDBInterface.execSql(sql);
+	if(!result)
+	{
+		LOG_WARN("consortactive_update   failed");
+		return;
+	}
+}
+
+void PersistWorker::onConsortLoyalUpdate(PersistConsortLoyalUpdate & msg)
+{
+	char sql[4096] = {0};
+	snprintf(sql, sizeof(sql), "call consortloyal_update(%llu,%u,  %u, %llu,  %u, %llu,  %u, %llu,  %u, %llu)", msg.m_nPlayerUid, msg.m_nRefreshTimes,
+		msg.m_listXingxiaTasks.getn(0)->mValue.m_nTaskId,   msg.m_listXingxiaTasks.getn(0)->mValue.m_nGettime,
+			msg.m_listXingxiaTasks.getn(1)->mValue.m_nTaskId,   msg.m_listXingxiaTasks.getn(1)->mValue.m_nGettime,
+			msg.m_listXingxiaTasks.getn(2)->mValue.m_nTaskId,   msg.m_listXingxiaTasks.getn(2)->mValue.m_nGettime,
+			msg.m_listXingxiaTasks.getn(3)->mValue.m_nTaskId,   msg.m_listXingxiaTasks.getn(3)->mValue.m_nGettime
+		
+		);
+	LOG_DEBUG("sql:%s", sql);
+
+	bool result = mDBInterface.execSql(sql);
+	if(!result)
+	{
+		LOG_WARN("consortloyal_update   failed");
+		return;
+	}
+}
+
+void PersistWorker::onKitQueTimesUpdate(PersistConsortKitQueUpdate & msg)
+{
+	char sql[4096] = {0};
+	snprintf(sql, sizeof(sql), "call kitchentimes_update(%llu,%u)", msg.m_nPlayerUid, msg.m_nRefreshTimes);
+	LOG_DEBUG("sql:%s", sql);
+
+	bool result = mDBInterface.execSql(sql);
+	if(!result)
+	{
+		LOG_WARN("kitchentimes_update   failed");
+		return;
+	}
+}
+
+//更新公会商店刷新次数
+void PersistWorker::onBusinessTimeReset(PersistBusinessCatTimeReset & msg)
+{
+	char sql[4096] = {0};
+	snprintf(sql, sizeof(sql), "call businesscatreset_update(%llu)",  msg.m_nResetTime);
+	LOG_DEBUG("sql:%s", sql);
+
+	bool result = mDBInterface.execSql(sql);
+	if(!result)
+	{
+		LOG_WARN("businesscatreset_update   failed");
+		return;
+	}
+
+}
+
+//重置公会商店刷新次数和商店计数等级
+void PersistWorker::onBusinessTimesUpdate(PersistBusinessCatUpdate & msg)
+{
+	char sql[4096] = {0};
+	snprintf(sql, sizeof(sql), "call businesscattimes_update(%llu, %u, %u, %u, %u, %u, %u, %u, %u, %u)", msg.m_nPlayerUid, msg.m_nRefreshTimes,
+		msg.m_nBuyList.getn(0),  msg.m_nBuyList.getn(1),  msg.m_nBuyList.getn(2),  msg.m_nBuyList.getn(3), 
+		msg.m_nBuyList.getn(4),  msg.m_nBuyList.getn(5),  msg.m_nBuyList.getn(6),  msg.m_nBuyList.getn(7) );
+	LOG_DEBUG("sql:%s", sql);
+
+	bool result = mDBInterface.execSql(sql);
+	if(!result)
+	{
+		LOG_WARN("businesscattimes_update   failed");
+		return;
+	}
+}
+
+void PersistWorker::onEyeTimesUpdate(PersistEyeTimesUpdate & msg)
+{
+	char sql[4096] = {0};
+	snprintf(sql, sizeof(sql), "call eyetimesupdate(%llu, %u)", msg.m_nPlayeruid, msg.m_nEyeTimes );
+	LOG_DEBUG("sql:%s", sql);
+
+	bool result = mDBInterface.execSql(sql);
+	if(!result)
+	{
+		LOG_WARN("eyetimesupdate   failed");
+		return;
+	}
+}
+
+void PersistWorker::onTicketTimeReset(PersistTicketTimeReset & msg)
+{
+	char sql[4096] = {0};
+	snprintf(sql, sizeof(sql), "call tickettimereset(%llu)", msg.m_nResetTime );
+	LOG_DEBUG("sql:%s", sql);
+
+	bool result = mDBInterface.execSql(sql);
+	if(!result)
+	{
+		LOG_WARN("tickettimereset   failed");
+		return;
+	}
+}
+
+void PersistWorker::onTicketFriendUpdate(PersistTicketFriendUpdate & msg)
+{
+	char sql[4096] = {0};
+	snprintf(sql, sizeof(sql), "call ticketfriends_update('%s', %llu, %u )", msg.m_strData.c_str(), 
+		msg.m_nConsortuid, msg.m_nTicketid);
+	LOG_DEBUG("sql:%s", sql);
+
+	bool result = mDBInterface.execSql(sql);
+	if(!result)
+	{
+		LOG_WARN("ticketfriends_update   failed");
+		return;
+	}
+}
+
+void PersistWorker::onTicketQualityUpdate(PersistTicketQualityUpdate & msg)
+{
+	char sql[4096] = {0};
+	snprintf(sql, sizeof(sql), "call ticketquality_update(%u, %llu, %u )", msg.m_nQuality,
+		msg.m_nConsortuid, msg.m_nTicketid);
+	LOG_DEBUG("sql:%s", sql);
+
+	bool result = mDBInterface.execSql(sql);
+	if(!result)
+	{
+		LOG_WARN("ticketquality_update   failed");
+		return;
+	}
+}
+
+void PersistWorker::onTicketFriendInit(PersistTicketFriendInit & msg)
+{
+	MYSQL_RES* res = NULL;
+	LOG_DEBUG("Sql:%s", msg.m_strExe.c_str());
+	char  sqlchar[8096]={0};
+	strcpy(sqlchar,msg.m_strExe.c_str());
+	mDBInterface.execFreeSql(sqlchar, res);
+	
+}
+
+void PersistWorker::onTicketAllDel(PersistTicketAllDel & msg)
+{
+	char sql[1024]={0};
+	snprintf(sql,sizeof(sql),"truncate table ticketfriend");
+	LOG_DEBUG("Sql:%s", sql);
+	bool result = mDBInterface.execSql(sql);
+
+	if(!result)
+	{
+		LOG_WARN("truncate table ticketfriend failed.");
+	}
+}
+
+void PersistWorker::onTicketDataUpdate(PersistTicketDataUpdate & msg)
+{
+	char sql[1024]={0};
+	snprintf(sql,sizeof(sql),"call ticketfriends_update('%s', %llu, %u)",msg.m_strData.c_str(), msg.m_nConsortId, msg.m_nTicketId);
+	LOG_DEBUG("Sql:%s", sql);
+	bool result = mDBInterface.execSql(sql);
+
+	if(!result)
+	{
+		LOG_WARN("ticketfriends_update failed.");
+	}
+}
+
+void PersistWorker::onTicketSupportUpdate(PersistTicketSupport & msg)
+{
+	char sql[1024]={0};
+	snprintf(sql,sizeof(sql),"call ticketquality_update(%u, %llu, %u, '%s')",msg.m_nQuality, msg.m_nConsortId, msg.m_nTicketId,
+		msg.m_strFriends.c_str() );
+	LOG_DEBUG("Sql:%s", sql);
+	bool result = mDBInterface.execSql(sql);
+
+	if(!result)
+	{
+		LOG_WARN("ticketquality_update failed.");
+	}
+}
+
+void PersistWorker::onTicketAwardAdd(PersistTicketAwardAdd & msg)
+{
+	char sql[1024]={0};
+	snprintf(sql,sizeof(sql),"call addticketaward(%u, %llu, %u, %llu, %llu)",msg.m_nTicketId, msg.m_nAwardId, msg.m_nPeapleCnt, msg.m_nEndTime,
+		msg.m_nPlayeruid);
+	LOG_DEBUG("Sql:%s", sql);
+	bool result = mDBInterface.execSql(sql);
+
+	if(!result)
+	{
+		LOG_WARN("addticketaward failed.");
+	}
+}
+
+
+void PersistWorker::onTicketTimesUpdate(PersistTicketTimesUpdate & msg)
+{
+	char sql[1024]={0};
+	snprintf(sql,sizeof(sql),"call tickettimesupdate( %llu, %u)",msg.m_nPlayeruid,msg.m_nTimes );
+	LOG_DEBUG("Sql:%s", sql);
+	bool result = mDBInterface.execSql(sql);
+
+	if(!result)
+	{
+		LOG_WARN("tickettimesupdate failed.");
+	}
+}
+
+void PersistWorker::onTicketAwardDel(PersistTicketAwardDel & msg)
+{
+	char sql[1024]={0};
+	snprintf(sql,sizeof(sql),"call ticketawarddel( %llu)",msg.m_nPlayeruid );
+	LOG_DEBUG("Sql:%s", sql);
+	bool result = mDBInterface.execSql(sql);
+
+	if(!result)
+	{
+		LOG_WARN("tickettimesupdate failed.");
+	}
+}
+
+void PersistWorker::onTicketTimesReset(PersistTicketTimesReset & msg)
+{
+	char sql[4096] = {0};
+	snprintf(sql, sizeof(sql), "call consorttickettimesreset(%llu)", msg.resettime);
+	LOG_DEBUG("sql:%s", sql);
+
+	bool result = mDBInterface.execSql(sql);
+	if(!result)
+	{
+		LOG_WARN("consorttickettimesreset    failed");
+		return;
+	}
+}
+
+void PersistWorker::onLoyalTimesReset(PersistLoyalTimesReset & msg)
+{
+	char sql[4096] = {0};
+	snprintf(sql, sizeof(sql), "call consortloyalreset(%llu)", msg.resettime);
+	LOG_DEBUG("sql:%s", sql);
+
+	bool result = mDBInterface.execSql(sql);
+	if(!result)
+	{
+		LOG_WARN("consortloyalreset    failed");
+		return;
+	}
+}
+
+void PersistWorker::onKitchenTimesReset(PersistKitchenTimesReset & msg)
+{
+	char sql[4096] = {0};
+	snprintf(sql, sizeof(sql), "call consortkitchenreset(%llu)", msg.resettime);
+	LOG_DEBUG("sql:%s", sql);
+
+	bool result = mDBInterface.execSql(sql);
+	if(!result)
+	{
+		LOG_WARN("consortkitchenreset    failed");
+		return;
+	}
+}
+	
+void PersistWorker::onEyeTimesReset(PersistEyeTimesReset & msg)
+{
+	char sql[4096] = {0};
+	snprintf(sql, sizeof(sql), "call consorteyetimereset(%llu)", msg.resettime);
+	LOG_DEBUG("sql:%s", sql);
+
+	bool result = mDBInterface.execSql(sql);
+	if(!result)
+	{
+		LOG_WARN("consorteyetimereset    failed");
+		return;
+	}
+}
+
+void PersistWorker::onEloquenceUpdate(PersistEloquenceTimesUpdate & msg)
+{
+	char sql[4096] = {0};
+	snprintf(sql, sizeof(sql), "call eloquencetimesupdate(%llu, %u)", msg.playeruid, msg.times);
+	LOG_DEBUG("sql:%s", sql);
+
+	bool result = mDBInterface.execSql(sql);
+	if(!result)
+	{
+		LOG_WARN("eloquencetimesupdate    failed");
+		return;
+	}
+}
+
+void PersistWorker::onEloquenceReset(PersistEloquenceTimesReset & msg)
+{
+	char sql[4096] = {0};
+	snprintf(sql, sizeof(sql), "call consorteloquencereset(%llu)", msg.resettime);
+	LOG_DEBUG("sql:%s", sql);
+
+	bool result = mDBInterface.execSql(sql);
+	if(!result)
+	{
+		LOG_WARN("eloquencetimesupdate    failed");
+		return;
+	}
+}
+
+void PersistWorker::onWoodTimesReset(PersistWoodTimesReset & msg)
+{
+	char sql[4096] = {0};
+	snprintf(sql, sizeof(sql), "call consortwoodcatreset(%llu)", msg.resettime);
+	LOG_DEBUG("sql:%s", sql);
+
+	bool result = mDBInterface.execSql(sql);
+	if(!result)
+	{
+		LOG_WARN("consortwoodcatreset    failed");
+		return;
+	}
+}
+
+void PersistWorker::onWoodTotalUpdate(PersistWoodTotalUpdate & msg)
+{
+	char sql[4096] = {0};
+	snprintf(sql, sizeof(sql), "call consortwoodtotal_update(%llu, %u, %u, %u,%u)", msg.consortid, msg.woodleft, msg.enhance1,
+		msg.enhance2, msg.enhance3);
+	LOG_DEBUG("sql:%s", sql);
+
+	bool result = mDBInterface.execSql(sql);
+	if(!result)
+	{
+		LOG_WARN("consortwoodtotal_update    failed");
+		return;
+	}
+}
+
+void PersistWorker::onWoodTotalReset(PersistWoodTotalReset & msg)
+{
+	char sql[4096] = {0};
+	snprintf(sql, sizeof(sql), "call consortwoodtotal_reset()");
+	LOG_DEBUG("sql:%s", sql);
+
+	bool result = mDBInterface.execSql(sql);
+	if(!result)
+	{
+		LOG_WARN("consortwoodtotal_reset    failed");
+		return;
+	}
+}
+
+void PersistWorker::onWoodSelfUpdate(PersistWoodSelfUpdate & msg)
+{
+	char sql[4096] = {0};
+	snprintf(sql, sizeof(sql), "call consortwoodself_update(%llu, %u, %u)", msg.playeruid, 
+		msg.times, msg.awardflag);
+	LOG_DEBUG("sql:%s", sql);
+
+	bool result = mDBInterface.execSql(sql);
+	if(!result)
+	{
+		LOG_WARN("consortwoodself_update    failed");
+		return;
+	}
+}
+
+void PersistWorker::onTicketAwardUpdate(PersistTicketAwardUpdate & msg)
+{
+	char sql[1024]={0};
+	snprintf(sql,sizeof(sql),"call updateticketaward(%u, %llu, %u, %llu, %llu)",msg.m_nTicketId, msg.m_nAwardId, msg.m_nPeapleCnt, msg.m_nEndTime,
+		msg.m_nPlayeruid );
+	LOG_DEBUG("Sql:%s", sql);
+	bool result = mDBInterface.execSql(sql);
+
+	if(!result)
+	{
+		LOG_WARN("updateticketaward failed.");
+	}
 }
 
 
@@ -9885,7 +12299,7 @@ void PersistWorker::onClearEmail(PersistClearEmail &msg)
 void PersistWorker::onFashionAdd(FashionAdd &msg)
 {
 	char sql[2048] = {0};
-	snprintf(sql, sizeof(sql), "call fashions_insert(%llu, %llu, %llu)", msg.mPlayerUid, msg.mFashionUid, msg.mFashionId);
+	snprintf(sql, sizeof(sql), "call fashions_insert(%llu,  %llu)", msg.mPlayerUid, msg.mFashionId);
 
 	LOG_DEBUG("Sql:%s", sql);
 	bool result = mDBInterface.execSql(sql);
@@ -9953,7 +12367,7 @@ void PersistWorker::loadAllPlayerTest()
 void PersistWorker::onCharactorInsert(CharactorAdd & msg)
 {
 	char charactorsql[4096] = {0};
-	snprintf(charactorsql,sizeof(charactorsql),"call charactor_insert(%llu, %llu, %llu, %llu)",  msg.charactorUid, msg.fashionId,
+	snprintf(charactorsql,sizeof(charactorsql),"call charactor_insert( %llu, %llu, %llu)",  msg.fashionId,
 		msg.charactorId, msg.playerUid);
 	LOG_DEBUG("Sql:%s", charactorsql);
 	bool charactorRes = mDBInterface.execSql(charactorsql);
@@ -9969,13 +12383,354 @@ void PersistWorker::onCharactorInsert(CharactorAdd & msg)
 void PersistWorker::onCharactorUpdate(CharactorUpdate & msg)
 {
 	char charactorsql[4096] = {0};
-	snprintf(charactorsql,sizeof(charactorsql),"call charactor_update(%llu, %llu)",  msg.charactorUid, msg.fashionId);
+	snprintf(charactorsql,sizeof(charactorsql),"call charactor_update(%llu, %llu,%llu)",  msg.charactorid, msg.playeruid,msg.fashionId);
 	LOG_DEBUG("Sql:%s", charactorsql);
 
 	bool charactorRes = mDBInterface.execSql(charactorsql);
 
 	if(!charactorRes)
 	{
-		LOG_WARN("charactor_update failed, characteruid: %llu",  msg.charactorUid);
+		LOG_WARN("charactor_update failed, characteruid: %llu",   msg.charactorid);
+	}
+}
+
+void PersistWorker::onPersistGMResetTongbaoReq(PersistGMResetTongbao & msg)
+{
+	char charactorsql[4096] = {0};
+	snprintf(charactorsql,sizeof(charactorsql),"call gmresettongbao(%llu)",  msg.playeruid);
+	LOG_DEBUG("Sql:%s", charactorsql);
+
+	bool charactorRes = mDBInterface.execSql(charactorsql);
+
+	if(!charactorRes)
+	{
+		LOG_WARN("gmresettongbao failed, playeruid: %llu",  msg.playeruid);
+	}
+
+}
+
+void PersistWorker::onPersistGMResetMengchuReq(PersistGMResetMengchu & msg)
+{
+	char charactorsql[4096] = {0};
+	snprintf(charactorsql,sizeof(charactorsql),"call gmresetmengchu(%llu)",  msg.playeruid);
+	LOG_DEBUG("Sql:%s", charactorsql);
+
+	bool charactorRes = mDBInterface.execSql(charactorsql);
+
+	if(!charactorRes)
+	{
+		LOG_WARN("gmresetmengchu failed, playeruid: %llu",  msg.playeruid);
+	}
+}
+
+void PersistWorker::onPersistGMResetYushiGFReq(PersistGMResetYushiGF & msg)
+{
+	char charactorsql[4096] = {0};
+	snprintf(charactorsql,sizeof(charactorsql),"call gmresetyushigongfang(%llu)",  msg.playeruid);
+	LOG_DEBUG("Sql:%s", charactorsql);
+
+	bool charactorRes = mDBInterface.execSql(charactorsql);
+
+	if(!charactorRes)
+	{
+		LOG_WARN("gmresetyushigongfang failed, playeruid: %llu",  msg.playeruid);
+	}
+}
+
+void PersistWorker::onPersistGMResetJishiABReq(PersistGMResetJiShiAB & msg)
+{
+	char charactorsql[4096] = {0};
+	snprintf(charactorsql,sizeof(charactorsql),"call gmresetjishianbao(%llu)",  msg.playeruid);
+	LOG_DEBUG("Sql:%s", charactorsql);
+
+	bool charactorRes = mDBInterface.execSql(charactorsql);
+
+	if(!charactorRes)
+	{
+		LOG_WARN("gmresetjishianbao failed, playeruid: %llu",  msg.playeruid);
+	}
+}
+
+void PersistWorker::onPersistGMResetBashanSLReq(PersistGMResetBashanSL & msg)
+{
+	char charactorsql[4096] = {0};
+	snprintf(charactorsql,sizeof(charactorsql),"call gmresetbashansl(%llu)",  msg.playeruid);
+	LOG_DEBUG("Sql:%s", charactorsql);
+
+	bool charactorRes = mDBInterface.execSql(charactorsql);
+
+	if(!charactorRes)
+	{
+		LOG_WARN("gmresetbashansl failed, playeruid: %llu",  msg.playeruid);
+	}
+}
+
+void PersistWorker::onPersistGMResetWuxianTZReq(PersistGMResetWXTZ & msg)
+{
+	char charactorsql[4096] = {0};
+	snprintf(charactorsql,sizeof(charactorsql),"call gmresetwuxiantz(%llu, %u)",  msg.playeruid, msg.reset);
+	LOG_DEBUG("Sql:%s", charactorsql);
+
+	bool charactorRes = mDBInterface.execSql(charactorsql);
+
+	if(!charactorRes)
+	{
+		LOG_WARN("gmresetwuxiantz failed, playeruid: %llu",  msg.playeruid);
+	}
+}
+
+void PersistWorker::onPersistGMResetCourage(PersistGMCourage & msg)
+{
+	char charactorsql[4096] = {0};
+	snprintf(charactorsql,sizeof(charactorsql),"call gmresetcourage(%llu, %u)",  msg.playeruid, msg.reset);
+	LOG_DEBUG("Sql:%s", charactorsql);
+
+	bool charactorRes = mDBInterface.execSql(charactorsql);
+
+	if(!charactorRes)
+	{
+		LOG_WARN("gmresetcourage failed, playeruid: %llu",  msg.playeruid);
+	}
+
+}
+
+void PersistWorker::onPersistGMResetPaiWei(PersistGMPaiWei& msg)
+{
+	char charactorsql[4096] = {0};
+	snprintf(charactorsql,sizeof(charactorsql),"call gmresetpaiwei(%llu, %u)",  msg.playeruid, msg.reset);
+	LOG_DEBUG("Sql:%s", charactorsql);
+
+	bool charactorRes = mDBInterface.execSql(charactorsql);
+
+	if(!charactorRes)
+	{
+		LOG_WARN("gmresetpaiwei failed, playeruid: %llu",  msg.playeruid);
+	}
+}
+
+void PersistWorker::onPersistGMResetPaiWeiBuy(PersistGMPaiWeiBuy& msg)
+{
+	char charactorsql[4096] = {0};
+	snprintf(charactorsql,sizeof(charactorsql),"call gmresetpaiweibuy(%llu, %u)",  msg.playeruid, msg.reset);
+	LOG_DEBUG("Sql:%s", charactorsql);
+
+	bool charactorRes = mDBInterface.execSql(charactorsql);
+
+	if(!charactorRes)
+	{
+		LOG_WARN("gmresetpaiweibuy failed, playeruid: %llu",  msg.playeruid);
+	}
+
+}
+
+void PersistWorker::onPersistGMReset12HaoJiao(PersistGM12HaoJiao & msg)
+{
+	char charactorsql[4096] = {0};
+	snprintf(charactorsql,sizeof(charactorsql),"call gmreset12haojiao(%llu, %u)",  msg.playeruid, msg.reset);
+	LOG_DEBUG("Sql:%s", charactorsql);
+
+	bool charactorRes = mDBInterface.execSql(charactorsql);
+
+	if(!charactorRes)
+	{
+		LOG_WARN("gmreset12haojiao failed, playeruid: %llu",  msg.playeruid);
+	}
+}
+
+void PersistWorker::onPersistGMResetFoodCook(PersistGMCookFood & msg)
+{
+	char charactorsql[4096] = {0};
+	snprintf(charactorsql,sizeof(charactorsql),"call gmresetfoodcook(%llu, %u)",  msg.playeruid, msg.reset);
+	LOG_DEBUG("Sql:%s", charactorsql);
+
+	bool charactorRes = mDBInterface.execSql(charactorsql);
+
+	if(!charactorRes)
+	{
+		LOG_WARN("gmresetfoodcook failed, playeruid: %llu",  msg.playeruid);
+	}
+}
+
+void PersistWorker::onPersistGMResetServantCall1(PersistGMServantOnce & msg)
+{
+	char charactorsql[4096] = {0};
+	snprintf(charactorsql,sizeof(charactorsql),"call gmresetservant1(%llu, %u)",  msg.playeruid, msg.reset);
+	LOG_DEBUG("Sql:%s", charactorsql);
+
+	bool charactorRes = mDBInterface.execSql(charactorsql);
+
+	if(!charactorRes)
+	{
+		LOG_WARN("gmresetservant1 failed, playeruid: %llu",  msg.playeruid);
+	}
+}
+
+void PersistWorker::onPersistGMResetServantCall10(PersistGMServantTen & msg)
+{
+	char charactorsql[4096] = {0};
+	snprintf(charactorsql,sizeof(charactorsql),"call gmresetservant10(%llu, %u)",  msg.playeruid, msg.reset);
+	LOG_DEBUG("Sql:%s", charactorsql);
+
+	bool charactorRes = mDBInterface.execSql(charactorsql);
+
+	if(!charactorRes)
+	{
+		LOG_WARN("gmresetservant10 failed, playeruid: %llu",  msg.playeruid);
+	}
+}
+
+void PersistWorker::onPersistGMResetDailyTask(PersistGMResetDailyTask & msg)
+{
+	char charactorsql[4096] = {0};
+	snprintf(charactorsql,sizeof(charactorsql),"call gmresetalldailytask(%llu, %u)",  msg.playeruid, msg.reset);
+	LOG_DEBUG("Sql:%s", charactorsql);
+
+	bool charactorRes = mDBInterface.execSql(charactorsql);
+
+	if(!charactorRes)
+	{
+		LOG_WARN("gmresetalldailytask failed, playeruid: %llu",  msg.playeruid);
+	}
+}
+
+
+void PersistWorker::onPersistGMMonthSign(PersistGMResetMonthSign & msg )
+{
+	char charactorsql[4096] = {0};
+	snprintf(charactorsql,sizeof(charactorsql),"call gmresetmonthsign(%llu, %llu)",  msg.playeruid, msg.reset);
+	LOG_DEBUG("Sql:%s", charactorsql);
+
+	bool charactorRes = mDBInterface.execSql(charactorsql);
+
+	if(!charactorRes)
+	{
+		LOG_WARN("gmresetmonthsign failed, playeruid: %llu",  msg.playeruid);
+	}
+
+}
+
+void PersistWorker::onPersistGMSevenDay(PersistGMResetSevenday & msg )
+{
+	char charactorsql[4096] = {0};
+	snprintf(charactorsql,sizeof(charactorsql),"call gmresetsevenday(%llu, %llu)",  msg.playeruid, msg.reset);
+	LOG_DEBUG("Sql:%s", charactorsql);
+
+	bool charactorRes = mDBInterface.execSql(charactorsql);
+
+	if(!charactorRes)
+	{
+		LOG_WARN("gmresetsevenday failed, playeruid: %llu",  msg.playeruid);
+	}
+}
+
+void PersistWorker::onPersistGMSevenTrain(PersistGMResetSeventrain & msg )
+{
+	char charactorsql[4096] = {0};
+	snprintf(charactorsql,sizeof(charactorsql),"call gmresetseventrain(%llu, %llu)",  msg.playeruid, msg.reset);
+	LOG_DEBUG("Sql:%s", charactorsql);
+
+	bool charactorRes = mDBInterface.execSql(charactorsql);
+
+	if(!charactorRes)
+	{
+		LOG_WARN("gmresetseventrain failed, playeruid: %llu",  msg.playeruid);
+	}
+}
+
+void PersistWorker::onPersistGMResetGrowFound(PersistGMResetGrowfound & msg)
+{
+	char charactorsql[4096] = {0};
+	snprintf(charactorsql,sizeof(charactorsql),"call gmresetgrowfound(%llu, %llu)",  msg.playeruid, msg.reset);
+	LOG_DEBUG("Sql:%s", charactorsql);
+
+	bool charactorRes = mDBInterface.execSql(charactorsql);
+
+	if(!charactorRes)
+	{
+		LOG_WARN("gmresetgrowfound failed, playeruid: %llu",  msg.playeruid);
+	}
+}
+
+void PersistWorker::onPersistGMResetFenshi(PersistGMResetFenshi &msg)
+{
+	char charactorsql[4096] = {0};
+	snprintf(charactorsql,sizeof(charactorsql),"call gmresetfenshi(%llu, %llu)",  msg.playeruid, msg.reset);
+	LOG_DEBUG("Sql:%s", charactorsql);
+
+	bool charactorRes = mDBInterface.execSql(charactorsql);
+
+	if(!charactorRes)
+	{
+		LOG_WARN("gmresetfenshi failed, playeruid: %llu",  msg.playeruid);
+	}
+}
+
+void PersistWorker::onPersistGMResetOnlineAward(PersistGMResetOnlineAward &msg)
+{
+	char charactorsql[4096] = {0};
+	snprintf(charactorsql,sizeof(charactorsql),"call gmresetonlineaward(%llu, %llu)",  msg.playeruid, msg.reset);
+	LOG_DEBUG("Sql:%s", charactorsql);
+
+	bool charactorRes = mDBInterface.execSql(charactorsql);
+
+	if(!charactorRes)
+	{
+		LOG_WARN("gmresetonlineaward failed, playeruid: %llu",  msg.playeruid);
+	}
+}
+
+void PersistWorker::onPersistGMResetBaiCaiShen(PersistGMResetBaiCaiShen &msg)
+{
+	char charactorsql[4096] = {0};
+	snprintf(charactorsql,sizeof(charactorsql),"call gmresetbaicaishen(%llu, %llu)",  msg.playeruid, msg.reset);
+	LOG_DEBUG("Sql:%s", charactorsql);
+
+	bool charactorRes = mDBInterface.execSql(charactorsql);
+
+	if(!charactorRes)
+	{
+		LOG_WARN("gmresetbaicaishen failed, playeruid: %llu",  msg.playeruid);
+	}
+}
+
+void PersistWorker::onPersistGMResetStrengthBuy(PersistGMResetBuyStrength & msg)
+{
+	char charactorsql[4096] = {0};
+	snprintf(charactorsql,sizeof(charactorsql),"call gmresetbuystrength(%llu, %llu)",  msg.playeruid, msg.reset);
+	LOG_DEBUG("Sql:%s", charactorsql);
+
+	bool charactorRes = mDBInterface.execSql(charactorsql);
+
+	if(!charactorRes)
+	{
+		LOG_WARN("gmresetbuystrength failed, playeruid: %llu",  msg.playeruid);
+	}
+}
+
+void PersistWorker::onPersistGMResetLianPu(PersistGMResetLianPu & msg)
+{
+	char charactorsql[4096] = {0};
+	snprintf(charactorsql,sizeof(charactorsql),"call gmresetlianpu(%llu, %llu)",  msg.playeruid, msg.reset);
+	LOG_DEBUG("Sql:%s", charactorsql);
+
+	bool charactorRes = mDBInterface.execSql(charactorsql);
+
+	if(!charactorRes)
+	{
+		LOG_WARN("gmresetlianpu failed, playeruid: %llu",  msg.playeruid);
+	}
+}
+
+void PersistWorker::onPersistGMResetTB(PersistGMResetTB & msg)
+{
+	char charactorsql[4096] = {0};
+	snprintf(charactorsql,sizeof(charactorsql),"call gmresettongbaos(%llu, %llu)",  msg.playeruid, msg.reset);
+	LOG_DEBUG("Sql:%s", charactorsql);
+
+	bool charactorRes = mDBInterface.execSql(charactorsql);
+
+	if(!charactorRes)
+	{
+		LOG_WARN("gmresettongbaos failed, playeruid: %llu",  msg.playeruid);
 	}
 }

@@ -46,25 +46,23 @@ void DetailInfoManager::release()
 void DetailInfoManager::setDetailInfo(std::string detailInfo)
 {
     UInt64 playerUid = m_pPlayer->getPlayerGuid(); 
-
-	LOG_INFO("player %llu setDetailInfo", playerUid);
-
-	LOG_INFO("playerIdStr is %s",m_playerIdStr.c_str());
-	LOG_INFO("detailInfo is %s", detailInfo.c_str());
-
+	
      #ifdef __linux__
 	
 	 RedisManager::getSingleton().set(m_playerIdStr, detailInfo);
 	
       #endif
-	 LOG_INFO("player %llu setDetailInfo success", playerUid);	
 }
 
 std::string DetailInfoManager::getDetailInfoSelf()
 {
-	
+	UInt32 isRobot = 0;
 	const ConnId& connId = m_pPlayer->getConnId();
 
+	if (lynxAtoi<UInt64>(m_playerIdStr.c_str())  > RobotMinRoleID && lynxAtoi<UInt64>(m_playerIdStr.c_str()) <RobotMaxRoleID)
+	{
+		isRobot = 1;
+	}
 	std::string detailInfo = "";	
      #ifdef __linux__
          detailInfo =  RedisManager::getSingleton().get(m_playerIdStr);
@@ -74,6 +72,7 @@ std::string DetailInfoManager::getDetailInfoSelf()
 	clientDetailInfoResp.mPacketID = BOC_CLIENTDETAILINFO_RESP;
 	Json::Value root;
 	root["detailData"] = detailInfo;
+	root["isRobot"] = isRobot;
 	Json::StyledWriter writer;
 	
 	clientDetailInfoResp.mRespJsonStr = writer.write(root);
@@ -86,6 +85,7 @@ std::string DetailInfoManager::getDetailInfoSelf()
 
 std::string DetailInfoManager::getDetailInfo(std::string playerUidStr)
 {
+	UInt32 isRobot = 0;
 	const ConnId& connId = m_pPlayer->getConnId();
 
 	std::string detailInfo = "";	
@@ -99,10 +99,16 @@ std::string DetailInfoManager::getDetailInfo(std::string playerUidStr)
 		#endif		
 	}
 
+	if (lynxAtoi<UInt64>(playerUidStr.c_str())  > RobotMinRoleID && lynxAtoi<UInt64>(playerUidStr.c_str()) <RobotMaxRoleID)
+	{
+		isRobot = 1;
+	}
+
 	GCClientDetailInfoResp clientDetailInfoResp;
 	clientDetailInfoResp.mPacketID = BOC_CLIENTDETAILINFO_RESP;
 	Json::Value root;
 	root["detailData"] = detailInfo;
+	root["isRobot"] = isRobot;
 	Json::StyledWriter writer;
 
 	clientDetailInfoResp.mRespJsonStr = writer.write(root);

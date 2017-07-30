@@ -5,6 +5,7 @@
 #include "../CommonLib/MsgfireInfoToJson.h"
 #include "../CommonLib/CommonLib.h"
 #include "../PersistSystem.h"
+#include "FireConfirmManager.h"
 
 namespace Lynx
 {
@@ -71,7 +72,7 @@ typedef Map<UInt32,UInt32> ResetStagesMap;
 // 	};
 	struct TwelvePalaceUnlockResp	
 	{
-		TwelvePalaceUnlockResp(): id(0),doType(0),num(0),result(0),gold(0),buyTimes(0){}
+		TwelvePalaceUnlockResp(): id(0),doType(0),num(0),result(0),gold(0),buyTimes(0),twelvePalaceBuyTimes(0){}
 
 		UInt32 id;
 		UInt32 doType;
@@ -79,6 +80,9 @@ typedef Map<UInt32,UInt32> ResetStagesMap;
 		UInt32 result;
 		UInt32 gold;
 		UInt32 buyTimes;
+		UInt32 twelvePalaceBuyTimes;
+		Json::Value allAttr;//发送物品属性
+		Json::Value stages;
 
 		std::string convertDataToJson()
 		{
@@ -89,6 +93,10 @@ typedef Map<UInt32,UInt32> ResetStagesMap;
 			root["result"] = Json::Value(result);
 			root["gold"] = Json::Value(gold);
 			root["buyTimes"] = Json::Value(buyTimes);
+			root["twelvePalaceBuyTimes"] = Json::Value(twelvePalaceBuyTimes);
+			root["allAttr"] = Json::Value(allAttr);
+			root["stages"] = Json::Value(stages);
+
 			Json::FastWriter writer;  
 			std::string strWrite = writer.write(root);
 			return strWrite;
@@ -129,6 +137,7 @@ typedef Map<UInt32,UInt32> ResetStagesMap;
 		UInt32 result;
 		Guid otherPlayerID;
 		UInt32 isRobot;//1是机器人
+		List<UInt32> confirmIDs;
 		std::string otherPlayer;
 
 		std::string convertDataToJson()
@@ -141,6 +150,13 @@ typedef Map<UInt32,UInt32> ResetStagesMap;
 			root["otherPlayerID"] = Json::Value(otherPlayerID);
 			root["isRobot"] = Json::Value(isRobot);
 			root["otherPlayer"] = otherPlayer;
+			for(List<UInt32>::Iter * iter =  confirmIDs.begin();iter !=NULL;iter = confirmIDs.next(iter))
+			{
+				root["confirmIDs"].append(iter->mValue);
+
+			}
+
+
 			Json::FastWriter writer;  
 			std::string strWrite = writer.write(root);
 			return strWrite;
@@ -161,6 +177,7 @@ typedef Map<UInt32,UInt32> ResetStagesMap;
 		UInt32 mopupTimes;
 		List<AwardMonsterDamage> awardMonsterList;
 		List<UInt32> awardTypes;
+		List<FireConfirm> fireConfirmData;
 // 		List<UInt32> useList;//食物1，食物2，食物3，精英
 
 
@@ -194,6 +211,27 @@ typedef Map<UInt32,UInt32> ResetStagesMap;
 					awardMonsterDamage.times  = root["awardMonsterList"][i]["times"].asUInt();
 					awardMonsterList.insertTail(awardMonsterDamage);
 				}
+				for(int i =0; i <root["fireConfirmData"].size();i++)
+				{
+					FireConfirm fireConfirm;
+					fireConfirm.index  = root["fireConfirmData"][i]["index"].asUInt();
+					fireConfirm.count  = root["fireConfirmData"][i]["count"].asUInt();
+					fireConfirm.keyValue.key  = root["fireConfirmData"][i]["keyValue"]["key"].asUInt();
+					fireConfirm.keyValue.value  = root["fireConfirmData"][i]["keyValue"]["value"].asUInt();
+
+					for(int ii =0; ii <root["fireConfirmData"][i]["groupList"].size();ii++)
+					{
+						IndexList indexList;
+						List<UInt32> valueList;
+						indexList.subIndex = root["fireConfirmData"][i]["groupList"][ii]["subIndex"].asUInt();
+						for(int iii =0; iii <root["fireConfirmData"][i]["groupList"][ii]["valueList"].size();iii++)
+						{							
+							valueList.insertTail(root["fireConfirmData"][i]["groupList"][ii]["valueList"][iii].asUInt());
+						}
+						fireConfirm.groupList.insertTail(indexList);
+					}
+					fireConfirmData.insertTail(fireConfirm);
+				}
 			}			
 		}
 		LYNX_MESSAGE_1(TWELVE_PALACE_END_REQ,CGTwelvePalaceEnd,std::string, jsonStr);
@@ -218,12 +256,14 @@ typedef Map<UInt32,UInt32> ResetStagesMap;
 		UInt32 mopupTimes;
 
 
+		
+		Json::Value stages;
 		Json::Value allAttr;//发送物品属性
 		List<Award> firstAwards;
 		List<Award> awards;
 		List<Goods> cost;
 		List<Card> cards;
-		List<Goods> monsterDropList;
+		List<Award> monsterDropList;
 		List<Goods> fixedList;
 		List<Goods> ends;
 
@@ -286,17 +326,22 @@ typedef Map<UInt32,UInt32> ResetStagesMap;
 					son["card"].append(leaf);
 				}
 				root["cards"].append(son);
-			}		
-
-			for(List<Goods>::Iter * iter = monsterDropList.begin(); iter != NULL; iter = monsterDropList.next(iter))
+			}	
+			for(List<Award>::Iter * it = monsterDropList.begin(); it != NULL; it = monsterDropList.next(it))			
 			{
-				Json::Value son;	
-				son.append(iter->mValue.resourcestype);
-				son.append(iter->mValue.subtype);
-				son.append(iter->mValue.num);
+				Json::Value son;
+				for(List<Goods>::Iter * iter = it->mValue.award.begin(); iter != NULL; iter = it->mValue.award.next(iter))
+				{
+					Json::Value leaf;
+					leaf.append(iter->mValue.resourcestype);
+					leaf.append(iter->mValue.subtype);
+					leaf.append(iter->mValue.num);
+
+					son["award"].append(leaf);
+				}
 				root["monsterDropList"].append(son);
 			}
-
+		
 			for(List<Goods>::Iter * iter = cost.begin(); iter != NULL; iter = cost.next(iter))
 			{
 				Json::Value son;	
@@ -320,16 +365,17 @@ typedef Map<UInt32,UInt32> ResetStagesMap;
 				root["fixedList"].append(son);
 			}
 
-			for(List<Goods>::Iter * iter = ends.begin(); iter != NULL; iter = ends.next(iter))
-			{
-				Json::Value son;	
-				son.append(iter->mValue.resourcestype);
-				son.append(iter->mValue.subtype);
-				son.append(iter->mValue.num);
-				root["ends"].append(son);
-			}
+// 			for(List<Goods>::Iter * iter = ends.begin(); iter != NULL; iter = ends.next(iter))
+// 			{
+// 				Json::Value son;	
+// 				son.append(iter->mValue.resourcestype);
+// 				son.append(iter->mValue.subtype);
+// 				son.append(iter->mValue.num);
+// 				root["ends"].append(son);
+// 			}
 
 			root["allAttr"] = Json::Value(allAttr);
+			root["stages"] = Json::Value(stages);
 
 			Json::FastWriter writer;  
 			std::string strWrite = writer.write(root);
@@ -361,11 +407,18 @@ typedef Map<UInt32,UInt32> ResetStagesMap;
 		TwelveBattleStartResp():id(0){}
 
 		UInt32 id;
+		List<UInt32> confirmIDs;
+
 	
 		std::string convertDataToJson()
 		{
 			Json::Value root;     	
 			root["id"] = Json::Value(id);
+			for(List<UInt32>::Iter * iter =  confirmIDs.begin();iter !=NULL;iter = confirmIDs.next(iter))
+			{
+				root["confirmIDs"].append(iter->mValue);
+			}
+
 			
 			Json::FastWriter writer;  
 			std::string strWrite = writer.write(root);
@@ -395,11 +448,6 @@ typedef Map<UInt32,UInt32> ResetStagesMap;
 
 		UInt32 getMinKey(Map<UInt64, StageTemplate> values,UInt32 flag );
 
-
-		void findSimilarPowerReq(Guid playerID,UInt32 times,UInt32 high,UInt32 low);
-
-
-
  		Map<UInt32,UInt32> *getResetStages(UInt64 playerID);
 
 		void addResetStages(UInt64 playerID,UInt32 stageID,UInt32 count,bool needSave);
@@ -419,6 +467,8 @@ typedef Map<UInt32,UInt32> ResetStagesMap;
 		
 
 		bool checkStageClearance(Guid playerID,UInt32 stageId);
+
+		UInt32 getMonsterAward(UInt32 stageID,List<Goods> &itemList,List<AwardMonsterDamage> awardMonsterList,UInt32 isMopUp);
 
 		
 		

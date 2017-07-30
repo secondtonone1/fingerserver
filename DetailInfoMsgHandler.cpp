@@ -1,6 +1,7 @@
 #include "DetailInfoMsgHandler.h"
 #include "LogicSystem.h"
 #include "GameServer.h"
+#include "CommonMsgHandler.h"
 
 using namespace Lynx;
 
@@ -53,15 +54,26 @@ void DetailInfoMsgHandler::onClientUpdateInfoReq(const ConnId& connId, CGClientU
 	{
 		std::string detailInfo = root["detailData"].asString();
 		UInt32 playerPower = root["power"].asUInt();
-
+		UInt32 oldPower = player->getPlayerPower();
 		player->getDetailInfoManager().setDetailInfo(detailInfo);
-		player->setPlayerPower(playerPower);
-		player->getPersistManager().setDirtyBit(BASEDATABIT);
+		
+		
+
+		//将战力改变同步到戏班
+		if(oldPower != playerPower)
+		{
+			player->setPlayerPower(playerPower);
+			player->getConsortManager().updateConsortPower(oldPower, playerPower);
+			player->getPersistManager().setDirtyBit(BASEDATABIT);
+		}
 	}
 	else
 	{
 		LOG_INFO("empty message setDetailInfo!");
 	}
+
+	SyncTimeReq syncResp;
+	CommonMsgHandler::onSyncTimeReq(connId, syncResp);
 }
 
 
@@ -96,8 +108,33 @@ void DetailInfoMsgHandler::onRenameReq(const ConnId& connId, CGPlayerRenameReq&m
 		std::string newname = root["name"].asString();
 		std::string oldStr = player->getPlayerInfoManager().rename(newname);
 	
-		
-		player->setPlayerGold(gold - 2500);
+		//之前改过名字则返回值为空
+		if(oldStr.empty() )
+		{
+			GCPlayerRenameResp renameResp;
+			renameResp.mPacketID = BOC_PLAYERRENAME_RESP;
+			Json::Value root;
+			root["errorId"] = LynxErrno::NameChangeOnce;
+			
+
+			Json::StyledWriter writer;	
+			renameResp.mRespJsonStr = writer.write(root);
+			cout << renameResp.mRespJsonStr;
+			NetworkSystem::getSingleton().sendMsg(renameResp, connId);
+
+
+			return;
+		}
+
+
+		Goods goods;
+		List<Goods> itemList;
+
+		goods.resourcestype =AWARD_BASE;
+		goods.subtype = AWARD_BASE_GOLD;
+		goods.num = 0 - 2500;
+		itemList.insertTail(goods);
+		GiftManager::getSingleton().addToPlayer(player->getPlayerGuid(),REFLASH_AWARD,itemList,MiniLog5);
 
 	  player->getPersistManager().setDirtyBit(BASEDATABIT);
 

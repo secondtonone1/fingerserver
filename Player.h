@@ -27,6 +27,7 @@
 #include "EmailManager.h"
 #include "CharactorManager.h"
 #include "AchieveManager.h"
+#include "ConsortManager.h"
 
 #include "PlayerAttrData.h"
 #include "../Ranking/RankingPersonal.h"
@@ -66,6 +67,7 @@ namespace Lynx
 		friend class EmailManager;
 		friend class AchieveManager;
 		friend class CharactorManager;
+		friend class ConsortManager;
 
 		bool operator < (const Player & player)
 		{
@@ -92,14 +94,21 @@ namespace Lynx
         const UInt32 getPlayerLeval() const { return mPlayerData.mBaseData.m_nLevel; }
 		void setPlayerLeval(UInt32 num)  {  mPlayerData.mBaseData.m_nLevel = num ; }
 
+		 const UInt64 getPlayerAccountID() const { return mPlayerData.mBaseData.m_accountID; }
+
         const UInt32 getPlayerExp() const { return mPlayerData.mBaseData.m_nLevelExp; }
 		void setPlayerExp(UInt32 num)  {  mPlayerData.mBaseData.m_nLevelExp = num ; }
+
+
+		
 
 		const std::string& getPlayerTitle() const { return mPlayerData.mBaseData.m_strPlayerTitle; }
 		void setPlayerTitle(std::string& num)  {  mPlayerData.mBaseData.m_strPlayerTitle = num ; }
 
 		const UInt32 getVipLevel() const { return mPlayerData.mBaseData.m_nVipLevel; }
-		void setVipLevel(UInt32 num)  {  mPlayerData.mBaseData.m_nVipLevel = num ; }
+// 		void setVipLevel(UInt32 num)  {  mPlayerData.mBaseData.m_nVipLevel = num ; }
+
+		 const UInt32 getPlayerVIPExp() const { return mPlayerData.mBaseData.m_nVipExp; }
 
 		const PlayerChapterList getChapterList() const { return mPlayerData.mChapterListData; }
 		void setchapterList(PlayerChapterList num)  {  mPlayerData.mChapterListData = num ; }
@@ -114,6 +123,13 @@ namespace Lynx
 		const PlayerShopData &getPlayerShopData() const { return mPlayerData.mPlayerShopData; }
 		void setPlayerShopData(PlayerShopData num)  {  mPlayerData.mPlayerShopData = num ; }
 
+		const PlayerOnlineDay &getPlayerOnlineDay() const { return mPlayerData.mPlayerOnlineDay; }
+		void setPlayerOnlineDay(PlayerOnlineDay num)  {  mPlayerData.mPlayerOnlineDay = num ; }
+
+		
+
+		const PlayerJewelryData &getJewelryData() const { return mPlayerData.mJewelryData; }
+		void setJewelryData(PlayerJewelryData num)  {  mPlayerData.mJewelryData = num ; }
 
 		
 		 List<KeyValue> getChapterUnlocked()  { return mPlayerData.mChapterListData.m_ChapterUnlocked; }
@@ -127,7 +143,9 @@ namespace Lynx
 		void setPlayerModelID(UInt32 num)  {  mPlayerData.mBaseData.m_nModelID = num ; }
 
         const UInt64 getPlayerCoin() const { return mPlayerData.mBaseData.m_nCoin; }
-		void setPlayerCoin(UInt64 num)  {  mPlayerData.mBaseData.m_nCoin = num ; }
+
+		//不能直接用它，要用能纪录log的接口
+// 		void setPlayerCoin(UInt64 num)  {  mPlayerData.mBaseData.m_nCoin = num ; }
 
 		const UInt64 getPlayerRhyme() const { return mPlayerData.mRhymeData.m_RhymeSoul; }
 		void setPlayerRhyme(UInt64 num)  {  mPlayerData.mRhymeData.m_RhymeSoul = num ; }
@@ -152,12 +170,19 @@ namespace Lynx
 		void setPlayerPower(UInt32 num)  {  mPlayerData.mBaseData.m_nPower = num ; }
 
 		const UInt64 getPlayerGold() const { return mPlayerData.mBaseData.m_nGold; }
-		void setPlayerGold(UInt64 num)  {  mPlayerData.mBaseData.m_nGold = num ; }
+
+		//不能用它，用有l能纪录log的接口
+// 		void setPlayerGold(UInt64 num)  {  mPlayerData.mBaseData.m_nGold = num ; }
 
         const UInt64 getConnectCloseTime() const { return mConnectCloseTime; }
         const PlayerData& getPlayerData() const { return mPlayerData; }
 
 		const PlayerBaseData& getPlayerBaseData() const { return mPlayerData.mBaseData; }
+		const PlayerConsortData & getPlayerConsortData() const{return mPlayerData.mConsortData;}
+
+		/*const UInt32 & getPlayerPower() const{return mPlayerData.mBaseData.m_nPower;}
+		void  setPlayerPower(UInt32 power){mPlayerData.mBaseData.m_nPower = power;}*/
+		
 		void setPlayerBaseData(PlayerBaseData num)  {  mPlayerData.mBaseData = num ; }
 
 		const PlayerDailyResetData& getPlayerDailyResetData() const { return mPlayerData.mDailyRestData; }
@@ -247,6 +272,12 @@ namespace Lynx
 		const PlayerFoodsData& getFoodsData() const { return mPlayerData.mFoodsData; }
 		void setFoodsData(PlayerFoodsData value)  {  mPlayerData.mFoodsData = value ; }
 
+		const PlayerRankGameData& getRankGameData() const { return mPlayerData.mRankGameData; }
+		void setRankGameData(PlayerRankGameData value)  {  mPlayerData.mRankGameData = value ; }
+
+		const PlayerBuyCoinData& getBuyCoinData() const { return mPlayerData.mPlayerBuyCoinData; }
+		void setBuyCoinData(PlayerBuyCoinData value)  {  mPlayerData.mPlayerBuyCoinData = value ; }
+
 		const RecordsData& getRecordsData() const { return mPlayerData.mRecordsData; }
 		void setRecordsData(RecordsData value)  {  mPlayerData.mRecordsData = value ; }
 
@@ -322,12 +353,18 @@ namespace Lynx
 
 		FriendBlackManager & getFriendBlackManager(){return mFriendBlackManager;}
 
+		ConsortManager & getConsortManager(){return mConsortManager;}
+
+		
+
 		//激活条件类型，激活条件值，激活的界石索引
 		bool conditionRes(UInt32 conditionType, UInt64 conditionValue1, UInt32 conditionValue2);
 
-		List<Goods>  getExpAdd(UInt32 count);
+		UInt32  getExpAdd(UInt32 count,UInt32 &addStrength);
 
-		
+		UInt32  getVipExpAdd(UInt32 count,UInt32 &change);
+
+		void levelUpcheck(UInt64 playerID);
 		
 		//计算玩家角色等级裸体属性
 		void calNakedAttr();
@@ -335,8 +372,15 @@ namespace Lynx
 		//获取 玩家该角色等级的裸体属性
 		const PlayerAttrData &getLevelNakedAttr();
 
+		void setDelDirty();
+
+		void clearDelDirty();
+
+		bool isToDel();
+
     public:
         void checkLvActiveConditon();
+		void checkGuidInit();
 
     public:
        
@@ -431,10 +475,14 @@ namespace Lynx
 
 		AchieveManager mAchieveManager;
 
+		ConsortManager mConsortManager;
+
 		//是否投递最后保存的消息，0，未投递，1，已投递
 		UInt16	mLastPostState;
 
 		PlayerAttrData m_playerAttrData;
+
+		UInt32 mNeedDel;
         
 	};
 } // namespace Lynx

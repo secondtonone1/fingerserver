@@ -1,68 +1,135 @@
-#include "FireConfirmManager.h"
-#include "../LogicSystem.h"
-#include "StringConverter.h"
-#include "../PlatformLib/SerializeType.h"
-// #include "../CommonLib/PlayerData.h"
-#include "../PersistSystem.h"
-#include "../PlatformLib/Utilex.h"
-#include "../CommonLib/CopyFinishTime.h"
-#include "Gift.h"
+
 #include "BaseChang.h"
 
 using namespace Lynx;
-// 
-// void BaseChangManager::checkExp(const  ConnId& connId)
-// {
-// 	UInt32 level = 0;
-// 	UInt64 maxLevel = gPlayerExpTable->mMap.getMax()->mKey;	
-// 	Player* player = LogicSystem::getSingleton().getPlayerByConnId(connId);
-// 	level = player->getVipLevel();
-// 	PlayerExpTemplate *nextLevelExpTemplate = gPlayerExpTable->get(level + 1);
-// 	UInt32 exp = player->getPlayerExp();
-// 
-// 	while(exp >= nextLevelExpTemplate->mExp)
-// 	{
-// 		exp -= nextLevelExpTemplate->mExp;
-// 		level += 1;
-// 
-// 		levelUp(connId,level);
-// 
-// 
-// 		if (level >= maxLevel)
-// 		{
-// 			break;
-// 		}
-// 		nextLevelExpTemplate = gPlayerExpTable->get(level + 1);
-// 
-// 	}
-// 	player->setPlayerExp(exp);
-// 
-// 	player->getPersistManager().setDirtyBit(BASEDATABIT);
-// 
-// 	GCPlayerDetailResp detailInfoResp;
-// 	detailInfoResp.mPacketID = BOC_PLAYER_DETAIL_RESP;
-// 	detailInfoResp.mRespJsonStr = player->getPlayerInfoManager().convertDetailInfoToJson();
-// 	NetworkSystem::getSingleton().sendMsg(detailInfoResp, connId);
-// 
-// 	
-// 
-// 
-// 	//sendbasedate
-// 
-// 
-// 
-// }
-// 
-// void BaseChangManager::levelUp(const  ConnId& connId,UInt32 level)
-// {
-// 	Player* player = LogicSystem::getSingleton().getPlayerByConnId(connId);
-// 
-// 	player->setPlayerLeval(level);
-// 
-// 	//角色属性，技能改变
-// 
-// 
-// }
+
+
+void BaseChangManager::checkStringToValue(UInt32 &dest,Json::Value &src)
+{
+	UInt32 testSize = -1;
+	char cMaxUinttoString[128];
+
+	sprintf(cMaxUinttoString,"%u",testSize);
+	std::string sMaxUinttoString = (string)cMaxUinttoString;
+	std::string inString = src.asString();
+
+	UInt32 inLength= strlen(inString.c_str());
+	UInt32 uintMaxLength =  strlen(sMaxUinttoString.c_str());
+
+	if (uintMaxLength < inLength ||(uintMaxLength == inLength&& sMaxUinttoString < inString))
+	{		
+		dest = 0;
+	}
+	else
+	{
+		dest =  lynxAtoi<UInt32>(inString.c_str());
+	}
+
+}
+void BaseChangManager::checkStringToValue(UInt64 &dest,Json::Value &src)
+{
+	UInt64 testSize = -1;
+	char cMaxUinttoString[128];
+
+	sprintf(cMaxUinttoString,"%llu",testSize);
+	std::string sMaxUinttoString = (string)cMaxUinttoString;
+	std::string inString = src.asString();
+
+	UInt32 inLength= strlen(inString.c_str());
+	UInt32 uintMaxLength =  strlen(sMaxUinttoString.c_str());
+
+	if (uintMaxLength < inLength ||(uintMaxLength == inLength&& sMaxUinttoString < inString))
+	{		
+		dest = 0;
+	}
+	else
+	{
+		dest =  lynxAtoi<UInt64>(inString.c_str());
+	}
+
+}
+
+
+void BaseChangManager::cGChapterEndconvertJsonToData(CGChapterEnd &chapterEnd)
+{
+	Json::Reader reader;    
+	Json::Value root;    
+	if (reader.parse(chapterEnd.jsonStr, root))  // reader将Json字符串解析到root，root将包含Json里所有子元素      
+	{
+
+		checkStringToValue(chapterEnd.chapterID,root["chapterID"]);
+		checkStringToValue(chapterEnd.result,root["result"]);
+		checkStringToValue(chapterEnd.star,root["star"]);
+
+		AwardMonsterDamage awardMonsterDamage;
+		for(int i =0; i <root["awardMonsterList"].size();i++)
+		{
+			checkStringToValue(awardMonsterDamage.ID,root["awardMonsterList"][i]["ID"]);
+			checkStringToValue(awardMonsterDamage.damageType,root["awardMonsterList"][i]["damageType"]);
+			checkStringToValue(awardMonsterDamage.times,root["awardMonsterList"][i]["times"]);
+
+			chapterEnd.awardMonsterList.insertTail(awardMonsterDamage);
+		}
+
+		for(int i =0; i <root["fireConfirmData"].size();i++)
+		{
+			FireConfirm fireConfirm;
+			checkStringToValue(fireConfirm.index ,root["fireConfirmData"][i]["index"]);
+			checkStringToValue(fireConfirm.count,root["fireConfirmData"][i]["count"]);
+			checkStringToValue(fireConfirm.keyValue.key,root["fireConfirmData"][i]["key"]);
+			checkStringToValue(fireConfirm.keyValue.value,root["fireConfirmData"][i]["value"]);
+
+			for(int ii =0; ii <root["fireConfirmData"][i]["groupList"].size();ii++)
+			{
+				IndexList indexList;
+				checkStringToValue(indexList.subIndex,root["fireConfirmData"][i]["groupList"][ii]["subIndex"]);
+
+				for(int iii =0; iii <root["fireConfirmData"][i]["groupList"][ii]["valueList"].size();iii++)
+				{	
+					UInt64 tmp = 0;
+					checkStringToValue(tmp,root["fireConfirmData"][i]["groupList"][ii]["valueList"][iii]);
+					float ftmp = (float)tmp;
+					indexList.valueList.insertTail(ftmp);
+				}
+				fireConfirm.groupList.insertTail(indexList);
+			}
+			chapterEnd.fireConfirmData.insertTail(fireConfirm);
+		}
+	}
+}
 
 
 
+void BaseChangManager::rankGameEndconvertJsonToData(RankGameEndReq &rankGameEndReq)
+{
+	Json::Reader reader;    
+	Json::Value root;    
+	if (reader.parse(rankGameEndReq.strReceive, root))  // reader将Json字符串解析到root，root将包含Json里所有子元素      
+	{
+		checkStringToValue(rankGameEndReq.result,root["result"]);
+	
+		for(int i =0; i <root["fireConfirmData"].size();i++)
+		{
+			FireConfirm fireConfirm;
+			checkStringToValue(fireConfirm.index ,root["fireConfirmData"][i]["index"]);
+			checkStringToValue(fireConfirm.count,root["fireConfirmData"][i]["count"]);
+			checkStringToValue(fireConfirm.keyValue.key,root["fireConfirmData"][i]["key"]);
+			checkStringToValue(fireConfirm.keyValue.value,root["fireConfirmData"][i]["value"]);
+
+			for(int ii =0; ii <root["fireConfirmData"][i]["groupList"].size();ii++)
+			{
+				IndexList indexList;
+				checkStringToValue(indexList.subIndex,root["fireConfirmData"][i]["groupList"][ii]["subIndex"]);
+
+				for(int iii =0; iii <root["fireConfirmData"][i]["groupList"][ii]["valueList"].size();iii++)
+				{	
+					UInt32 tmp = 0;
+					checkStringToValue(tmp,root["fireConfirmData"][i]["groupList"][ii]["valueList"][iii]);
+					indexList.valueList.insertTail(tmp);
+				}
+				fireConfirm.groupList.insertTail(indexList);
+			}
+			rankGameEndReq.fireConfirmData.insertTail(fireConfirm);
+		}
+	}
+}

@@ -128,7 +128,26 @@ namespace Lynx
 		LYNX_MESSAGE_2(EMAIL_GETONCE_RESP, EmailGetOnceResp, UInt16, mPacketID, std::string, mRespJsonStr);
 	};
 	
+	struct EmailDelResp
+	{
+		EmailDelResp(): mPacketID(EMAIL_DEL_RESP), mRespJsonStr("") {}
 
+		UInt16	mPacketID;
+		std::string 	mRespJsonStr;
+		LYNX_MESSAGE_2(EMAIL_DEL_RESP, EmailDelResp, UInt16, mPacketID, std::string, mRespJsonStr);
+	};
+
+	struct EmailDelOnceResp
+	{
+		EmailDelOnceResp(): mPacketID(EMAIL_DELONCE_RESP), mRespJsonStr("") {}
+
+		UInt16	mPacketID;
+		std::string 	mRespJsonStr;
+		LYNX_MESSAGE_2(EMAIL_DELONCE_RESP, EmailDelOnceResp, UInt16, mPacketID, std::string, mRespJsonStr);
+	};
+	
+	
+	
 
 }// namespace Lynx
 

@@ -4,6 +4,9 @@
 #include "../PersistSystem.h"
 #include "../PlatformLib/Utilex.h"
 #include "Shop.h"
+#include "GlobalValue.h"
+#include "../TimeManager.h"
+#include "RankGame.h"
 
 using namespace Lynx;
 
@@ -21,18 +24,22 @@ void ShopManager::onShopReq(const  ConnId& connId, ShopReq & msg)
 		return;
 	}
 
-	if (msg.shopType == MysticalShop)
+	if (msg.shopType == MysticalShop||msg.shopType == ServantShop||msg.shopType == CoinShop)
 	{
-		resp.result = ShopManager::getSingleton().getMysticalShopInfo( player->getPlayerGuid(),msg.reqType,resp);
+		resp.result = ShopManager::getSingleton().getShopInfo( player->getPlayerGuid(),msg.reqType,msg.shopType,resp);
 	}
-	else if (msg.shopType == ServantShop)
-	{
-		resp.result = ShopManager::getSingleton().getServantShopInfo( player->getPlayerGuid(),msg.reqType,resp);
-	}
+// 	else if (msg.shopType == ServantShop)
+// 	{
+// 		resp.result = ShopManager::getSingleton().getServantShopInfo( player->getPlayerGuid(),msg.reqType,resp);
+// 	}
 	else if (msg.shopType == GiftShop)
 	{
 		resp.result = ShopManager::getSingleton().getGiftShopInfo( player->getPlayerGuid(),msg.reqType,resp);
 	}
+// 	else if (msg.shopType == CoinShop)
+// 	{
+// 		resp.result = ShopManager::getSingleton().getGiftShopInfo( player->getPlayerGuid(),msg.reqType,resp);
+// 	}
 	resp.gold = player->getPlayerGold();
 
 	if (msg.needSend == 1)
@@ -40,6 +47,12 @@ void ShopManager::onShopReq(const  ConnId& connId, ShopReq & msg)
 		std::string jsonStr = resp.convertDataToJson();
 		NetworkSystem::getSingleton().sender( connId,SHOP_INFO_RESP,jsonStr);
 	}	
+
+	if(msg.shopType == MysticalShop&&msg.reqType == 1&&resp.result == LynxErrno::None)
+	{
+		//更新七日训
+		LogicSystem::getSingleton().updateSevenDayTask(player->getPlayerGuid(),SDT14,1);
+	}
 }
 void ShopManager::onShopBuyReq(const  ConnId& connId, ShopBuyReq & msg)
 {
@@ -62,7 +75,7 @@ void ShopManager::onShopBuyReq(const  ConnId& connId, ShopBuyReq & msg)
 	msg1.needSend = 0;
 	ShopManager::getSingleton().onShopReq(connId,msg1);
 
-	if (msg.shopType == MysticalShop ||msg.shopType == ServantShop )
+	if (msg.shopType == MysticalShop ||msg.shopType == ServantShop ||msg.shopType == CoinShop)
 	{
 		ShopManager::getSingleton().dealMysticalshopbuy(player->getPlayerGuid(),msg.shopType,msg.position,resp);
 	}
@@ -71,6 +84,10 @@ void ShopManager::onShopBuyReq(const  ConnId& connId, ShopBuyReq & msg)
 		resp.result = ShopManager::getSingleton().dealGiftshopbuy(player->getPlayerGuid(),msg.shopType,msg.position,resp);
 	}
 
+	if (msg.shopType ==ServantShop &&resp.result == LynxErrno::None )
+	{
+		LogicSystem::getSingleton().updateSevenDayTask(player->getPlayerGuid(),SDT20,1);
+	}
 
 	std::string jsonStr = resp.convertDataToJson();
 	NetworkSystem::getSingleton().sender( connId,SHOP_BUY_RESP,jsonStr);
@@ -103,7 +120,7 @@ UInt32 ShopManager::dealMysticalshopbuy(Guid playerID,UInt32 shopType,UInt32 pos
 	{
 		return LynxErrno::NotFound;
 	}
-	UInt32 cost = commodityTemplate->num1 * commodityTemplate->costnumber1;
+	UInt32 cost = commodityTemplate->costnumber1;
 
 	if( commodityTemplate->costype1 == AWARD_BASE &&  commodityTemplate->subtype1 == AWARD_BASE_GOLD)
 	{
@@ -117,6 +134,13 @@ UInt32 ShopManager::dealMysticalshopbuy(Guid playerID,UInt32 shopType,UInt32 pos
 		if(player->getAllItemManager().getAwardCount(AWARD_SERVANTSWITCH,0) < cost)
 		{
 			return LynxErrno::ServantSwitchNotEnough;
+		}
+	}
+	if( commodityTemplate->costype1 == AWARD_BASE &&  commodityTemplate->subtype1 == AWARD_BASE_COIN)
+	{
+		if(player->getPlayerCoin() < cost)
+		{
+			return LynxErrno::CoinNotEnough;
 		}
 	}
 	
@@ -135,32 +159,34 @@ UInt32 ShopManager::dealMysticalshopbuy(Guid playerID,UInt32 shopType,UInt32 pos
 	award.award = addGoodsList;
 	resp.awards.insertTail(award);
 
-	addGoodsList.clear();
-	GiftManager::getSingleton().servanNeedChangeToPiece(player->getPlayerGuid(),resp.awards,addGoodsList);
+	
 
+	addGoodsList.clear();
 	goods.resourcestype = commodityTemplate->costype1;
 	goods.subtype = commodityTemplate->costsubtype1;
 	goods.num = 0 - cost;
 	addGoodsList.insertTail(goods);	
 
-	GiftManager::getSingleton().addToPlayer(player->getPlayerGuid(),REFLASH_AWARD,addGoodsList);
-	GiftManager::getSingleton().PlayerItemChangeResult(player->getPlayerGuid(),0,addGoodsList);
-	resp.ends = addGoodsList;
+	player->ResetFireConfirmData();
+	PlayerFireConfirmData mFireConfirmData =  player->GetFireConfirmData();
+	
+	mFireConfirmData.m_AwardsList = resp.awards;
+	mFireConfirmData.m_CostList = addGoodsList;
+	mFireConfirmData.m_CopyID = GETAWARDSCOPYID;
+	player->SetFireConfirmData(mFireConfirmData);
 
-	for(List<Goods>::Iter * iter = addGoodsList.begin(); iter != NULL; iter = addGoodsList.next(iter))
-	{
-		if (iter->mValue.resourcestype == AWARD_SERVANT)
-		{
-			GiftManager::getSingleton().getAllAttr(player->getPlayerGuid(),AWARD_SERVANT,iter->mValue.subtype,resp.allAttr);
-		}
-	}
+	ChapterEndResp awardResult;
+	FireConfirmManager::getSingleton().saveAndGetResult(player->getConnId(),awardResult,0,MiniLog100);
+	resp.ends = awardResult.ends;
+	resp.allAttr = awardResult.allAttr;
+	player->ResetFireConfirmData();
 
 	return LynxErrno::None;
 }
 
 UInt32 ShopManager::dealGiftshopbuy(Guid playerID,UInt32 shopType,UInt32 position,ShopBuyResp &resp)
 {
-	UInt32 weekWhichDay = TimeUtil::getDayNum(-1);
+	UInt32 weekWhichDay = TimeUtil::getSevenDayNum(-1);
 	UInt32 nowTime = TimeUtil::getTimeSec();
 	UInt32 dayBeiginTime =  TimeUtil::getTimeSec() - TimeUtil::getSecOfToday();
 	List<UInt32> CommodityIDs;
@@ -178,16 +204,58 @@ UInt32 ShopManager::dealGiftshopbuy(Guid playerID,UInt32 shopType,UInt32 positio
 		return LynxErrno::NotFound;
 	}
 
-	if (item.buyTimes > 0)
-	{
-		return LynxErrno::HadBuy;
-	}
-
 	GiftShopTemplate* giftShopTemplate = gGiftShopTable->get(position);
 	if (giftShopTemplate == NULL)
 	{
 		return LynxErrno::NotFound;
 	}
+
+	strVector.clear();
+	lynxStrSplit(giftShopTemplate->whichday, ";", strVector, true);//每天
+
+	if (strVector.size() != 0)
+	{
+		UInt32 dayFind = 0;
+		for (UInt32 i = 0; i < strVector.size();i++)
+		{
+			strVector1.clear();
+			lynxStrSplit(strVector[i], "_", strVector1, true);		
+			if (strVector1.size() != 3)
+			{
+				break;
+			}
+			if ( atoi(strVector1[0].c_str()) == weekWhichDay)
+			{
+
+				UInt32 weekDayBeginTime = dayBeiginTime + atoi(strVector1[1].c_str())*3600;
+				UInt32 weekDayEndTime = dayBeiginTime + atoi(strVector1[2].c_str())*3600;
+				if (nowTime > weekDayBeginTime && nowTime < weekDayEndTime )
+				{
+					dayFind =  1;
+					if (item.buyTime > weekDayBeginTime && item.buyTime < weekDayEndTime )
+					{
+						return LynxErrno::HadBuy;
+					}
+					else
+					{
+						item.buyTimes = 0;//下面还有一次判断
+					}
+					break;
+				}
+
+			}
+		}
+		
+	}
+	else 
+	{
+		if (item.buyTimes > 0)
+		{
+			return LynxErrno::HadBuy;
+		}
+
+	}
+	
 
 	if (giftShopTemplate->gifttype == 1)
 	{
@@ -198,7 +266,7 @@ UInt32 ShopManager::dealGiftshopbuy(Guid playerID,UInt32 shopType,UInt32 positio
 	}
 	else if (giftShopTemplate->gifttype == 2)
 	{
-		if (item.buyTime > dayBeiginTime)
+		if (item.buyTimes > 0 && item.buyTime > dayBeiginTime)
 		{
 			return LynxErrno::HadBuy;
 		}
@@ -239,10 +307,12 @@ UInt32 ShopManager::dealGiftshopbuy(Guid playerID,UInt32 shopType,UInt32 positio
 		}
 	}
 
-	lynxStrSplit(giftShopTemplate->whichday, ";", strVector, true);
-
+	UInt32 getIt = 0;
+	UInt32 findDay = 0;
 	for (UInt32 i = 0; i < strVector.size();i++)
 	{
+		strVector1.clear();
+		getIt = 1;
 		lynxStrSplit(strVector[i], "_", strVector1, true);		
 		if (strVector1.size() != 3)
 		{
@@ -250,6 +320,7 @@ UInt32 ShopManager::dealGiftshopbuy(Guid playerID,UInt32 shopType,UInt32 positio
 		}
 		if ( atoi(strVector1[0].c_str()) == weekWhichDay)
 		{
+			findDay =  1;
 			UInt32 weekDayBeginTime = dayBeiginTime + atoi(strVector1[1].c_str())*3600;
 			UInt32 weekDayEndTime = dayBeiginTime + atoi(strVector1[2].c_str())*3600;
 			if (nowTime < weekDayBeginTime || nowTime > weekDayEndTime )
@@ -257,6 +328,10 @@ UInt32 ShopManager::dealGiftshopbuy(Guid playerID,UInt32 shopType,UInt32 positio
 				return LynxErrno::TimeNotRight;
 			}
 		}
+	}
+	if (getIt == 1 && findDay == 0)
+	{
+		return LynxErrno::TimeNotRight;
 	}
 
 
@@ -274,9 +349,9 @@ UInt32 ShopManager::dealGiftshopbuy(Guid playerID,UInt32 shopType,UInt32 positio
 		}
 	}
 
-	for(List<UInt32>::Iter* it = giftTemplate->packageIDs.begin();it != NULL;it = giftTemplate->packageIDs.next(it))
+	for(List<UInt32>::Iter* item1 = giftTemplate->packageIDs.begin();item1 != NULL;item1 = giftTemplate->packageIDs.next(item1))
 	{
-		GiftTemplate* giftTemplate1 = gGiftTable->get(item.goods.subtype);
+		GiftTemplate* giftTemplate1 = gGiftTable->get(item1->mValue);
 		if (giftTemplate1 == NULL)
 		{
 			return LynxErrno::NotFound;
@@ -297,6 +372,7 @@ UInt32 ShopManager::dealGiftshopbuy(Guid playerID,UInt32 shopType,UInt32 positio
 		return LynxErrno::RmbNotEnough;
 	}
 	item.buyTimes ++;
+	item.buyTime = nowTime;
 	setShopItem(playerID,shopType,position,item,true);
 	resp.buyNum = item.buyTimes;
 
@@ -323,9 +399,7 @@ UInt32 ShopManager::dealGiftshopbuy(Guid playerID,UInt32 shopType,UInt32 positio
 	Award award;
 	award.award = addGoodsList;
 	resp.awards.insertTail(award);
-
-	addGoodsList.clear();
-	GiftManager::getSingleton().servanNeedChangeToPiece(player->getPlayerGuid(),resp.awards,addGoodsList);
+	
 
 	goods.resourcestype = giftShopTemplate->costtype;
 	goods.subtype = giftShopTemplate->secondarytype;
@@ -333,17 +407,8 @@ UInt32 ShopManager::dealGiftshopbuy(Guid playerID,UInt32 shopType,UInt32 positio
 	addGoodsList.insertTail(goods);	
 
 
-	GiftManager::getSingleton().addToPlayer(player->getPlayerGuid(),REFLASH_AWARD,addGoodsList);
-	GiftManager::getSingleton().PlayerItemChangeResult(player->getPlayerGuid(),0,addGoodsList);
-	resp.ends = addGoodsList;
-
-	for(List<Goods>::Iter * iter = addGoodsList.begin(); iter != NULL; iter = addGoodsList.next(iter))
-	{
-		if (iter->mValue.resourcestype == AWARD_SERVANT)
-		{
-			GiftManager::getSingleton().getAllAttr(player->getPlayerGuid(),AWARD_SERVANT,iter->mValue.subtype,resp.allAttr);
-		}
-	}
+	GiftManager::getSingleton().saveEndsGetAttr(player->getPlayerGuid(),addGoodsList,resp.allAttr,MiniLog104);	
+	resp.ends = addGoodsList;	
 
 	return LynxErrno::None;
 }
@@ -351,7 +416,7 @@ UInt32 ShopManager::dealGiftshopbuy(Guid playerID,UInt32 shopType,UInt32 positio
 //refresh 0获取信息 1刷新 2 时间到刷新
 //refreshTimes 第几个
 
-UInt32 ShopManager::getMysticalShopInfo(Guid playerID,UInt32 refresh,ShopResp &resp)
+UInt32 ShopManager::getShopInfo(Guid playerID,UInt32 refresh,UInt32 shopType,ShopResp &resp)
 {
 	UInt32 acID = 0;
 	UInt32 level = 0;
@@ -368,9 +433,25 @@ UInt32 ShopManager::getMysticalShopInfo(Guid playerID,UInt32 refresh,ShopResp &r
 	List<Goods> goodsList;
 
 	Player *player = LogicSystem::getSingleton().getPlayerByGuid(playerID);
+	GlobalValue globalValue = GlobalValueManager::getSingleton().getGlobalValue();
 
 
-	UInt32 flag = checkRefreshTime(playerID,MysticalShop,resp.refreshNeedTime);
+	List<UInt32> shopRefreshTimes;
+	if (shopType == MysticalShop)
+	{
+		shopRefreshTimes = globalValue.uMSHOPrefreshtimes;
+	}
+	else if (shopType == ServantShop)
+	{
+		shopRefreshTimes = globalValue.uSSHOPrefreshtimes;
+	}
+	else if (shopType == CoinShop)
+	{
+		shopRefreshTimes = globalValue.uCOINSHOPrefreshtimes;
+	}
+
+
+	UInt32 flag = checkRefreshTime(playerID,shopType,resp.refreshNeedTime);
 
 	refreshTimes = flag;
 	if(refresh == 1)
@@ -385,8 +466,8 @@ UInt32 ShopManager::getMysticalShopInfo(Guid playerID,UInt32 refresh,ShopResp &r
 			refreshTimes = 0;			 
 		}
 	}
-	MysticalShopCostTemplate mysticalShopCostTemplate =  GlobalVarManager::getSingleton().getMysticalShopCost();
-	refreshMaxTimes = mysticalShopCostTemplate.refreshTimeList.size();
+	refreshMaxTimes =shopRefreshTimes.size();
+
 	resp.refreshMaxTimes = refreshMaxTimes;
 
 	if (refreshTimes > refreshMaxTimes)
@@ -398,13 +479,13 @@ UInt32 ShopManager::getMysticalShopInfo(Guid playerID,UInt32 refresh,ShopResp &r
 	if (refresh != 0)
 	{
 		refreshTime = TimeUtil::getTimeSec();
-		setShopItems(playerID,MysticalShop,refreshTimes,refreshTime,true);
+		setShopItems(playerID,shopType,refreshTimes,refreshTime,true);
 
 	}	
 
 	if (refresh ==1 )
 	{
-		for(List<UInt32>::Iter *iter = mysticalShopCostTemplate.refreshTimeList.begin();iter!= NULL;iter = mysticalShopCostTemplate.refreshTimeList.next(iter))
+		for(List<UInt32>::Iter *iter = shopRefreshTimes.begin();iter!= NULL;iter = shopRefreshTimes.next(iter))
 		{
 			j++;
 			if (j == refreshTimes)
@@ -419,166 +500,264 @@ UInt32 ShopManager::getMysticalShopInfo(Guid playerID,UInt32 refresh,ShopResp &r
 			return LynxErrno::RmbNotEnough;
 		}
 
-		goods.resourcestype = 1;
-		goods.subtype = 2;
+		goods.resourcestype = AWARD_BASE;
+		goods.subtype = AWARD_BASE_GOLD;
 		goods.num = 0 - cost;
 		addGoodsList.insertTail(goods);
-		GiftManager::getSingleton().addToPlayer(player->getPlayerGuid(),1,addGoodsList);
+		GiftManager::getSingleton().addToPlayer(player->getPlayerGuid(),1,addGoodsList,MiniLog102);
 	}
 
-	for (UInt32 i = 1;i < 51;i++)
+	UInt32 needSave = 0;
+	List<Item> itemList;
+
+	UInt32 getItemCount = 0;
+	UInt32 max = ShopItemCount; 
+	for (UInt32 i = 1;i <= max;i++)
 	{
 		acID = 0;
 
 		if (refresh != 0)
 		{
-			acID = getMysticalShopID(i,player->getPlayerLeval(),player->getVipLevel(),refreshTimes,refresh);
+			if (shopType == MysticalShop)
+			{
+				acID = getMysticalShopID(i,player->getPlayerLeval(),player->getVipLevel(),refreshTimes,refresh);
+			}
+			else if (shopType == ServantShop)
+			{
+				acID = getServantShopID(i,player->getPlayerLeval(),player->getVipLevel(),refreshTimes,refresh);
+			}
+			else if (shopType == CoinShop)
+			{
+				acID = getCoinShopID(i,player->getPlayerLeval(),player->getVipLevel(),refreshTimes,refresh);
+			}
 		}
 
 
 		Item item;
-		getShopNewItems(playerID, i,acID,MysticalShop,item);
+		getShopNewItems(playerID, i,acID,shopType,item);
 
 		if (acID != 0)
 		{
-			item.buyTimes = 0;
-			setShopItem(playerID,MysticalShop,i,item,true);
-		}
-		if (item.goods.subtype != 0)
-		{
-			resp.items.insertTail(item);
+			needSave = 1;
+			item.buyTimes = 0;			
 		}
 
+		itemList.insertTail(item);//要发送给客户端数据，存盘数据
+		if (item.goods.subtype != 0)
+		{
+			getItemCount ++;
+// 			resp.items.insertTail(item);
+		}
+		else
+		{
+			LOG_WARN("failed  getMysticalShop item.goods.subtype is 0 i = %d !", i);
+		}
+
+	}
+
+	if ( needSave == 1)
+	{
+		UInt32 count1 = 0;
+		UInt32 count2 = 0;
+		List<Item> tmpItemList;
+		List<UInt32> indexList;
+
+		RankGameManager::getSingleton().getRandomOrderNums(max ,indexList);	//indexList是从0开始的
+		for (List<UInt32>::Iter *indexIter = indexList.begin();indexIter != NULL;indexIter = indexList.next(indexIter))
+		{
+			count1 ++;
+			count2 = 0;
+			for (List<Item>::Iter *itemIter = itemList.begin();itemIter!=NULL;itemIter= itemList.next(itemIter))
+			{
+				count2 ++;
+				if (count1 == count2 )
+				{
+					itemIter->mValue.position = indexIter->mValue+1;
+					break;
+				}
+			}
+		}
+
+		count1 = 0;
+		for (UInt32 i = 1;i <= max;i++)
+		{		
+			count1 ++;//1开始
+			for (List<Item>::Iter *itemIter = itemList.begin();itemIter!=NULL;itemIter= itemList.next(itemIter))
+			{
+				if (itemIter->mValue.position == count1)
+				{
+					tmpItemList.insertTail(itemIter->mValue);
+					break;
+				}
+			}			
+		}
+
+
+		for (List<Item>::Iter *itemIter = tmpItemList.begin();itemIter!=NULL;itemIter= tmpItemList.next(itemIter))
+		{
+			setShopItem(playerID,shopType,itemIter->mValue.position,itemIter->mValue,true);
+			resp.items.insertTail(itemIter->mValue);
+// 			LOG_INFO("resp.items - position = %d,id = itemIter !",itemIter->mValue.position,itemIter->mValue.goods.subtype);
+		}
+	}
+	else
+	{
+		for (List<Item>::Iter *itemIter = itemList.begin();itemIter!=NULL;itemIter= itemList.next(itemIter))
+		{
+			resp.items.insertTail(itemIter->mValue);
+// 			LOG_INFO("resp.items ----- position = %d,id = itemIter !",itemIter->mValue.position,itemIter->mValue.goods.subtype);
+		}
+	}
+
+
+
+	if (getItemCount != max  )
+	{
+		LOG_WARN("failed  getMysticalShop count not right refreshTimes = %d !", refreshTimes);		
 	}
 
 	j = 0;
-	for(List<UInt32>::Iter *iter = mysticalShopCostTemplate.refreshTimeList.begin();iter!= NULL;iter = mysticalShopCostTemplate.refreshTimeList.next(iter))
+	for(List<UInt32>::Iter *iter = shopRefreshTimes.begin();iter!= NULL;iter = shopRefreshTimes.next(iter))
 	{
 		j++;
+		cost = iter->mValue;			
 		if (j == (refreshTimes+1))
 		{
-			cost = iter->mValue;
-			resp.refreshCost = cost;
 			break;
 		}
 	}
+	resp.refreshCost = cost;
 	return LynxErrno::None;
 
 }
 
-
-UInt32 ShopManager::getServantShopInfo(Guid playerID,UInt32 refresh,ShopResp &resp)
-{
-	UInt32 j = 0;
-	UInt32 acID = 0;
-	UInt32 level = 0;
-	UInt32 vipLevel = 0;
-	UInt32 refreshTimes = 0;
-	UInt32 cost = 0;
-	UInt32 getIt = 0;
-	UInt32 refreshTime = 0;
-	UInt32 refreshMaxTimes = 0;
-	Goods goods;
-	List<Goods> addGoodsList;
-	List<UInt32> awardcontentIDs;
-	List<Goods> goodsList;
-
-	Player *player = LogicSystem::getSingleton().getPlayerByGuid(playerID);
-
-
-	UInt32 flag = checkRefreshTime(playerID,ServantShop,resp.refreshNeedTime);
-
-	ServantShopCostTemplate servantShopCostTemplate =  GlobalVarManager::getSingleton().getServantShopCost();
-
-	refreshTimes = flag;
-	if(refresh == 1)
-	{
-		refreshTimes ++;
-	}
-	else
-	{
-		if (flag == 10000)
-		{
-			refresh = 2;
-			refreshTimes = 0;			 
-		}
-	}
-	refreshMaxTimes = servantShopCostTemplate.refreshTimeList.size();
-	resp.refreshMaxTimes = refreshMaxTimes;
-	if (refreshTimes > refreshMaxTimes)
-	{
-		refreshTimes = refreshMaxTimes;
-		return LynxErrno::RefreshTimesNotEnough;
-	}
-	resp.refreshTimes = refreshTimes;
-	if (refresh != 0)
-	{
-		refreshTime = TimeUtil::getTimeSec();
-		setShopItems(playerID,ServantShop,refreshTimes,refreshTime,true);
-
-	}
-
-	if (refresh ==1 )
-	{
-
-
-		for(List<UInt32>::Iter *iter = servantShopCostTemplate.refreshTimeList.begin();iter!= NULL;iter = servantShopCostTemplate.refreshTimeList.next(iter))
-		{
-			j++;
-			if (j == refreshTimes)
-			{
-				cost = iter->mValue;
-				break;
-			}
-		}
-
-		if (player->getPlayerGold() < cost)
-		{
-			return LynxErrno::RmbNotEnough;
-		}
-
-		goods.resourcestype = 1;
-		goods.subtype = 2;
-		goods.num = 0 - cost;
-		addGoodsList.insertTail(goods);
-		GiftManager::getSingleton().addToPlayer(player->getPlayerGuid(),1,addGoodsList);
-	}
-
-	for (UInt32 i = 1;i < 51;i++)
-	{
-		acID = 0;
-
-		if (refresh != 0)
-		{		
-			acID = getServantShopID(i,player->getPlayerLeval(),player->getVipLevel(),refreshTimes,refresh);				
-		}
-
-		Item item;
-		getShopNewItems(playerID, i,acID,ServantShop,item);
-		if (acID != 0)
-		{
-			item.buyTimes = 0;
-			setShopItem(playerID,ServantShop,i,item,true);			
-		}
-		if (item.goods.subtype != 0)
-		{
-			resp.items.insertTail(item);
-		}
-	}
-	j = 0;
-	for(List<UInt32>::Iter *iter = servantShopCostTemplate.refreshTimeList.begin();iter!= NULL;iter = servantShopCostTemplate.refreshTimeList.next(iter))
-	{
-		j++;
-		if (j == (refreshTimes+1))
-		{
-			cost = iter->mValue;
-			resp.refreshCost = cost;
-			break;
-		}
-	}
-	return 0;
-}
-
+// 
+// UInt32 ShopManager::getServantShopInfo(Guid playerID,UInt32 refresh,UInt32 shopType,ShopResp &resp)
+// {
+// 	UInt32 j = 0;
+// 	UInt32 acID = 0;
+// 	UInt32 level = 0;
+// 	UInt32 vipLevel = 0;
+// 	UInt32 refreshTimes = 0;
+// 	UInt32 cost = 0;
+// 	UInt32 getIt = 0;
+// 	UInt32 refreshTime = 0;
+// 	UInt32 refreshMaxTimes = 0;
+// 	Goods goods;
+// 	List<Goods> addGoodsList;
+// 	List<UInt32> awardcontentIDs;
+// 	List<Goods> goodsList;
+// 
+// 	Player *player = LogicSystem::getSingleton().getPlayerByGuid(playerID);
+// 
+// 
+// 	UInt32 flag = checkRefreshTime(playerID,shopType,resp.refreshNeedTime);
+// 
+// 	GlobalValue globalValue = GlobalValueManager::getSingleton().getGlobalValue();
+// 
+// 
+// 	refreshTimes = flag;
+// 	if(refresh == 1)
+// 	{
+// 		refreshTimes ++;
+// 	}
+// 	else
+// 	{
+// 		if (flag == 10000)
+// 		{
+// 			refresh = 2;
+// 			refreshTimes = 0;			 
+// 		}
+// 	}
+// 	refreshMaxTimes = globalValue.uSSHOPrefreshtimes.size();
+// 	resp.refreshMaxTimes = refreshMaxTimes;
+// 	if (refreshTimes > refreshMaxTimes)
+// 	{
+// 		refreshTimes = refreshMaxTimes;
+// 		return LynxErrno::RefreshTimesNotEnough;
+// 	}
+// 	resp.refreshTimes = refreshTimes;
+// 	if (refresh != 0)
+// 	{
+// 		refreshTime = TimeUtil::getTimeSec();
+// 		setShopItems(playerID,shopType,refreshTimes,refreshTime,true);
+// 
+// 	}
+// 
+// 	if (refresh ==1 )
+// 	{
+// 
+// 
+// 		for(List<UInt32>::Iter *iter = globalValue.uSSHOPrefreshtimes.begin();iter!= NULL;iter = globalValue.uSSHOPrefreshtimes.next(iter))
+// 		{
+// 			j++;
+// 			if (j == refreshTimes)
+// 			{
+// 				cost = iter->mValue;
+// 				break;
+// 			}
+// 		}
+// 
+// 		if (player->getPlayerGold() < cost)
+// 		{
+// 			return LynxErrno::RmbNotEnough;
+// 		}
+// 
+// 		goods.resourcestype = AWARD_BASE;
+// 		goods.subtype = AWARD_BASE_GOLD;
+// 		goods.num = 0 - cost;
+// 		addGoodsList.insertTail(goods);
+// 		GiftManager::getSingleton().addToPlayer(player->getPlayerGuid(),1,addGoodsList,MiniLog103);
+// 	}
+// 
+// 	UInt32 getItemCount = 0;
+// 	UInt32 max = ShopItemCount; 
+// 	for (UInt32 i = 1;i <= max;i++)
+// 	{
+// 		acID = 0;
+// 
+// 		if (refresh != 0)
+// 		{		
+// 			acID = getServantShopID(i,player->getPlayerLeval(),player->getVipLevel(),refreshTimes,refresh);				
+// 		}
+// 
+// 		Item item;
+// 		getShopNewItems(playerID, i,acID,shopType,item);
+// 		if (acID != 0)
+// 		{
+// 			item.buyTimes = 0;
+// 			setShopItem(playerID,shopType,i,item,true);			
+// 		}
+// 		if (item.goods.subtype != 0)
+// 		{
+// 			resp.items.insertTail(item);
+// 			getItemCount++;
+// 		}
+// 		else
+// 		{
+// 			LOG_WARN("failed  getServantShop item.goods.subtype is 0 i = %d !", i);
+// 		}
+// 	}
+// 
+// 	if (getItemCount != max  )
+// 	{
+// 		LOG_WARN("failed  getMysticalShop count not right refreshTimes = %d !", refreshTimes);		
+// 	}
+// 
+// 	j = 0;
+// 	for(List<UInt32>::Iter *iter = globalValue.uSSHOPrefreshtimes.begin();iter!= NULL;iter = globalValue.uSSHOPrefreshtimes.next(iter))
+// 	{
+// 		j++;
+// 		cost = iter->mValue;
+// 		if (j == (refreshTimes+1))
+// 		{			
+// 			break;
+// 		}
+// 	}
+// 	resp.refreshCost = cost;
+// 	return 0;
+// }
+// 
 
 //refresh 0获取信息 1刷新 2 时间到刷新
 //refreshTimes 第几个
@@ -592,10 +771,17 @@ UInt32 ShopManager::getGiftShopInfo(Guid playerID,UInt32 refresh,ShopResp &resp)
 	UInt32 cost = 0;
 	UInt32 getIt = 0;
 	UInt32 refreshTime = 0;
+	UInt32 nowTime = TimeUtil::getTimeSec();
+	UInt32 weekWhichDay = TimeUtil::getSevenDayNum(-1);
+	UInt32 dayBeiginTime =  TimeUtil::getTimeSec() - TimeUtil::getSecOfToday();
+	GiftShopTemplate * giftShopTemplate; 
 	Goods goods;
 	List<Goods> addGoodsList;
 	List<UInt32> awardcontentIDs;
 	List<Goods> goodsList;
+	Vector<String> strVector;
+	Vector<String> strVector1;
+
 
 	Player *player = LogicSystem::getSingleton().getPlayerByGuid(playerID);
 
@@ -636,14 +822,20 @@ UInt32 ShopManager::getGiftShopInfo(Guid playerID,UInt32 refresh,ShopResp &resp)
 			return LynxErrno::RmbNotEnough;
 		}
 
-		goods.resourcestype = 1;
-		goods.subtype = 2;
+		goods.resourcestype = AWARD_BASE;
+		goods.subtype = AWARD_BASE_GOLD;
 		goods.num = 0 - cost;
 		addGoodsList.insertTail(goods);
-		GiftManager::getSingleton().addToPlayer(player->getPlayerGuid(),1,addGoodsList);
+		GiftManager::getSingleton().addToPlayer(player->getPlayerGuid(),1,addGoodsList,MiniLog104);
 	}
 
-	for (UInt32 i = 1;i < 51;i++)
+	Map<UInt32, GiftShopTemplate>::Iter *giftShopIter = gGiftShopTable->mMap.getMax();
+	if (giftShopIter == NULL)
+	{		
+		return LynxErrno::NotFound;
+	}
+	UInt32 max =giftShopIter->mKey;
+	for (UInt32 i = 1;i <= max;i++)
 	{
 		Item item;
 		acID = 0;
@@ -673,7 +865,63 @@ UInt32 ShopManager::getGiftShopInfo(Guid playerID,UInt32 refresh,ShopResp &resp)
 		}
 		if (item.goods.subtype != 0)
 		{
-			resp.items.insertTail(item);
+
+			giftShopTemplate = gGiftShopTable->get(item.position);
+			strVector.clear();
+			lynxStrSplit(giftShopTemplate->whichday, ";", strVector, true);//每天
+
+			if(giftShopTemplate->starttime != 0)//时间区间
+			{
+				if (nowTime >= giftShopTemplate->starttime && nowTime <= giftShopTemplate->endtime)
+				{
+					resp.items.insertTail(item);
+				}
+			}
+			else if (strVector.size() != 0)
+			{
+				UInt32 dayFind = 0;
+				for (UInt32 ii = 0; ii < strVector.size();ii++)
+				{
+					strVector1.clear();
+					lynxStrSplit(strVector[ii], "_", strVector1, true);		
+					if (strVector1.size() != 3)
+					{
+						break;
+					}
+					if ( atoi(strVector1[0].c_str()) == weekWhichDay)
+					{
+						
+						UInt32 weekDayBeginTime = dayBeiginTime + atoi(strVector1[1].c_str())*3600;
+						UInt32 weekDayEndTime = dayBeiginTime + atoi(strVector1[2].c_str())*3600;
+						if (nowTime > weekDayBeginTime && nowTime < weekDayEndTime )
+						{
+							dayFind =  1;
+							if (item.buyTime < weekDayBeginTime || item.buyTime > weekDayEndTime )
+							{
+								item.buyTimes = 0;
+							}
+							break;
+						}
+						
+					}
+				}
+				if ( dayFind == 1)
+				{
+					
+					resp.items.insertTail(item);	
+				}
+			}
+			else 
+			{
+				resp.items.insertTail(item);	
+			}
+
+
+			
+
+			
+
+
 		}
 	}
 
@@ -695,9 +943,9 @@ void ShopManager::getShopNewItems(Guid playerID, UInt32 position,UInt32 acID,UIn
 		item.itemID = acID;
 		item.position = position;
 		item.shopType = shopType;
-		item.buyTime = nowTime;
+		item.buyTime = 0;
 		item.buyTimes = 0;
-		if (shopType == MysticalShop ||shopType == ServantShop)
+		if (shopType == MysticalShop ||shopType == ServantShop ||shopType == CoinShop ||shopType == CourageShop)
 		{
 			ShopManager::getSingleton().getShopContentByID(acID,goodsList);
 			for (List<Goods>::Iter * iter = goodsList.begin();iter != NULL;iter = goodsList.next(iter))
@@ -726,7 +974,7 @@ void ShopManager::getShopNewItems(Guid playerID, UInt32 position,UInt32 acID,UIn
 		{
 			if (item.buyTime < dayBeiginTime)
 			{
-				item.buyTime = nowTime;
+				item.buyTime = 0;
 				item.buyTimes = 0;
 				setShopItem(playerID,shopType,position,item,true);
 			}
@@ -769,7 +1017,7 @@ void ShopManager::getPlayerItem(Guid playerID,UInt32 shopType,UInt32 position,It
 
 UInt32 ShopManager::getMysticalShopID(UInt32 position,UInt32 level,UInt32 vipLevel,UInt32 refreshTimes,UInt32 refresh)
 {
-	UInt32 nowTime = TimeUtil::getTimeSec();
+	UInt32 lastContentID = 0;
 	MysticalshopTemplate *mysticalshopTemplate = NULL;
 
 	if (level % 10 == 0)
@@ -803,9 +1051,11 @@ UInt32 ShopManager::getMysticalShopID(UInt32 position,UInt32 level,UInt32 vipLev
 	else
 	{
 		UInt32 i = 0;
+		lastContentID = 0;
 		for (List<UInt32>::Iter * it =  mysticalshopTemplate->awardcontentshops.begin(); it != NULL; it = mysticalshopTemplate->awardcontentshops.next(it))
 		{
 			i++;
+			lastContentID = it->mValue;
 			if (i == refreshTimes)
 			{
 				return it->mValue;
@@ -813,13 +1063,12 @@ UInt32 ShopManager::getMysticalShopID(UInt32 position,UInt32 level,UInt32 vipLev
 		}
 	}	
 
-	return 0;
+	return lastContentID;
 }
 
 
 UInt32 ShopManager::getServantShopID(UInt32 position,UInt32 level,UInt32 vipLevel,UInt32 refreshTimes,UInt32 refresh)
 {
-	UInt32 nowTime = TimeUtil::getTimeSec();
 	ServantshopTemplate *servantshopTemplate = NULL;
 
 	// 	if (level % 10 == 0)
@@ -873,7 +1122,6 @@ UInt32 ShopManager::getServantShopID(UInt32 position,UInt32 level,UInt32 vipLeve
 
 UInt32 ShopManager::getGiftShopID(UInt32 position,UInt32 level,UInt32 vipLevel,UInt32 refreshTimes,UInt32 refresh)
 {
-	UInt32 nowTime = TimeUtil::getTimeSec();
 
 	GiftShopTemplate * giftShopTemplate = gGiftShopTable->get(position);
 	if (giftShopTemplate == NULL)
@@ -886,6 +1134,59 @@ UInt32 ShopManager::getGiftShopID(UInt32 position,UInt32 level,UInt32 vipLevel,U
 	// 	}	
 
 	return giftShopTemplate->giftID;
+}
+
+
+
+UInt32 ShopManager::getCoinShopID(UInt32 position,UInt32 level,UInt32 vipLevel,UInt32 refreshTimes,UInt32 refresh)
+{
+	UInt32 lastContentID = 0;
+	CoinshopTemplate *coinshopTemplate = NULL;
+
+	if (level % 10 == 0)
+	{
+		level = (level/10)*10;
+	}
+	else
+	{
+		level = (level/10)*10+ 10;
+	}
+
+	vipLevel = (vipLevel/5)*5;
+
+	for(Map<UInt32, CoinshopTemplate>::Iter *iter = gCoinshopTable->mMap.begin();iter != NULL;iter = gCoinshopTable->mMap.next(iter))
+	{
+		if (iter->mValue.shopposition == position /*&& iter->mValue.playerLv == level*/ && iter->mValue.vipLv == vipLevel)
+		{
+			coinshopTemplate = &iter->mValue;
+			break;
+		}
+	}
+	if (coinshopTemplate == NULL)
+	{
+		return 0;
+	}
+
+	if (refreshTimes == 0)
+	{
+		return coinshopTemplate->timeawardcontentshop;
+	}
+	else
+	{
+		UInt32 i = 0;
+		lastContentID = 0;
+		for (List<UInt32>::Iter * it =  coinshopTemplate->awardcontentshops.begin(); it != NULL; it = coinshopTemplate->awardcontentshops.next(it))
+		{
+			i++;
+			lastContentID = it->mValue;
+			if (i == refreshTimes)
+			{
+				return it->mValue;
+			}
+		}
+	}	
+
+	return lastContentID;
 }
 
 UInt32 ShopManager::checkRefreshTime(Guid playerID,UInt32 shopType,UInt32 &refreshNeedTime)
@@ -942,6 +1243,32 @@ UInt32 ShopManager::checkRefreshTime(Guid playerID,UInt32 shopType,UInt32 &refre
 			return 0;
 		}
 	}	
+	else if (shopType == CoinShop)
+	{
+		CoinshopTemplate *coinshopTemplate;//只是为了找时间，其他用途则要重新赋值
+		for ( Map<UInt32, CoinshopTemplate>::Iter *iter1 = gCoinshopTable->mMap.begin();iter1 != NULL;iter1 = gCoinshopTable->mMap.next(iter1))
+		{
+			if (iter1->mValue.shopposition == 1)
+			{
+				coinshopTemplate = &iter1->mValue;
+				break;
+			}
+		}
+		lynxStrSplit(coinshopTemplate->refreshTime, ";", strVector, true);
+	}
+	else if (shopType == CourageShop)
+	{
+		CourageshopTemplate *courageshopTemplate;//只是为了找时间，其他用途则要重新赋值
+		for ( Map<UInt32, CourageshopTemplate>::Iter *iter1 = gCourageshopTable->mMap.begin();iter1 != NULL;iter1 = gCourageshopTable->mMap.next(iter1))
+		{
+			if (iter1->mValue.shopposition == 1)
+			{
+				courageshopTemplate = &iter1->mValue;
+				break;
+			}
+		}
+		lynxStrSplit(courageshopTemplate->refreshTime, ";", strVector, true);
+	}
 	UInt32 getIt = 0;
 
 	for (UInt32 i = 0; i < strVector.size();i++)
@@ -1222,6 +1549,8 @@ void ShopManager::onCoinBuyReq(const  ConnId& connId, CoinBuyReq & msg)
 	Goods goods;
 	List<Goods> itemList;	
 	CoinBuyResp resp;
+	PlayerBuyCoinData buyCoinData;
+
 
 	msg.convertJsonToData(msg.jsonStr);
 	resp.reqType = msg.reqType;
@@ -1233,10 +1562,17 @@ void ShopManager::onCoinBuyReq(const  ConnId& connId, CoinBuyReq & msg)
 	}
 
 	PlayerDailyResetData dailyResetData= player->getPlayerDailyResetData();
+	buyCoinData = player->getBuyCoinData();
+	if ( ShopManager::getSingleton().checkBuyCoinBoxs(buyCoinData) == 1)
+	{
+		player->setBuyCoinData(buyCoinData);
+		player->getPersistManager().setDirtyBit(BUYCOINDATABIT);
+	}
+	
 
 	maxBuyTimes = ShopManager::getSingleton().getCoinBuyMaxTimes(player->getVipLevel());
 
-	GainWealth gainWealth = GlobalVarManager::getSingleton().getGainWealth();
+	GlobalValue globalValue = GlobalValueManager::getSingleton().getGlobalValue();
 
 	if (msg.reqType == 1 ||msg.reqType == 2)
 	{
@@ -1244,6 +1580,19 @@ void ShopManager::onCoinBuyReq(const  ConnId& connId, CoinBuyReq & msg)
 		if((maxCanBuyTimes + dailyResetData.m_nCoinBuyTimes + dailyResetData.m_nCoinFreeBuyTimes) >= maxBuyTimes)
 		{
 			maxCanBuyTimes = maxBuyTimes - dailyResetData.m_nCoinBuyTimes - dailyResetData.m_nCoinFreeBuyTimes;
+		}
+		UInt32 maxVipLv =0;
+		for(List<VipTemplate>::Iter *iter1 = gVipTable->mVip.begin();iter1 != NULL;iter1 = gVipTable->mVip.next(iter1))
+		{
+			if (iter1->mValue.id > maxVipLv)
+			{
+				maxVipLv = iter1->mValue.id;
+			}
+		}
+
+		if (maxCanBuyTimes == 0&& player->getVipLevel() >= maxVipLv)
+		{
+			resp.result = LynxErrno::BuyCoinTimesNotEnough;
 		}
 	
 		for (UInt32 i = 1;i <= maxCanBuyTimes;i++)
@@ -1253,7 +1602,7 @@ void ShopManager::onCoinBuyReq(const  ConnId& connId, CoinBuyReq & msg)
 			FireConfirmManager::getSingleton().getBuyCoinPrice(player->getPlayerGuid(),nowBuyTimes,price,num);
 			if (msg.reqType == 2)
 			{
-				if (dailyResetData.m_nCoinFreeBuyTimes >= gainWealth.freeTimes)
+				if (dailyResetData.m_nCoinFreeBuyTimes >= globalValue.uGAINWEALTHfreetimes)
 				{
 					break;
 				}
@@ -1263,15 +1612,17 @@ void ShopManager::onCoinBuyReq(const  ConnId& connId, CoinBuyReq & msg)
 			else
 			{				
 				buyTimes ++;
-			}
-			dailybuytimes++;
+			}			
 			if(player->getPlayerGold() < cost )
 			{
 				break;
-			}			
+			}	
+			dailybuytimes++;
 			cost += price;
 			coin += num;
-			ShopManager::getSingleton().getPremiumsContent(nowBuyTimes,itemList);
+			ShopManager::getSingleton().checkBuyCoinBoxs(buyCoinData ,nowBuyTimes);	
+			player->setBuyCoinData(buyCoinData);
+			player->getPersistManager().setDirtyBit(BUYCOINDATABIT);
 		}
 
 		if (itemList.size() != 0)
@@ -1285,25 +1636,54 @@ void ShopManager::onCoinBuyReq(const  ConnId& connId, CoinBuyReq & msg)
 
 		goods.resourcestype = AWARD_BASE;
 		goods.subtype = AWARD_BASE_GOLD;
-		goods.num -= cost;		
-		itemList.insertTail(goods);
+		goods.num -= cost;	
+		if (cost  != 0)
+		{
+			itemList.insertTail(goods);
+		}
+		
 
 		goods.resourcestype = AWARD_BASE;
 		goods.subtype = AWARD_BASE_COIN;
 		goods.num = coin;		
 		itemList.insertTail(goods);
 
-		GiftManager::getSingleton().combineSame(itemList);
-		GiftManager::getSingleton().addToPlayer(player->getPlayerGuid(),REFLASH_AWARD,itemList);
-		GiftManager::getSingleton().PlayerItemChangeResult(player->getPlayerGuid(),0,itemList);
+		if(msg.reqType >= 3)
+		{
+			GiftManager::getSingleton().saveEndsGetAttr(player->getPlayerGuid(),itemList,resp.allAttr,MiniLog131);
+		}
+		else
+		{
+			GiftManager::getSingleton().saveEndsGetAttr(player->getPlayerGuid(),itemList,resp.allAttr,MiniLog132);
+		}
 		resp.ends = itemList;
 
 		player->setPlayerDailyResetData(dailyResetData);	
 		player->getPersistManager().setDirtyBit(DAILYRESETBIT);
 
 	}
+//3 4 5 开箱子1 拜一次  2 拜十次 
+	if(msg.reqType >= 3)
+	{
+		
+		resp.result = ShopManager::getSingleton().getPremiums(buyCoinData,msg.reqType,itemList);
+		if (resp.result == LynxErrno::None)
+		{
+			player->setBuyCoinData(buyCoinData);
+			player->getPersistManager().setDirtyBit(BUYCOINDATABIT);
 
-	resp.freeTimes = gainWealth.freeTimes - dailyResetData.m_nCoinFreeBuyTimes;
+		
+			GiftManager::getSingleton().saveEndsGetAttr(player->getPlayerGuid(),itemList,resp.allAttr,MiniLog133);
+			resp.ends = itemList;
+		}	
+	
+	}
+
+
+ 	resp.boxs.insertTail(buyCoinData.m_box1);
+	resp.boxs.insertTail(buyCoinData.m_box2);
+	resp.boxs.insertTail(buyCoinData.m_box3);
+	resp.freeTimes = globalValue.uGAINWEALTHfreetimes - dailyResetData.m_nCoinFreeBuyTimes;
 	resp.buyNum = dailyResetData.m_nCoinBuyTimes + dailyResetData.m_nCoinFreeBuyTimes;
 	resp.maxBuyTimes = maxBuyTimes;
 
@@ -1315,42 +1695,172 @@ void ShopManager::onCoinBuyReq(const  ConnId& connId, CoinBuyReq & msg)
 
 	//每日任务拜财神打点 wwc
 	player->getAchieveManager().updateDailyTaskData(DLYBAICAISHEN, dailybuytimes );
+
+	if(dailybuytimes >0)
+	{
+		//更新七日训
+		LogicSystem::getSingleton().updateSevenDayTask(player->getPlayerGuid(),SDT07,dailybuytimes);
+	}
+	
 }
 
+ UInt32 ShopManager::checkBuyCoinBoxs(PlayerBuyCoinData &buyCoinData)
+ {
+	 bool resTodayDelay5hours = TimeManager::timeIsToday(buyCoinData.m_refreshTime);
+	 if ( !resTodayDelay5hours)
+	 {
+		  buyCoinData.m_box1 = 0;
+		   buyCoinData.m_box2 = 0;
+		   buyCoinData.m_box3 = 0;
+		   buyCoinData.m_refreshTime = TimeUtil::getTimeSec();
+		   return 1;
+	 }
+	return 0;
+	
+ }
+ UInt32 ShopManager::checkBuyCoinBoxs(PlayerBuyCoinData &buyCoinData ,UInt32 buyTimes)
+ {
+	 
+	 UInt32 count = 0;
+	
+	 for (Map<UInt32, PremiumsTemplate>::Iter*iter = gPremiumsTable->mMap.begin();iter!= NULL;iter = gPremiumsTable->mMap.next(iter))
+	 {		
+		  count ++;
+		 if (iter->mValue.type == buyTimes)
+		 {
+			 if (count == 1)
+			 {
+				 if (buyCoinData.m_box1 == 0)
+				 {
+					 buyCoinData.m_box1 =1;
+				 }
+			 }
+			 else  if (count == 2)
+			 {
+				 if (buyCoinData.m_box2 == 0)
+				 {
+					 buyCoinData.m_box2 =1;
+				 }
+			 }
+			 else  if (count == 3)
+			 {
+				 if (buyCoinData.m_box3 == 0)
+				 {
+					 buyCoinData.m_box3 =1;
+				 }
+			 }
 
-void ShopManager::getPremiumsContent(UInt32 nowBuyTimes,List<Goods>& itemList)
+			 break;
+		 }
+		
+	 }
+
+	return 0;
+ }
+
+UInt32 ShopManager::getPremiums(PlayerBuyCoinData &buyCoinData ,UInt32 openBoxType,List<Goods>& itemList)
 {
+	if (openBoxType == 3)
+	{
+		if (buyCoinData.m_box1 == 0)
+		{
+			return LynxErrno::CannotOpen;
+		}
+		else if (buyCoinData.m_box1 == 1)
+		{
+			getPremiumsContent(openBoxType,itemList);
+			buyCoinData.m_box1= 2;
+			return LynxErrno::None;
+		}
+		else if (buyCoinData.m_box1 == 2)
+		{
+			return LynxErrno::HadOpen;
+		}
+	}
+	else if (openBoxType == 4)
+	{
+		if (buyCoinData.m_box2 == 0)
+		{
+			return LynxErrno::CannotOpen;
+		}
+		else if (buyCoinData.m_box2 == 1)
+		{
+			getPremiumsContent(openBoxType,itemList);
+			buyCoinData.m_box2= 2;
+			return LynxErrno::None;
+		}
+		else if (buyCoinData.m_box2 == 2)
+		{
+			return LynxErrno::HadOpen;
+		}
+	}
+	else if (openBoxType == 5)
+	{
+		if (buyCoinData.m_box3 == 0)
+		{
+			return LynxErrno::CannotOpen;
+		}
+		else if (buyCoinData.m_box3 == 1)
+		{
+			getPremiumsContent(openBoxType,itemList);
+			buyCoinData.m_box3= 2;
+			return LynxErrno::None;
+		}
+		else if (buyCoinData.m_box3 == 2)
+		{
+			return LynxErrno::HadOpen;
+		}
+	}
+	return LynxErrno::None;
+	
+
+}
+void ShopManager::getPremiumsContent(UInt32 openType,List<Goods>& itemList)
+{
+	UInt32 count = 3;
 	Goods goods;
 	Vector<String> strVector;
 	Vector<String> strVector1;
 	PremiumsTemplate *premiumsTemplate = NULL;
+	List<Goods> tmpItemList;
 
 	for (Map<UInt32, PremiumsTemplate>::Iter*iter = gPremiumsTable->mMap.begin();iter!= NULL;iter = gPremiumsTable->mMap.next(iter))
-	{
-		if (iter->mValue.type == nowBuyTimes)
+	{		
+		if (count == openType)
 		{
 			premiumsTemplate = &iter->mValue;
+			break;
 		}
+		count ++;
 	}
+
 	if (premiumsTemplate == NULL)
 	{
 		return;
 	}
 
-	lynxStrSplit(premiumsTemplate->contentID, ";", strVector, true);
-
-	for (UInt32 i = 0; i < strVector.size();i++)
+	GiftManager::getSingleton().getAwardByID(premiumsTemplate->awardID,0, tmpItemList);
+	for(List<Goods>::Iter *it = tmpItemList.begin();it!= NULL;it = tmpItemList.next(it))
 	{
-		lynxStrSplit(strVector[i], "_", strVector1, true);		
-		if (strVector1.size() != 3)
-		{
-			break;
-		}
-		goods.resourcestype =  atoi(strVector1[0].c_str());
-		goods.subtype =  atoi(strVector1[1].c_str());
-		goods.num =  atoi(strVector1[2].c_str());
-		itemList.insertTail(goods);
+		GiftManager::getSingleton().getContentByID(it->mValue.subtype,itemList);
 	}
+
+
+// 	lynxStrSplit(premiumsTemplate->contentID, ";", strVector, true);
+// 
+// 	for (UInt32 i = 0; i < strVector.size();i++)
+// 	{
+// 		strVector1.clear();
+// 		lynxStrSplit(strVector[i], "_", strVector1, true);		
+// 		if (strVector1.size() != 3)
+// 		{
+// 			break;
+// 		}
+// 		goods.resourcestype =  atoi(strVector1[0].c_str());
+// 		goods.subtype =  atoi(strVector1[1].c_str());
+// 		goods.num =  atoi(strVector1[2].c_str());
+// 		itemList.insertTail(goods);
+// 	}
 };
 
 

@@ -119,6 +119,117 @@ bool AwardTable::saveToDbc(const String& filePath)
 
 
 bool 
+AwardRouletteTable::loadFromDbc(const String& fileName)
+{
+	StreamBuffer streamBuffer(8192 - sizeof(StreamBuffer::Node));
+	Int32 length = RESOURCE_GROUP_MANAGER().loadFileToStream(fileName, 
+		streamBuffer, "Data");
+	if (length <= 0)
+	{
+		LOG_WARN("Failed to load file %s", fileName.c_str());
+		return false;
+	}
+	if (!unserialize(*this, streamBuffer, 0))
+	{
+		LOG_WARN("Failed to unserialize file %s", fileName.c_str());
+		return false;
+	}
+
+	return true;
+}
+
+
+bool 
+AwardRouletteTable::reloadFromDbc(const String& fileName)
+{
+	mAwardList tmpList = mList;
+	mList.clear();
+	if (!loadFromDbc(fileName))
+	{
+		mList = tmpList;
+		LOG_WARN("Failed to reload award table.");
+		return false;
+	}
+	return true;
+}
+
+
+
+bool 
+AwardRouletteTable::loadFromCsv(const String& filePath)
+{
+	mList.clear();
+	std::ifstream fileStream(filePath.c_str());
+	if (fileStream.fail())
+	{
+		LOG_WARN("Failed to open %s file.", filePath.c_str());
+		return false;
+	}
+	CsvReader csvReader(fileStream, ",");
+	csvReader.initTitle();
+	while (csvReader.readLine())
+	{
+		AwardTemplate awardtemplate;
+
+		if (!csvReader.bind("id", awardtemplate.id))
+		{
+			LOG_WARN("Failed to load Award.csv for [id]");
+			return false;
+		}
+		char str1[32]={};
+		char str2[32]={};
+		char str3[32]={};
+
+		for (int i=1;i<100;i++)
+		{
+			AwardItem awarditem;
+			sprintf(str1, "%s%d","type",i);
+			sprintf(str2, "%s%d","weight",i);
+			sprintf(str3, "%s%d","roulettecontent",i);
+
+			if (!csvReader.bind(str1, awarditem.bigtype))
+			{
+				LOG_WARN("Failed to load Award.csv for [type]");
+				break;
+			}
+			if (awarditem.bigtype == 0)
+			{
+				break;
+			}
+
+			if (!csvReader.bind(str2, awarditem.weight))
+			{
+				LOG_WARN("Failed to load Award.csv for [weight]");
+				break;
+			}
+			if (!csvReader.bind(str3, awarditem.awardcontent))
+			{
+				LOG_WARN("Failed to load Award.csv for [awardcontent]");
+				break;
+			}
+			awardtemplate.AwardItems.insertTail(awarditem);
+
+		}	
+
+		mList.insertTail(awardtemplate);
+	}
+	fileStream.close();
+	return true;
+}
+
+bool AwardRouletteTable::saveToDbc(const String& filePath)
+{
+	StreamBuffer streamBuffer(8192 - sizeof(StreamBuffer::Node));
+	serialize(*this, streamBuffer, 0);
+	if (!FileUtil::saveFile(filePath, streamBuffer))
+	{
+		LOG_WARN("Failed to save file %s.", filePath.c_str());
+		return false;
+	}
+	return true;
+}
+
+bool 
 AwardCardTable::loadFromDbc(const String& fileName)
 {
 	StreamBuffer streamBuffer(8192 - sizeof(StreamBuffer::Node));
@@ -843,11 +954,11 @@ VipTable::loadFromCsv(const String& filePath)
 			LOG_WARN("Failed to load vip.csv for [trailtimes]");
 			return false;
 		}
-		if (!csvReader.bind("trailopenrate", vipTemplate.trailopenrate))
-		{
-			LOG_WARN("Failed to load vip.csv for [trailopenrate]");
-			return false;
-		}
+// 		if (!csvReader.bind("trailopenrate", vipTemplate.trailopenrate))
+// 		{
+// 			LOG_WARN("Failed to load vip.csv for [trailopenrate]");
+// 			return false;
+// 		}
 		if (!csvReader.bind("climtowertimes", vipTemplate.climtowertimes))
 		{
 			LOG_WARN("Failed to load vip.csv for [climtowertimes]");
@@ -864,6 +975,21 @@ VipTable::loadFromCsv(const String& filePath)
 			LOG_WARN("Failed to load vip.csv for [territorybuytimes]");
 			return false;
 		}
+
+		if (!csvReader.bind("buyrankgametimes", vipTemplate.buyrankgametimes))
+		{
+			LOG_WARN("Failed to load vip.csv for [buyrankgametimes]");
+			return false;
+		}
+
+		if (!csvReader.bind("cattaskbuytimes", vipTemplate.cattaskrefreshtimes))
+		{
+			LOG_WARN("Failed to load vip.csv for [cattaskbuytimes]");
+			return false;
+		}
+
+		
+
 
 		mVip.insertTail(vipTemplate);
 // 		mapVip.insert(vipTemplate.id,vipTemplate);

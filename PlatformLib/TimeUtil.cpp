@@ -394,6 +394,29 @@ TimeUtil::getDayNum(time_t _t/* = -1*/)
 }
 
 Int32
+TimeUtil::getSevenDayNum(time_t _t/* = -1*/)
+{
+    if (_t == -1)
+    {
+        _t = time();
+    }
+    else if (!LEGAL_TIME(_t))
+    {
+        return -1;
+    }
+
+    struct tm _tm;
+    localTime(_tm, _t);
+	if(_tm.tm_wday == 0)
+	{
+		return 7;
+	}
+
+    return _tm.tm_wday;
+}
+
+
+Int32
 TimeUtil::getDate(time_t _t/* = -1*/)
 {
     if (_t == -1)
@@ -419,6 +442,33 @@ TimeUtil::getSecOfToday()
 	localTime(_tm, _t);
 
 	return  _tm.tm_hour * 3600 + _tm.tm_min * 60 + _tm.tm_sec;
+}
+
+Int32
+TimeUtil::getSecOfToThatday(UInt32 timeSec)
+{
+	time_t _t = timeSec;	
+	struct tm _tm;
+
+	localTime(_tm, _t);
+
+	return  _tm.tm_hour * 3600 + _tm.tm_min * 60 + _tm.tm_sec;
+}
+
+
+
+Int32 TimeUtil::convertSecToTodaySec(time_t  seconds)
+ {
+	 struct tm _tm;
+	localTime(_tm, seconds);
+	return  _tm.tm_hour * 3600 + _tm.tm_min * 60 + _tm.tm_sec;
+ }
+
+Int32 TimeUtil::convertSecToTodayHour(time_t  seconds)
+{
+	 struct tm _tm;
+	localTime(_tm, seconds);
+	return  _tm.tm_hour ;
 }
 
 UInt32
@@ -548,4 +598,20 @@ Tick::update()
 
 	mLastTime = mCurrentTime;
     mAccumulateTime = mCurrentTime * 0.001f;
+}
+
+
+
+bool 
+TimeUtil::getTimeStr(char* buf, Int32 size, UInt64 ms)
+{
+	const time_t timeInSeconds = ms/1000;
+
+	struct tm _tm;
+	if (localTime(_tm, timeInSeconds))
+	{
+		strftime(buf, size, "%Y_%m_%d_%H%M%S", &_tm);
+		return true;
+	}
+	return false;
 }

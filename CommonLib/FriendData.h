@@ -15,8 +15,10 @@ namespace Lynx
 		List<UInt64> mFriendList;
 		List<UInt64> mBlackList;
 
-		LYNX_S11N_3(FriendData, UInt32 ,m_nFindBit,  List<UInt64>, mFriendList,
-			List<UInt64>, mBlackList);
+		List<UInt64> mBeApplyList;
+
+		LYNX_S11N_4(FriendData, UInt32 ,m_nFindBit,  List<UInt64>, mFriendList,
+			List<UInt64>, mBlackList,List<UInt64>, mBeApplyList);
 
 
 	};

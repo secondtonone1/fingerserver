@@ -17,12 +17,16 @@ namespace Lynx
 		bool initial();
 		void release();
 
+		bool generateRandomSeed();
+
         bool isGMConnection() const { return !!mType; }
 
 		ConnId getConnId() const { return mConnId; }
         String getFromIp() const { return mFromIp; }
         UInt16 getFromPort() const { return mFromPort; }
         const UInt64& getKeepaliveTime() const { return mKeepaliveTime; }
+
+		const int& getKeepaliveCount() const { return mKeepaliveCount; }
 
 		static void registerMsgs();
 		static void deregisterMsgs();
@@ -71,6 +75,8 @@ namespace Lynx
 		static void registerCharactorMsgs();
 
 		static void registerAchieveMsgs();
+
+		static void registerConsortMsgs();
 	
 
 #ifdef DEBUG
@@ -96,7 +102,11 @@ namespace Lynx
 				LOG_WARN("Failed to unserialize msg %u", conn.mMsgHdr.mId);
 				return false;
 			}
-
+			
+			if(!conn.generateRandomSeed())
+			{
+			//	return true;
+			}
 			((void (*)(const ConnId&, MsgType&))func)(conn.mConnId, msg);
 			return true;
 		}
@@ -125,6 +135,7 @@ namespace Lynx
         String mFromIp;
         UInt16 mFromPort;
         UInt64 mKeepaliveTime;
+		int mKeepaliveCount;
 	};
 } // namespace Lynx
 

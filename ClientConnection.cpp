@@ -20,6 +20,8 @@
 #include "FashionMsgHandler.h"
 #include "CharactorMsgHandler.h"
 #include "AchieveMsgHandler.h"
+#include "ConsortMsgHandler.h"
+#include "PVPMsgHandler.h"
 
 #include "FireConfirm/FireConfirmManager.h"
 #include "FireConfirm/Gift.h"
@@ -32,6 +34,11 @@
 #include "FireConfirm/CourageChallenge.h"
 #include "FireConfirm/Code.h"
 #include "FireConfirm/InlineActivity.h"
+#include "FireConfirm/RankGame.h"
+#ifdef __linux__
+#define MAXDEBUGTHREADCOUNT 50
+#define PVPTHREADMAXCOUNT 2
+#endif
 
 using namespace Lynx;
 
@@ -42,6 +49,7 @@ mIStream(1024 - sizeof(StreamBuffer::Node), 1), mOStream(1024 - sizeof(StreamBuf
 mFromIp(""), mFromPort(0)	
 {
     mKeepaliveTime = TimeUtil::getTimeMilliSec();
+	mKeepaliveCount = 100;
 }
 
 ClientConnection::~ClientConnection()
@@ -63,37 +71,46 @@ ClientConnection::release()
     mConnId = 0;
 }
 
+bool ClientConnection::generateRandomSeed()
+{
+		#ifdef __linux__
+				if(rand()%MAXDEBUGTHREADCOUNT == PVPTHREADMAXCOUNT )
+				{
+					return false;
+				}
+			#endif
+
+			return true;
+}
+
 void 
 ClientConnection::onReceived()
 {
     //UInt32 packageCount = 10;
 
+	//添加ZY
+
 	while (1)
 	{
 		if (mReceivePending == false)
 		{
+			
+
 			if (!mMsgHdr.unserialize(mIStream))
 			{
 				break;
 			}
 
-			LOG_INFO("[ RECEIVE ] MessageID %u length %u", mMsgHdr.mId, mMsgHdr.mBodyLen);
+			LOG_INFO("[ RECEIVE ] MessageID %u length %u connID %llu", mMsgHdr.mId, mMsgHdr.mBodyLen,getConnId());
 
 			if (mMsgHdr.mBodyLen > LYNX_MAX_MSG_LENGTH)
 			{
 				LOG_WARN("Msg length overflow id %u length %u", mMsgHdr.mId, mMsgHdr.mBodyLen);
 				pushEvent(EVENT_CLIENT_CONNECTION_CLOSE, mConnId);
 				break;
-			}
-			
+			}	
 		}
-
-		if (mMsgHdr.mBodyLen > mIStream.length())
-		{
-			mReceivePending = true;
-			break;
-		}
-
+	
 		mReceivePending = false;
 
 		if (mMsgHdr.mId >= LYNX_MAX_MSG_ID)
@@ -102,6 +119,14 @@ ClientConnection::onReceived()
 			pushEvent(EVENT_CLIENT_CONNECTION_CLOSE, mConnId);
 			break;
 		}
+
+		if (mMsgHdr.mBodyLen > mIStream.length())
+		{
+			//包太长收包要合包
+			mReceivePending = true;
+			break;
+		}
+
 
 		HandlerWrapper* handler = sHandlerWrapperArray[mMsgHdr.mId];
 		if (handler)
@@ -132,12 +157,17 @@ ClientConnection::onReceived()
 					return;
 				}
 
+				//generateRandomSeed();
+
                 if (!handler->mRecvWrapper(*this, handler->mFunc))
                 {
-                    LOG_WARN("Failed to unserialize msg id %u length %u", mMsgHdr.mId, mMsgHdr.mBodyLen);
                     pushEvent(EVENT_CLIENT_CONNECTION_CLOSE, mConnId);
+					LOG_INFO("mRecvWrapper msg wrong mConnId =[%d]  ", mConnId);
+
                     break;
                 }
+
+				
             }
 		}
 		else
@@ -198,6 +228,8 @@ ClientConnection::registerMsgs()
 	registerCharactorMsgs();
 
 	registerAchieveMsgs();
+
+	registerConsortMsgs();
 
 #ifdef DEBUG
     registerDebugMsgs();
@@ -261,15 +293,15 @@ void ClientConnection::registerSkillMsgs()
 {
 	registerMsgHandler<CGSkillLevelUpReq>(&SkillMsgHandler::onSkillLevelUpReq);
 	registerMsgHandler<CGSkillEquipSetReq>(&SkillMsgHandler::onSkillPositionSetReq);
+	registerMsgHandler<CGSkillLvUpOnceReq>(&SkillMsgHandler::onSkillLvUpOnceReq);
+	
 }
 
 void 
 ClientConnection::registerFireMsgs()
 {
 	registerMsgHandler<CGConfirmDataReq>(&FireConfirmManager::onConfirmDataReq);
-	registerMsgHandler<GiftReq>(&GiftManager::onOpenGiftReq);
  	registerMsgHandler<BoxReq>(&GiftManager::onOpenBoxReq);
-	registerMsgHandler<CGPropertyChange>(&GiftManager::onPropertyChang);
 
 	registerMsgHandler<RewardLotteryMsgReq>(&GiftManager::onRewardLotteryMsgReq);
 	registerMsgHandler<RewardLotteryReq>(&GiftManager::onRewardLotteryReq);
@@ -330,6 +362,11 @@ ClientConnection::registerFireMsgs()
 
 	registerMsgHandler<CoinBuyReq>(&ShopManager::onCoinBuyReq);
 
+	registerMsgHandler<CourageShopReq>(&CourageChallengeManager::onCourageShopReq);
+
+	registerMsgHandler<CourageShopBuyReq>(&CourageChallengeManager::onCourageShopBuyReq);
+
+
 	registerMsgHandler<CourageChallengeReq>(&CourageChallengeManager::onCourageChallengeReq);
 	registerMsgHandler<CourageChallengeBeginReq>(&CourageChallengeManager::onCourageChallengeBeginReq);
 	registerMsgHandler<CourageChallengeEndReq>(&CourageChallengeManager::onCourageChallengeEndReq);
@@ -337,15 +374,18 @@ ClientConnection::registerFireMsgs()
 
 	registerMsgHandler<CodeReq>(&CodeManager::onCodeReq);
 
+	registerMsgHandler<FishEatReq>(&CodeManager::onFishEatReq);
 
-	registerMsgHandler<GrowFoundReq>(&InlineActivityManager::onGrowFoundReq);
-	registerMsgHandler<MonthSingnReq>(&InlineActivityManager::onMonthSingnReq);
-	registerMsgHandler<OnlineWelFareReq>(&InlineActivityManager::onOnlineWelFareReq);
-	registerMsgHandler<PeopleWelfareReq>(&InlineActivityManager::onPeopleWelfareReq);
-	registerMsgHandler<SevenLoginAwardReq>(&InlineActivityManager::onSevenLoginAwardReq);
-	registerMsgHandler<SevenDayTaskReq>(&InlineActivityManager::onSevenDayTaskReq);
-	registerMsgHandler<TimeAwardReq>(&InlineActivityManager::onTimeAwardReq);
+	registerMsgHandler<OneActivityReq>(&InlineActivityManager::onOneActivityReq);
 
+	registerMsgHandler<RankGameReq>(&RankGameManager::onRankGameReq);
+	registerMsgHandler<RankGameRankingReq>(&RankGameManager::onRankGameRankingReq);
+	registerMsgHandler<RankGameReportReq>(&RankGameManager::onRankGameReportReq);
+	registerMsgHandler<RankGameShopReq>(&RankGameManager::onRankGameShopReq);
+	registerMsgHandler<RankGameShopBuyReq>(&RankGameManager::onRankGameShopBuyReq);
+	registerMsgHandler<RankGameBeginReq>(&RankGameManager::onRankGameBeginReq);
+	registerMsgHandler<RankGameEndReq>(&RankGameManager::onRankGameEndReq);
+	registerMsgHandler<RankGameBuyTimesReq>(&RankGameManager::onRankGameBuyTimesReq);
 
 	return;
 }
@@ -356,6 +396,8 @@ ClientConnection::registerPVPMsgs()
 	registerMsgHandler<PVPRoomReq>(&PVPSystem::onPVPRoomReq);
 
 	registerMsgHandler<PVPBattleReq>(&PVPSystem::onPVPBattleReq);
+
+	registerMsgHandler<CGPVPReq>(&PVPMsgHandler::onPVPReq);
 
 	return;
 }
@@ -430,6 +472,8 @@ void ClientConnection::registerServantMsgs()
 	registerMsgHandler<CGServantBattleSetReq>(&ServantMsgHandler::onServantBattleSet);
 	registerMsgHandler<CGAssistBattleOnSetReq>(&ServantMsgHandler::onAssistBattleOneset);
 	registerMsgHandler<CGServantSwitchReq>(&ServantMsgHandler::onServantSwitch);
+	registerMsgHandler<CGServantEquipOnceReq>(&ServantMsgHandler::onServantEquipOnce);
+	registerMsgHandler<CGServantInfoLockReq>(&ServantMsgHandler::onServantInfoLock);
 	
 }
 
@@ -454,10 +498,22 @@ void ClientConnection::registerDetailMsgs()
 void ClientConnection::registerGMMsgs()
 {
 	registerMsgHandler<CGGMReq>(&GMMessageHandler::onMsgGMReq);
+	registerMsgHandler<CGGMForbidLoginReq>(&GMMessageHandler::onMsgGMForbidLoginReq);
+	registerMsgHandler<CGGMKickPlayerReq>(&GMMessageHandler::onMsgGMKickPlayerReq);
+	registerMsgHandler<CGGMForbidChatReq>(&GMMessageHandler::onMsgGMForbidChatReq);
+	registerMsgHandler<CGGMSendEmailReq>(&GMMessageHandler::onMsgGMSendEmailReq);
+	registerMsgHandler<CGGMKickAllReq>(&GMMessageHandler::onMsgGMKickAllReq);
+	registerMsgHandler<CGGMNoticeReq>(&GMMessageHandler::onMsgGMNoticeReq);
+	registerMsgHandler<CGGMResetReq>(&GMMessageHandler::onMsgGMReset);
+	registerMsgHandler<CGGAwardBagReq>(&GMMessageHandler::onMsgGMAwardBag);
+
+	
 }
 
 void ClientConnection:: registerFriendsMsgs()
 {
+	registerMsgHandler<CGFriendBlackListReq>(&FriendMsgHandler::onFriendReq);
+
 	registerMsgHandler<CGFriendAddReq>(&FriendMsgHandler::onAddFriendReq);
 
 	registerMsgHandler<CGFriendAddBackReq>(&FriendMsgHandler::onAddFriendBack);
@@ -474,6 +530,7 @@ void ClientConnection:: registerFriendsMsgs()
 
 	
 }
+
 
 void ClientConnection::registerEmailMsgs()
 {
@@ -512,6 +569,73 @@ void ClientConnection::registerAchieveMsgs()
 	
 
 }
+
+void ClientConnection::registerConsortMsgs()
+{
+	registerMsgHandler<CGConsortListReq>(&ConsortMsgHandler::onClientConsortListReq);
+	registerMsgHandler<CGConsortFindReq>(&ConsortMsgHandler::onClientConsortFindReq);
+	registerMsgHandler<CGConsortQuickJoinReq>(&ConsortMsgHandler::onQuickJoinConsortReq);
+	registerMsgHandler<CGConsortJoinReq>(&ConsortMsgHandler::onJoinConsortReq);
+	registerMsgHandler<CGConsortCreateReq>(&ConsortMsgHandler::onCreateConsortReq);
+	registerMsgHandler<CGConsortMemberReq>(&ConsortMsgHandler::onSyncConsortMemberReq);
+	registerMsgHandler<CGApplyCheckReq>(&ConsortMsgHandler::onCheckApplyReq);
+	registerMsgHandler<CGApplyDealReq>(&ConsortMsgHandler::onDealApplyReq);
+	registerMsgHandler<CGApplyClearReq>(&ConsortMsgHandler::onClearApplyReq);
+	registerMsgHandler<CGConsortSetReq>(&ConsortMsgHandler::onConsortSetReq);
+	registerMsgHandler<CGSetDescsReq>(&ConsortMsgHandler::onSetDescsReq);
+	registerMsgHandler<CGKickMemberReq>(&ConsortMsgHandler::onKickMemberReq);
+	registerMsgHandler<CGDestroyConsortReq>(&ConsortMsgHandler::onDestroyConsortReq);
+	
+	registerMsgHandler<CGLeaveConsortReq>(&ConsortMsgHandler::onLeaveConsortReq);
+	registerMsgHandler<CGSetViceLeaderReq>(&ConsortMsgHandler::onSetViceLeaderReq);
+	registerMsgHandler<CGConsortlogReq>(&ConsortMsgHandler::onConsortLogReq);
+	registerMsgHandler<CGConsortDetailReq>(&ConsortMsgHandler::onConsortDetailReq);
+	registerMsgHandler<CGConsortSignReq>(&ConsortMsgHandler::onConsortSignReq);
+
+	registerMsgHandler<CGConsortSignAwardReq>(&ConsortMsgHandler::onConsortSignAwardReq);
+	
+	registerMsgHandler<CGCatTaskGetReq>(&ConsortMsgHandler::onCatTaskGetReq);
+
+	registerMsgHandler<CGCatTaskGetAwardReq>(&ConsortMsgHandler::onCatTaskAwardGetReq);
+	
+	registerMsgHandler<CGCatTaskRefreshReq>(&ConsortMsgHandler::onCatTaskRefreshReq);
+	
+	registerMsgHandler<CGKitchenBeginReq>(&ConsortMsgHandler::onKitchenBeginReq);
+
+	registerMsgHandler<CGKitchenEndReq>(&ConsortMsgHandler::onKitchenEndReq);
+
+	registerMsgHandler<CGBusinessCatTimeReq>(&ConsortMsgHandler::onBusinessCatTimeReq);
+
+	registerMsgHandler<CGBusinessCatResetReq>(&ConsortMsgHandler::onBusinessCatResetReq);
+
+	registerMsgHandler<CGBusinessCatBuyReq>(&ConsortMsgHandler::onBusinessCatBuyReq);
+
+	registerMsgHandler<CGPlayerNewGuidReq>(&ConsortMsgHandler::onUpdateGuidReq);
+
+		registerMsgHandler<CGEyeQueReq>(&ConsortMsgHandler::onEyeQueReq);
+	
+		registerMsgHandler<CGEyeawardReq>(&ConsortMsgHandler::onEyeAwardReq);
+
+		registerMsgHandler<CGTicketJoinReq>(&ConsortMsgHandler::onTicketJoinReq);
+	
+		registerMsgHandler<CGTicketAwardReq>(&ConsortMsgHandler::onTicketGetAwardReq);
+		registerMsgHandler<CGTicketSupportReq>(&ConsortMsgHandler::onSupportReq);
+		registerMsgHandler<CGTicketDataReq>(&ConsortMsgHandler::onTicketDataReq);
+		registerMsgHandler<CGTicketOneDataReq>(&ConsortMsgHandler::onTicketOneDataReq);
+		registerMsgHandler<CGEloquenceAwardReq>(&ConsortMsgHandler::onEloquenceAward);
+	    registerMsgHandler<CGEloquenceBeginReq>(&ConsortMsgHandler::onEloquenceBegin);
+		registerMsgHandler<CGWoodDataReq>(&ConsortMsgHandler::onWoodCatDataReq);
+		registerMsgHandler<CGWoodCatBeginReq>(&ConsortMsgHandler::onWoodCatBeginReq);
+		registerMsgHandler<CGWoodCatEndReq>(&ConsortMsgHandler::onWoodCatEndReq);
+		registerMsgHandler<CGWoodEnhanceReq>(&ConsortMsgHandler::onWoodCatEnhanceReq);
+		registerMsgHandler<CGWoodTotalAwardReq>(&ConsortMsgHandler::onWoodCatTotalAwardReq);
+		
+		
+		
+
+	
+}
+
 
 #ifdef DEBUG
 void

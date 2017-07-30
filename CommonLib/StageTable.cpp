@@ -133,11 +133,11 @@ StageTable::loadFromCsv(const String& filePath)
 			return false;
 		}
 
-		if (!csvReader.bind("perBloodCount", stageTemplate.mPerBloodCount))
-		{
-			LOG_WARN("Failed to load Stage.csv for [perBloodCount]");
-			return false;
-		}
+// 		if (!csvReader.bind("perBloodCount", stageTemplate.mPerBloodCount))
+// 		{
+// 			LOG_WARN("Failed to load Stage.csv for [perBloodCount]");
+// 			return false;
+// 		}
 
 
 		if (!csvReader.bind("strengthCost", stageTemplate.mStrengthCost))
@@ -182,11 +182,11 @@ StageTable::loadFromCsv(const String& filePath)
 			return false;
 		}
 
-		if (!csvReader.bind("icon", stageTemplate.mIcon))
-		{
-			LOG_WARN("Failed to load Stage.csv for [icon]");
-			return false;
-		}
+// 		if (!csvReader.bind("icon", stageTemplate.mIcon))
+// 		{
+// 			LOG_WARN("Failed to load Stage.csv for [icon]");
+// 			return false;
+// 		}
 
 		if (!csvReader.bind("bossShow", stageTemplate.mBossShow))
 		{

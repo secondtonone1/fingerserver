@@ -3,7 +3,7 @@
 
 
 #include "MainThread.h"
-#include "DBInterface.h"
+
 
 namespace Lynx
 {
@@ -37,8 +37,10 @@ namespace Lynx
 
 		void clientResetChat(UInt64 playerUid);
 
-		//留给别的接口处理成就，奖励等系统消息
-		void sendSystemMsg(std::string ChatMsg);
+	
+
+		//GM发送的公告信息
+		void sendGMNotifyMsg(std::string msg, UInt64 dealline,  UInt64 terminal);
 
 		void checkOnline(UInt64 playerUid);
 
@@ -46,7 +48,7 @@ namespace Lynx
 		
 		Player* m_pPlayer;
 		List<ChatData> * m_pChatList;
-	    DBInterface mDBInterface;
+
 
 		
 

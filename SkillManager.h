@@ -27,11 +27,15 @@ namespace Lynx
 
 		void skillPositonSet(Map<UInt64,UInt32> skillEquipMap);
 
+		void skillLvUpOnce(UInt64 skillId);
+
 		List<SkillData> * getSkillList(void);
 
 		Vector<SkillData *> &getSkillVec(void);
 
 		List<SkillData> activeSkill(void);
+
+		Map<UInt64, SkillData*> *getSkillMap();
 		
 	private:
 		void skillMapInitial();

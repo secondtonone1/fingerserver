@@ -3,7 +3,8 @@
 #include "../NetworkLib/MsgHdr.h"
 #include "../PersistThreadMsg.h"
 #include "../CommonLib/MsgfireInfoToJson.h"
-#include "../CommonLib/CommonLib.h"
+#include "FireConfirmManager.h"
+#include "RankGame.h"
 
 namespace Lynx
 {
@@ -16,10 +17,15 @@ namespace Lynx
 	{
 	
 	public:
+		void checkStringToValue(UInt32 &dest,Json::Value &src);
+		void checkStringToValue(UInt64 &dest,Json::Value &src);
+// 		void CheckStringToValue(int dest,String src);
+// 		void CheckStringToValue(double dest,String src);
+// 		void CheckStringToValue(float dest,String src);
 
-// 		void checkExp(const  ConnId& connId);
-// 
-// 		void levelUp(const  ConnId& connId,UInt32 level);
+		void cGChapterEndconvertJsonToData(CGChapterEnd &chapterEnd);
+		void rankGameEndconvertJsonToData(RankGameEndReq &rankGameEndReq);
+
 		
 	};
 

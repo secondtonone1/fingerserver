@@ -151,6 +151,7 @@ NetworkWorker::onReceived(TcpConnection* conn, StreamBuffer& istream, StreamBuff
 		return;
 	}
 
+	//从istream中取出数据
 	ConnectionReceiveNotify notify;
 	notify.mConnId = conn->mConnId;
 	StreamBuffer::Node* node = NULL;
@@ -218,12 +219,13 @@ NetworkWorker::onConnectionOpenNotify(ConnectionOpenNotify& msg)
     LYNX_REGISTER_RECEIVED(tcpConnection, this, &NetworkWorker::onReceived);
 	LYNX_REGISTER_CONNECT_BROKEN(tcpConnection, this, &NetworkWorker::onConnectionBroken);
 	tcpConnection->setService(mIOService);
-	//回复读写事件 王戊辰
+	//恢复读写事件 王戊辰
     tcpConnection->resume();
 	//考虑到epoll et模式 EPOLLIN边缘触发，这次不调用，就要漏掉数据了。王戊辰
     onReceived(tcpConnection, tcpConnection->mIStream, tcpConnection->mOStream);
 }
 
+//发送接口
 void 
 NetworkWorker::onConnectionSendNotify(ConnectionSendNotify& msg)
 {

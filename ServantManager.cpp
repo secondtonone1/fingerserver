@@ -2,6 +2,7 @@
 #include "Player.h"
 #include "LogicSystem.h"
 #include "PersistSystem.h"
+#include "FireConfirm/Gift.h"
 using namespace Lynx;
 
 
@@ -108,7 +109,7 @@ bool ServantManager::isServantExist(UInt32 subTypeID)
 	}
 	return false;
 }
-bool ServantManager::addServants(UInt32 subTypeID,UInt32 count,Goods &goods)
+bool ServantManager::addServants(UInt32 subTypeID,UInt32 count)
 {
 	bool ret = false;//已结拥有佣兵
 	Json::Value jsonValue;
@@ -117,6 +118,40 @@ bool ServantManager::addServants(UInt32 subTypeID,UInt32 count,Goods &goods)
 
 	for(UInt32 i = 0; i < count ; i++)
 	{
+       //先判断是否有该佣兵
+		Map<UInt64 ,ServantData*>::Iter * findIter =  m_mapIdServant.find(subTypeID);
+		if(findIter)
+		{
+			//如果存在，那么判断是否有该佣兵
+			 if(findIter->mValue->level)
+			 {
+				 //存在该佣兵，那么将佣兵转化为佣兵碎片
+
+				  //存在该佣兵，那么将佣兵转化为佣兵碎片
+					ServantTemplate * servantTemp = SERVANT_TABLE().get(subTypeID);
+					if(!servantTemp)
+					{
+						LOG_WARN("design table error, servant %llu is not exist",  subTypeID);
+						assert(false);
+				    }
+
+					//记录增加碎片， 需求更改,主程规定
+					//rtItemEle.addCount2	+= servantTemp->mPieceCount; 
+				
+			 }
+			 else
+			 {
+				//如果有该佣兵碎片，但是没有佣兵，那么佣兵个数+1记录增加个数，需求更改，按照主程规定
+				//rtItemEle.addCount1 += 1;
+			 }
+
+	    }
+		else
+		{
+		   //没有该佣兵，且没有碎片，需求更改，按照主程规定
+         // rtItemEle.addCount1 += 1;
+		}
+
 		servantData = addServant(subTypeID);
 
 		if (servantData->pieceCount == 0)
@@ -126,20 +161,32 @@ bool ServantManager::addServants(UInt32 subTypeID,UInt32 count,Goods &goods)
 
 			if( LogicSystem::getSingleton().combinSendData(m_pPlayer->getPlayerGuid(),AWARD_SERVANT,jsonValue) ==false)	
 			{
+				
 			}
-// 			goods.resourcestype = AWARD_SERVANT;
-// 			goods.subtype = subTypeID;
-// 			goods.num = 1;
+
 
 		}
 		else
 		{
-// 			ServantTemplate * servantTemp = SERVANT_TABLE().get(subTypeID);
-// 			goods.num += servantTemp->mPieceCount;
+
 		}
 	}
-// 	goods.resourcestype = AWARD_SERVANTPIECE;
-// 	goods.subtype = subTypeID;
+
+	//系统公告
+	ServantTemplate * servantTemp = SERVANT_TABLE().get(subTypeID);
+	if (servantTemp == NULL)
+	{
+		LOG_WARN("servantTemp not found!!");
+		assert(false);
+		return ret;
+	}
+	if(servantTemp->mQuality >= 4)
+	{
+		LogicSystem::getSingleton().sendSystemMsg(servantTemp->mQuality-3, m_pPlayer->getPlayerName(), subTypeID);
+	}
+	
+	
+
  	return ret;
 }
 
@@ -192,7 +239,90 @@ void ServantManager::servantSwitch(UInt64 servantId, UInt32 count)
 	findIter->mValue->pieceCount -= count;
 
 	ServantTemplate * servantTemp = SERVANT_TABLE().get(servantId);
+	if (servantTemp == NULL)
+	{
+		LOG_WARN("servantTemp not found!!");
+		return;
+	}
 	m_pPlayer->mPlayerData.mServantData.servantSwitch +=  (servantTemp->mServantSwitch *count);
+
+	PersistUpdateServantNotify updateServant;
+	updateServant.m_nPlayerUid = m_nPlayerUid;
+	updateServant.m_servantData = *findIter->mValue;
+
+	PersistSystem::getSingleton().postThreadMsg(updateServant, updateServant.m_nPlayerUid);
+
+	m_pPlayer->getPersistManager().setDirtyBit(SERVANTFOODBIT);
+
+	Json::Value root;
+	GCServantSwitchResp switchResp;
+	root["errorId"] = LynxErrno::None;
+	root["switchcount"] = m_pPlayer->mPlayerData.mServantData.servantSwitch;
+	root["servantid"] = servantId;
+	root["piececount"] = findIter->mValue->pieceCount;
+
+	Json::StyledWriter writer;
+	switchResp.mRespJsonStr = writer.write(root);
+	switchResp.mPacketID = BOC_SERVANTSWITCH_RESP;
+	NetworkSystem::getSingleton().sendMsg(switchResp, connId);
+
+		cout << switchResp.mRespJsonStr;
+
+}
+
+
+void ServantManager::servantSwitch(UInt64 servantId)
+{
+	ServantTemplate * servantTemp = SERVANT_TABLE().get(servantId);
+	if (servantTemp == NULL)
+	{
+		GCServantSwitchResp switchresp;
+		switchresp.mPacketID = BOC_SERVANTSWITCH_RESP;
+		Json::Value root;
+		root["errorId"] = LynxErrno::ClienServerDataNotMatch;
+		Json::StyledWriter writer;
+
+		switchresp.mRespJsonStr = 	writer.write(root);
+		NetworkSystem::getSingleton().sendMsg(switchresp,  m_pPlayer->getConnId());
+		LOG_WARN("servantTemp not found!!");
+		return;
+	}
+
+	const ConnId& connId = m_pPlayer->getConnId();
+	Map<UInt64 ,ServantData*>::Iter * findIter =  m_mapIdServant.find(servantId);
+	if(!findIter)
+	{
+		GCServantSwitchResp switchresp;
+		switchresp.mPacketID = BOC_SERVANTSWITCH_RESP;
+		Json::Value root;
+		root["errorId"] = LynxErrno::InvalidParameter;
+		Json::StyledWriter writer;
+	
+		switchresp.mRespJsonStr = 	writer.write(root);
+		NetworkSystem::getSingleton().sendMsg(switchresp, connId);
+		cout << switchresp.mRespJsonStr;
+		return;
+	}
+	
+	if(findIter->mValue->star < servantTemp->mMaxStar)
+	{
+		GCServantSwitchResp switchresp;
+		switchresp.mPacketID = BOC_SERVANTSWITCH_RESP;
+		Json::Value root;
+		root["errorId"] = LynxErrno::ServantStarLimit;
+		Json::StyledWriter writer;
+
+		switchresp.mRespJsonStr = 	writer.write(root);
+		NetworkSystem::getSingleton().sendMsg(switchresp, connId);
+			cout << switchresp.mRespJsonStr;
+		return;
+	}
+
+	
+
+	int count = findIter->mValue->pieceCount;
+	m_pPlayer->mPlayerData.mServantData.servantSwitch +=  (servantTemp->mServantSwitch *count);
+	findIter->mValue->pieceCount = 0;
 
 	PersistUpdateServantNotify updateServant;
 	updateServant.m_nPlayerUid = m_nPlayerUid;
@@ -220,6 +350,13 @@ void ServantManager::servantSwitch(UInt64 servantId, UInt32 count)
 
 ServantData* ServantManager::addServant(UInt64 servantId)
 {
+	 ServantTemplate * servantTemp = SERVANT_TABLE().get(servantId);
+		   if(!servantTemp)
+		   {
+			   LOG_WARN("design table error, servant %llu is not exist",  servantId);
+			   assert(false);
+		   }
+
 	Map<UInt64 ,ServantData*>::Iter * findIter =  m_mapIdServant.find(servantId);
 	
 	//有该佣兵或者佣兵碎片
@@ -335,6 +472,90 @@ bool ServantManager::getServantDataJson(UInt32 subTypeID,Json::Value &jsonValue)
 	return ret;
 }
 
+void ServantManager::infolock(UInt64 servantid, UInt32 index)
+{
+	const ConnId& connId = m_pPlayer->getConnId();
+	ServantTemplate * servantTemp = SERVANT_TABLE().get(servantid);
+	if(!servantTemp)
+	{
+		LOG_WARN("design table error, servant %llu is not exist",  servantid);
+		GCServantInfoLockResp servantInfoResp;
+		servantInfoResp.mPacketID = BOC_SERVANT_INFOLOCK_RESP;
+
+		Json::Value root;
+		
+		root["errorId"] = LynxErrno::TableElementNotExit;
+	
+
+		Json::StyledWriter writer;
+		servantInfoResp.mRespJsonStr = writer.write(root);
+		
+		NetworkSystem::getSingleton().sendMsg(servantInfoResp, connId);
+
+	
+		return;
+	}
+
+	Map<UInt64 ,ServantData*>::Iter * findIter =  m_mapIdServant.find(servantid);
+	if(!findIter)
+	{
+		LOG_WARN("design table error, servant %llu is not exist",  servantid);
+		GCServantInfoLockResp servantInfoResp;
+		servantInfoResp.mPacketID = BOC_SERVANT_INFOLOCK_RESP;
+
+		Json::Value root;
+
+		root["errorId"] = LynxErrno::ServantNotExit;
+
+
+		Json::StyledWriter writer;
+		servantInfoResp.mRespJsonStr = writer.write(root);
+
+		NetworkSystem::getSingleton().sendMsg(servantInfoResp, connId);
+
+		return;
+	}
+
+	UInt32 dirtyBit = 0;
+	UInt32 curBit = findIter->mValue->infolock;
+	if(index == 0)
+	{
+		dirtyBit = FIRSTLOCK;
+	}
+
+	if(index == 1)
+	{
+		dirtyBit = SECONDLOCK;
+	}
+
+	if(index == 2)
+	{
+		dirtyBit = THIRDLOCK;
+	}
+
+	findIter->mValue->infolock =  curBit | dirtyBit;
+
+	GCServantInfoLockResp servantInfoResp;
+	servantInfoResp.mPacketID = BOC_SERVANT_INFOLOCK_RESP;
+
+	Json::Value root;
+
+	root["errorId"] = LynxErrno::None;
+	root["infolock"] = findIter->mValue->infolock;
+	root["index"] = index;
+	root["servantid"] = servantid;
+
+
+	Json::StyledWriter writer;
+	servantInfoResp.mRespJsonStr = writer.write(root);
+
+	NetworkSystem::getSingleton().sendMsg(servantInfoResp, connId);
+
+
+}
+
+
+
 
 UInt32 ServantManager::getServantPieceCount(UInt64 servantId)
 {
@@ -348,6 +569,16 @@ UInt32 ServantManager::getServantPieceCount(UInt64 servantId)
 
 ServantData* ServantManager::addServantPiece(UInt64 servantId,UInt32 pieceCount)
 {
+	//存在该佣兵或者碎片，
+		ServantTemplate * servantTemp = SERVANT_TABLE().get(servantId);
+
+		if(!servantTemp)
+		{
+			LOG_WARN("design table error, servant %llu is not exist",  servantId);
+			assert(false);
+		}
+
+
 	Map<UInt64 ,ServantData*>::Iter * findIter =  m_mapIdServant.find(servantId);
 
 	//有该佣兵或者佣兵碎片
@@ -478,6 +709,15 @@ ServantData * ServantManager::GMsetServantPiece(UInt64 servantId, UInt32 pieceCo
 
 ServantData* ServantManager::combineServant(UInt64 servantId)
 {
+
+	ServantTemplate * servantTemp = SERVANT_TABLE().get(servantId);
+
+	if(!servantTemp)
+	{
+		LOG_WARN("design table error, servant %llu is not exist",  servantId);
+		assert(false);
+	}
+
 	const ConnId& connId = m_pPlayer->getConnId();
 	
 	Map<UInt64 ,ServantData*>::Iter * findIter =  m_mapIdServant.find(servantId);
@@ -506,11 +746,41 @@ ServantData* ServantManager::combineServant(UInt64 servantId)
 				   NetworkSystem::getSingleton().sendMsg(combineResp,connId);
 				   return NULL;
 				}
+				UInt64 coin = m_pPlayer->getPlayerCoin();
+				if(coin  < servantStarTemp->mCostCoin)
+				{
+						 //提示玩家铜钱不足
+					Json::Value root;
+					root["errorId"] = LynxErrno::CoinNotEnough;
+					Json::StyledWriter writer;
+					
+                   GCServantCombineResp combineResp;
+				   combineResp.mPacketID = BOC_SERVANT_COMBINE_RESP;
+				   combineResp.mRespJsonStr = writer.write(root);
+
+				   cout << combineResp.mRespJsonStr;
+
+				   NetworkSystem::getSingleton().sendMsg(combineResp,connId);
+				   return NULL;
+				}
+
 
 				//等级和星级变为1，减少碎片数量
 				findIter->mValue->level = 1;
 				findIter->mValue->star = 1;
 				findIter->mValue->pieceCount -= servantStarTemp->mCount;
+				coin -= servantStarTemp->mCostCoin;
+
+				Goods goods;
+				List<Goods> itemList;
+
+				goods.resourcestype =AWARD_BASE;
+				goods.subtype = AWARD_BASE_COIN;
+				goods.num = 0 - servantStarTemp->mCostCoin;
+				itemList.insertTail(goods);
+				GiftManager::getSingleton().addToPlayer(m_pPlayer->getPlayerGuid(),REFLASH_AWARD,itemList,MiniLog20);
+
+
 
 				PersistUpdateServantNotify updateServant;
 				updateServant.m_nPlayerUid = m_nPlayerUid;
@@ -538,6 +808,8 @@ ServantData* ServantManager::combineServant(UInt64 servantId)
 				root["level"] = 1;
 				root["pieceCount"] = findIter->mValue->pieceCount;
 				root["lvexp"] = 0;
+				root["coin"] = coin;
+				root["combineflag"] = 1;
 				Json::StyledWriter writer;
 
 				GCServantCombineResp combineResp;
@@ -551,7 +823,14 @@ ServantData* ServantManager::combineServant(UInt64 servantId)
 					NetworkSystem::getSingleton().sendMsg(combineResp,connId);
 				}
 				
-		
+				//系统提示
+				//系统公告
+				
+				
+				if(servantTemp->mQuality >= 4)
+				{
+					LogicSystem::getSingleton().sendSystemMsg(servantTemp->mQuality-3, m_pPlayer->getPlayerName(), servantId);
+				}
 
 
 				return findIter->mValue;
@@ -707,11 +986,39 @@ ServantData* ServantManager::servantStarUp(UInt64 servantId)
 			return NULL;
 		}
 
-		
+		UInt64 playerCoin = m_pPlayer->getPlayerCoin();
+		if(playerCoin < servantStarTemp->mCostCoin)
+		{
+			//提示玩家铜钱数量不足
+
+			Json::Value root;
+			root["errorId"] = LynxErrno::CoinNotEnough;
+
+			Json::StyledWriter writer;
+
+			GCServantCombineResp starupResp;
+			starupResp.mPacketID = BOC_SERVANT_COMBINE_RESP;
+			starupResp.mRespJsonStr = writer.write(root);
+
+			cout << starupResp.mRespJsonStr;
+			NetworkSystem::getSingleton().sendMsg(starupResp,connId);
+
+			return NULL;
+		}
 
 		findIter->mValue->pieceCount -= servantStarTemp->mCount;
 		findIter->mValue->star++;
-		
+		playerCoin -= servantStarTemp->mCostCoin;
+
+		Goods goods;
+		List<Goods> itemList;
+
+		goods.resourcestype =AWARD_BASE;
+		goods.subtype = AWARD_BASE_COIN;
+		goods.num = 0 - servantStarTemp->mCostCoin;
+		itemList.insertTail(goods);
+		GiftManager::getSingleton().addToPlayer(m_pPlayer->getPlayerGuid(),REFLASH_AWARD,itemList,MiniLog20);
+
 		
 		PersistUpdateServantNotify updateServant;
 		updateServant.m_nPlayerUid = m_nPlayerUid;
@@ -728,6 +1035,7 @@ ServantData* ServantManager::servantStarUp(UInt64 servantId)
 		root["errorId"] = LynxErrno::None;
 		root["servantId"] = servantId;
 		root["star"] = findIter->mValue->star;
+		root["coin"] = playerCoin;
 		
 		root["pieceCount"] = findIter->mValue->pieceCount;
 		Json::StyledWriter writer;
@@ -1221,6 +1529,24 @@ void ServantManager::servantLvUp(UInt64 servantId, const List<UInt32>& foodList)
 		return ;
 	}
 
+	UInt64 playerLv = m_pPlayer->getPlayerLeval();
+	if(servantDataIter->mValue->level >=  playerLv)
+	{
+		//提示玩家参数不正确
+		Json::Value root;
+		root["errorId"] = LynxErrno::InvalidParameter;
+	
+		Json::StyledWriter writer;
+
+		GCServantLvUpResp lvUpResp;
+		lvUpResp.mPacketID = BOC_SERVANT_LVUP_RESP;
+		lvUpResp.mRespJsonStr = writer.write(root);
+
+		NetworkSystem::getSingleton().sendMsg(lvUpResp,connId);
+		cout << lvUpResp.mRespJsonStr;
+		return ;
+	}
+
 	if(!servantLvUpTemp->mExp)
 	{
 		//提示玩家已经达到最大等级
@@ -1277,6 +1603,11 @@ void ServantManager::servantLvUp(UInt64 servantId, const List<UInt32>& foodList)
 	for(const List<UInt32>::Iter * foodIter = foodList.begin(); foodIter != NULL; foodIter = foodList.next(foodIter))
 	{
 		ServantLvUpMaterialTemplate * servantLvUpMaterialTemp = SERVANTMATERIAL_TABLE().get(foodIndex+1);
+		if (servantLvUpMaterialTemp == NULL)
+		{
+			LOG_WARN("servantLvUpMaterialTemp not found!!");
+			return;
+		}
 		*foodscount[foodIndex] -= foodIter->mValue;
 		getExp += foodIter->mValue * servantLvUpMaterialTemp->mExpProvide;
 		foodIndex ++;
@@ -1289,8 +1620,37 @@ void ServantManager::servantLvUp(UInt64 servantId, const List<UInt32>& foodList)
 	{
 		servantDataIter->mValue->lvexp -= servantLvUpTemp->mExp;
 		servantDataIter->mValue->level ++;
+		if(servantDataIter->mValue->level >= 80)
+		{
+			servantDataIter->mValue->level = 80;
+			break;
+		}
+
+		if(servantDataIter->mValue->level >= playerLv + 1)
+		{
+			servantDataIter->mValue->level = playerLv + 1;
+			servantDataIter->mValue->lvexp = 0;
+			break;
+		}
+
 
 		servantLvUpTemp = SERVANTLVUP_TABLE().get(servantDataIter->mValue->level);
+		if (servantLvUpTemp == NULL)
+		{
+			LOG_WARN("servantLvUpTemp not found!!");
+			Json::Value root;
+			root["errorId"] = LynxErrno::ClienServerDataNotMatch;
+
+			Json::StyledWriter writer;
+
+			GCServantLvUpResp lvUpResp;
+			lvUpResp.mPacketID = BOC_SERVANT_LVUP_RESP;
+			lvUpResp.mRespJsonStr = writer.write(root);
+
+			NetworkSystem::getSingleton().sendMsg(lvUpResp,connId);
+			cout << lvUpResp.mRespJsonStr;
+			return;
+		}
 	}
 
 	PersistUpdateServantNotify updateServant;
@@ -1321,6 +1681,9 @@ void ServantManager::servantLvUp(UInt64 servantId, const List<UInt32>& foodList)
 	cout << lvUpResp.mRespJsonStr;
 	NetworkSystem::getSingleton().sendMsg(lvUpResp,connId);
 
+	//更新七日训
+	LogicSystem::getSingleton().updateSevenDayTask(m_pPlayer->getPlayerGuid(),SDT09,1);
+
 }
 
 void ServantManager:: checkActiveCondition()
@@ -1346,18 +1709,29 @@ void ServantManager::checkBattleOpen(UInt32 &battleIndex, const Vector<UInt32> &
 	assert(battleIndex <= 12);
 	
 	ServantBattleOpenTemplate * servantBattleOpen = SERVANTBATTLEOPEN_TABLE().get(battleIndex);
+	if (servantBattleOpen == NULL)
+	{
+		LOG_WARN("servantBattleOpen not found!!");
+		return;
+	}
 
 	if(servantBattleOpen->mLevel <= playerlv && !servantBattleOpen->mCost)
 	{
-		if(battleIndex >= 6)
+		//原逻辑按照花费为0表示自动解锁，现在需求更改，暂时注释
+		/*if(battleIndex >= 6)
 		{
 			m_pServantBattleData->assistBattleBit |= bitVec[battleIndex];			
 		}
 		else
 		{
 			m_pServantBattleData->mainBattleBit |= bitVec[battleIndex];
+		}*/
+		//现更改为主要阵位自动解锁
+		if(battleIndex < 6)
+		{
+			m_pServantBattleData->mainBattleBit |= bitVec[battleIndex];
 		}
-			
+		
 	}
 
 	m_pPlayer->getPersistManager().setDirtyBit(SERVANTBATTLEBIT);
@@ -1503,6 +1877,7 @@ std::string ServantManager::convertDataToJson()
 		servantRoot["lvexp"] = servantIter->mValue.lvexp;
 		servantRoot["star"] = servantIter->mValue.star;
 		servantRoot["floor"] = servantIter->mValue.floor;
+		servantRoot["infolock"] = servantIter->mValue.infolock;
 
 		for(List<UInt64>::Iter * treasureIter = servantIter->mValue.equipTreasures.begin(); treasureIter != NULL;
 			treasureIter = servantIter->mValue.equipTreasures.next(treasureIter))
@@ -1528,6 +1903,11 @@ ServantTreasure* ServantManager::combineTreasure(UInt64 treasureId , UInt32 coun
 	const ConnId& connId = m_pPlayer->getConnId();
 	
 	ServantTreasureTemplate * servantTreasureTemp = SERVANTTREASURE_TABLE().get(treasureId);
+	if (servantTreasureTemp == NULL)
+	{
+		LOG_WARN("servantTreasureTemp not found!!");
+		return NULL;
+	}
 	
 	Vector<UInt64> combineVec;
     Vector<ServantTreasure *> servantTreasureVec;
@@ -1672,7 +2052,7 @@ ServantTreasure* ServantManager::combineTreasure(UInt64 treasureId , UInt32 coun
 
 		root["changeTreasures"].append(treasureRoot);
 
-
+		
 
 	}
 
@@ -1695,6 +2075,139 @@ ServantTreasure* ServantManager::combineTreasure(UInt64 treasureId , UInt32 coun
 	
 	return NULL;
 }
+
+ bool ServantManager::autoCombineTreasure(UInt64 treasureId, List<UInt64 > & changeList)
+{
+	
+	const ConnId& connId = m_pPlayer->getConnId();
+	
+	ServantTreasureTemplate * servantTreasureTemp = SERVANTTREASURE_TABLE().get(treasureId);
+	if (servantTreasureTemp == NULL)
+	{
+		LOG_WARN("servantTreasureTemp not found!!"); 
+		return false;
+	}
+
+	if(servantTreasureTemp->mCombineId1)
+	{
+		Map<UInt64, ServantTreasure *>::Iter * treasureIter = m_mapIdTreasure.find(servantTreasureTemp->mCombineId1);
+		
+		if(!treasureIter)
+		{
+			//提示玩家宝物不存在
+			
+			return false;
+
+		}
+		
+		if(servantTreasureTemp->mCombineCount1  > treasureIter->mValue->count)
+		{
+           //提示玩家数量不足
+			
+			return false;
+		}
+
+		changeList.insertTail(servantTreasureTemp->mCombineId1);
+	}
+	else
+	{
+		return false;
+	}
+	if(servantTreasureTemp->mCombineId2)
+	{
+		Map<UInt64, ServantTreasure *>::Iter * treasureIter = m_mapIdTreasure.find(servantTreasureTemp->mCombineId2);
+
+		if(!treasureIter)
+		{
+			//提示玩家宝物不存在
+		
+			return false;
+
+		}
+
+		if(servantTreasureTemp->mCombineCount2 > treasureIter->mValue->count)
+		{
+			//提示玩家数量不足
+			
+			return false;
+		}
+
+		changeList.insertTail(servantTreasureTemp->mCombineId2);
+	}
+	else
+	{
+		return false;
+	}
+	if(servantTreasureTemp->mCombineId3)
+	{
+		Map<UInt64, ServantTreasure *>::Iter * treasureIter = m_mapIdTreasure.find(servantTreasureTemp->mCombineId3);
+
+		if(!treasureIter)
+		{
+			//提示玩家宝物不存在
+		
+			return false;
+
+		}
+
+		if(servantTreasureTemp->mCombineCount3> treasureIter->mValue->count)
+		{
+			//提示玩家数量不足
+		
+			return false;
+		}
+
+		changeList.insertTail(servantTreasureTemp->mCombineId3);
+	}
+	else
+	{
+		return false;
+	}
+	if(servantTreasureTemp->mCombineId1)
+	{
+		Map<UInt64, ServantTreasure *>::Iter * treasureIter1 = m_mapIdTreasure.find(servantTreasureTemp->mCombineId1);
+		treasureIter1->mValue->count -= servantTreasureTemp->mCombineCount1;
+
+		PersistUpdateServantTreasureNotify updateServantTreasureMsg1;
+		updateServantTreasureMsg1.m_nPlayerUid = m_nPlayerUid;
+		updateServantTreasureMsg1.m_servantTreasure = *(treasureIter1->mValue);
+
+		PersistSystem::getSingleton().postThreadMsg(updateServantTreasureMsg1, m_nPlayerUid);
+	}
+	
+	if(servantTreasureTemp->mCombineId2)
+	{
+		Map<UInt64, ServantTreasure *>::Iter * treasureIter2 = m_mapIdTreasure.find(servantTreasureTemp->mCombineId2);
+		treasureIter2->mValue->count -= servantTreasureTemp->mCombineCount2;
+
+		PersistUpdateServantTreasureNotify updateServantTreasureMsg2;
+		updateServantTreasureMsg2.m_nPlayerUid = m_nPlayerUid;
+		updateServantTreasureMsg2.m_servantTreasure = *(treasureIter2->mValue);
+
+		PersistSystem::getSingleton().postThreadMsg(updateServantTreasureMsg2, m_nPlayerUid);
+	}
+	
+	if(servantTreasureTemp->mCombineId3)
+	{
+		Map<UInt64, ServantTreasure *>::Iter * treasureIter3 = m_mapIdTreasure.find(servantTreasureTemp->mCombineId3);
+		treasureIter3->mValue->count -= servantTreasureTemp->mCombineCount3;
+
+		PersistUpdateServantTreasureNotify updateServantTreasureMsg3;
+		updateServantTreasureMsg3.m_nPlayerUid = m_nPlayerUid;
+		updateServantTreasureMsg3.m_servantTreasure = *(treasureIter3->mValue);
+
+		PersistSystem::getSingleton().postThreadMsg(updateServantTreasureMsg3, m_nPlayerUid);
+	}
+
+	
+
+	ServantTreasure* newTreasure =  addTreasure(treasureId, 1);
+
+	
+	return true;
+
+}
+
 
 
 bool ServantManager::treasureEquip(UInt64 servantId, const Vector<UInt64>& equipVec)
@@ -1741,22 +2254,25 @@ bool ServantManager::treasureEquip(UInt64 servantId, const Vector<UInt64>& equip
 	ServantFloorTemplate * servantFloorTmp = SERVANTFLOOR_TABLE().reverseGet(servantIter->mValue->servantId, servantIter->mValue->floor);
 	UInt32 index = 0;
     
+	//遍历当前佣兵穿戴的装备
 	for(List<UInt64>::Iter  * treasureIter = servantIter->mValue->equipTreasures.begin(); treasureIter != NULL; 
 		treasureIter = servantIter->mValue->equipTreasures.next(treasureIter) )
 	{
+		//如果客户端发过来该位置为空，那么跳过，判断下移槽位
 		if(!equipVec[index])
 		{
 			index ++;
 			continue;
 		}
 		
-		
+		//佣兵穿戴的和客户端发送过来的一样，那么跳过，说明没有更改
 		if(equipVec[index] == treasureIter->mValue)
 		{
 			index ++;
 			continue;
 		}
 
+		//如果佣兵现在有穿戴，而客户端发来消息该位置没有穿戴说明参数不对，当前穿戴的和客户端发过来的数据不一致
 		if(treasureIter -> mValue)
 		{
 			//提示玩家参数不对	
@@ -1776,6 +2292,7 @@ bool ServantManager::treasureEquip(UInt64 servantId, const Vector<UInt64>& equip
 			return false;
 		}
 	
+		//当该位置穿戴的为空，并且客户端发过来的装备id在玩家所有佣兵装备中查找
 		Map<UInt64, ServantTreasure *>::Iter *  equipTreasureIter = m_mapIdTreasure.find(equipVec[index]);
 		
 		if(!equipTreasureIter || !(equipTreasureIter->mValue->count) )
@@ -1798,6 +2315,7 @@ bool ServantManager::treasureEquip(UInt64 servantId, const Vector<UInt64>& equip
 			return false;
 		}
 
+		//审核玩家发送过来的id和表格里配置的是否一样
 		if(index == 0)
 		{
 			if(servantFloorTmp->mSlot1 != equipVec[index])
@@ -1967,6 +2485,197 @@ bool ServantManager::treasureEquip(UInt64 servantId, const Vector<UInt64>& equip
 	return true;
 }
 
+bool ServantManager::treasureEquipOnce(UInt64 servantId)
+{
+	const ConnId& connId = m_pPlayer->getConnId();
+	
+	List<UInt64> changeList;
+	changeList.clear();
+	Map<UInt64 ,ServantData*>::Iter * servantIter = m_mapIdServant.find(servantId);
+	
+	if(!servantIter)
+	{
+		//提示玩家参数不对
+		GCServantEquipOnceResp equipResp;
+		equipResp.mPacketID = BOC_STREASURE_EQUIP_RESP;
+		Json::Value root;
+		root["errorId"] = LynxErrno::InvalidParameter;
+		Json::StyledWriter writer;
+
+		equipResp.mRespJsonStr = writer.write(root);
+
+		cout <<equipResp.mRespJsonStr;
+
+		NetworkSystem::getSingleton().sendMsg(equipResp,connId);
+
+		return false;
+	}
+
+	ServantFloorTemplate * servantFloorTmp = SERVANTFLOOR_TABLE().reverseGet(servantIter->mValue->servantId, servantIter->mValue->floor);
+	UInt32 index = 0;
+    
+	//遍历当前佣兵穿戴的装备
+	for(List<UInt64>::Iter  * treasureIter = servantIter->mValue->equipTreasures.begin(); treasureIter != NULL; 
+		treasureIter = servantIter->mValue->equipTreasures.next(treasureIter) )
+	{
+		if(treasureIter->mValue)
+		{
+			index ++;
+			continue;
+		}
+	
+		//审核玩家发送过来的id和表格里配置的是否一样
+		if(index == 0)
+		{
+			//当该位置穿戴的为空,根据配置表查找需要的装备是否存在，不存在进行合成操作
+			Map<UInt64, ServantTreasure *>::Iter *  equipTreasureIter = m_mapIdTreasure.find(servantFloorTmp->mSlot1);
+			//如果装备不存在或者数量为0，考虑是否可以合成
+			if(!equipTreasureIter || !(equipTreasureIter->mValue->count) )
+			{
+				bool combineRes = autoCombineTreasure(servantFloorTmp->mSlot1,changeList);
+				if(!combineRes)
+				{
+					index++;
+					continue;
+				}
+			}
+			
+			equipTreasureIter = m_mapIdTreasure.find(servantFloorTmp->mSlot1);
+			equipTreasureIter->mValue->count --;
+			treasureIter->mValue = servantFloorTmp->mSlot1;
+				PersistUpdateServantTreasureNotify updateServantTreasureMsg;
+				updateServantTreasureMsg.m_nPlayerUid = m_nPlayerUid;
+				updateServantTreasureMsg.m_servantTreasure = *(equipTreasureIter->mValue);
+				changeList.insertTail(servantFloorTmp->mSlot1);
+		}
+
+		if(index == 1)
+		{
+			//当该位置穿戴的为空,根据配置表查找需要的装备是否存在，不存在进行合成操作
+			Map<UInt64, ServantTreasure *>::Iter *  equipTreasureIter = m_mapIdTreasure.find(servantFloorTmp->mSlot2);
+			//如果装备不存在或者数量为0，考虑是否可以合成
+			if(!equipTreasureIter || !(equipTreasureIter->mValue->count) )
+			{
+				bool combineRes = autoCombineTreasure(servantFloorTmp->mSlot2,changeList);
+				if(!combineRes)
+				{
+					index++;
+					continue;
+				}
+			}
+			
+			equipTreasureIter = m_mapIdTreasure.find(servantFloorTmp->mSlot2);
+			equipTreasureIter->mValue->count --;
+			
+			treasureIter->mValue = servantFloorTmp->mSlot2;
+
+			PersistUpdateServantTreasureNotify updateServantTreasureMsg;
+				updateServantTreasureMsg.m_nPlayerUid = m_nPlayerUid;
+				updateServantTreasureMsg.m_servantTreasure = *(equipTreasureIter->mValue);
+				changeList.insertTail(servantFloorTmp->mSlot2);
+			
+		}
+
+		if(index == 2)
+		{
+			//当该位置穿戴的为空,根据配置表查找需要的装备是否存在，不存在进行合成操作
+			Map<UInt64, ServantTreasure *>::Iter *  equipTreasureIter = m_mapIdTreasure.find(servantFloorTmp->mSlot3);
+
+			//如果装备不存在或者数量为0，考虑是否可以合成
+			if(!equipTreasureIter || !(equipTreasureIter->mValue->count) )
+			{
+				bool combineRes = autoCombineTreasure(servantFloorTmp->mSlot3,changeList);
+				if(!combineRes)
+				{
+					index++;
+					continue;
+				}
+			}
+			
+			equipTreasureIter = m_mapIdTreasure.find(servantFloorTmp->mSlot3);
+			equipTreasureIter->mValue->count --;
+
+			treasureIter->mValue = servantFloorTmp->mSlot3;
+
+			PersistUpdateServantTreasureNotify updateServantTreasureMsg;
+				updateServantTreasureMsg.m_nPlayerUid = m_nPlayerUid;
+				updateServantTreasureMsg.m_servantTreasure = *(equipTreasureIter->mValue);
+
+					changeList.insertTail(servantFloorTmp->mSlot3);
+
+		}
+
+		if(index == 3)
+		{
+			//当该位置穿戴的为空,根据配置表查找需要的装备是否存在，不存在进行合成操作
+			Map<UInt64, ServantTreasure *>::Iter *  equipTreasureIter = m_mapIdTreasure.find(servantFloorTmp->mSlot4);
+
+			//如果装备不存在或者数量为0，考虑是否可以合成
+			if(!equipTreasureIter || !(equipTreasureIter->mValue->count) )
+			{
+				bool combineRes = autoCombineTreasure(servantFloorTmp->mSlot4,changeList);
+				if(!combineRes)
+				{
+					index++;
+					continue;
+				}
+			}
+
+			equipTreasureIter = m_mapIdTreasure.find(servantFloorTmp->mSlot4);
+			equipTreasureIter->mValue->count --;
+
+			treasureIter->mValue = servantFloorTmp->mSlot4;
+
+			PersistUpdateServantTreasureNotify updateServantTreasureMsg;
+				updateServantTreasureMsg.m_nPlayerUid = m_nPlayerUid;
+				updateServantTreasureMsg.m_servantTreasure = *(equipTreasureIter->mValue);
+
+				changeList.insertTail(servantFloorTmp->mSlot4);
+		}
+
+			index ++;
+	}
+
+	Json::Value root;
+
+	for(List<UInt64>::Iter  * treasureIter = servantIter->mValue->equipTreasures.begin(); treasureIter != NULL; 
+		treasureIter = servantIter->mValue->equipTreasures.next(treasureIter) )
+	{
+			root["equipTreasures"].append(treasureIter->mValue);
+	}
+
+	root["servantId"] = servantId;
+
+	for(List<UInt64>::Iter  * changeIter = changeList.begin(); changeIter != NULL; 
+		changeIter = changeList.next(changeIter) )
+	{
+		Json::Value changeTreasure;
+		Map<UInt64, ServantTreasure *>::Iter *  treasureIter = m_mapIdTreasure.find(changeIter->mValue);
+		changeTreasure["treasureId"] = treasureIter->mValue->treasureId;
+		changeTreasure["treasureCount"] = treasureIter->mValue->count;
+		root["changeTreasures"].append(changeTreasure);
+	}
+
+	GCServantEquipOnceResp equipOnceResp;
+	equipOnceResp.mPacketID = BOC_SERVANT_EQUIPONCE_RESP;
+	
+	Json::StyledWriter writer;
+	
+	equipOnceResp.mRespJsonStr = writer.write(root);
+
+
+	NetworkSystem::getSingleton().sendMsg(equipOnceResp,connId);
+
+	
+	PersistUpdateServantNotify updateServant;
+	updateServant.m_nPlayerUid = m_nPlayerUid;
+	updateServant.m_servantData = *(servantIter->mValue);
+
+	PersistSystem::getSingleton().postThreadMsg(updateServant, updateServant.m_nPlayerUid);
+
+	return true;
+}
+
 //助阵位索引，从0到6
 bool ServantManager::assistbattleOpen(UInt32 battleIndex)
 {
@@ -1995,6 +2704,19 @@ bool ServantManager::assistbattleOpen(UInt32 battleIndex)
 	assert(battleIndex + 6 <= 12);
 
 	ServantBattleOpenTemplate * servantBattleOpen = SERVANTBATTLEOPEN_TABLE().get(battleIndex + 6);
+	if (servantBattleOpen == NULL)
+	{
+		Json::Value root;
+		root["errorId"] = LynxErrno::ClienServerDataNotMatch;
+
+		Json::StyledWriter writer;
+		GCServantBattleOpenResp battleOpenResp;
+		battleOpenResp.mRespJsonStr = writer.write(root);
+		battleOpenResp.mPacketID = BOC_SERVANTBATTLE_OPEN_RESP;
+		NetworkSystem::getSingleton().sendMsg(battleOpenResp,connId);
+		LOG_WARN("servantBattleOpen not found!!");
+		return false;
+	}
 
 	UInt32 playerlv = m_pPlayer->getPlayerLeval();
 
@@ -2043,9 +2765,17 @@ bool ServantManager::assistbattleOpen(UInt32 battleIndex)
 
 	m_pServantBattleData->assistBattleBit |= m_bitVec[battleIndex + 6];
 
-	m_pPlayer->setPlayerGold(gold - servantBattleOpen->mCost);
 
-	m_pPlayer->getPersistManager().setDirtyBit(SERVANTBATTLEBIT|BASEDATABIT);
+	m_pPlayer->getPersistManager().setDirtyBit(SERVANTBATTLEBIT);
+
+	Goods goods;
+	List<Goods> itemList;
+
+	goods.resourcestype =AWARD_BASE;
+	goods.subtype = AWARD_BASE_GOLD;
+	goods.num = 0 -servantBattleOpen->mCost;
+	itemList.insertTail(goods);
+	GiftManager::getSingleton().addToPlayer(m_pPlayer->getPlayerGuid(),REFLASH_AWARD,itemList,MiniLog21);
 
 
 	Json::Value root;
@@ -2264,6 +2994,9 @@ bool ServantManager::servantBattleSet(const Vector<UInt64> &totalBattle)
 
 				return false;
 			}
+			char dest[1024]={0};
+			snprintf(dest,sizeof(dest),"%d,%d",battleIndex,totalBattle[battleIndex]);
+			LogicSystem::getSingleton().write_log(LogType91,m_pPlayer->getPlayerGuid(), dest,LogInfo);
 		}
 		
 		battleIndex ++;
@@ -2314,6 +3047,10 @@ bool ServantManager::servantBattleSet(const Vector<UInt64> &totalBattle)
 
 				return false;
 			}
+
+			char dest[1024]={0};
+			snprintf(dest,sizeof(dest),"%d,%d",battleIndex,totalBattle[battleIndex]);
+			LogicSystem::getSingleton().write_log(LogType94,m_pPlayer->getPlayerGuid(), dest,LogInfo);
 		}
 
 		battleIndex ++;
@@ -2408,6 +3145,10 @@ bool ServantManager::assistBattleOneSet(const Vector<UInt64> &totalBattle)
 
 				return false;
 			}
+
+			char dest[1024]={0};
+			snprintf(dest,sizeof(dest),"%d,%d",battleIndex,totalBattle[battleIndex]);
+			LogicSystem::getSingleton().write_log(LogType91,m_pPlayer->getPlayerGuid(), dest,LogInfo);
 		}
 
 		battleIndex ++;
@@ -2459,6 +3200,9 @@ bool ServantManager::assistBattleOneSet(const Vector<UInt64> &totalBattle)
 
 				return false;
 			}
+			char dest[1024]={0};
+			snprintf(dest,sizeof(dest),"%d,%d",battleIndex,totalBattle[battleIndex]);
+			LogicSystem::getSingleton().write_log(LogType94,m_pPlayer->getPlayerGuid(), dest,LogInfo);
 		}
 
 		battleIndex ++;
@@ -3042,6 +3786,11 @@ void ServantManager::calculteAttrAdd(PlayerAttrData & playerAttrData)
 	for(UInt32 i = 0; i < m_luckVec.size(); i++)
 	{
 		ServantLuckTemplate * servantLuckTemp = SERVANTLUCK_TABLE().get(m_luckVec[i]);
+		if (servantLuckTemp == NULL)
+		{
+			LOG_WARN("servantLuckTemp not found!!");
+			return;
+		}
 
 		if(servantLuckTemp->mAttrType1)
 		{

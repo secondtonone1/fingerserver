@@ -48,11 +48,16 @@ namespace Lynx
 
 		std::string convertStageDataToJson();
 
+		void refreshDailyresetData(UInt64 playerID);
+
 		UInt32 getChapterID(UInt32 stageID);
 
 		UInt32 addStageData(Guid playerID,UInt32 copyID,Int32 num);//添加数据
 
 		UInt32 showNexStage(Guid playerID,UInt32 copyID,Int32 num);//显示能挑战下一关
+
+		//显示下一章节开启
+		UInt32 getOpenChapter(Guid playerID,UInt32 copyID,Int32 num,List<Goods> &stageIDList);
 
 		UInt32 chapterBoxCanOpen(PlayerChapterData chapterData,UInt32 whichOne);//章节中的宝箱是否能打开
 
@@ -75,7 +80,7 @@ namespace Lynx
 
 		UInt32 binarytoStarNum(UInt32 num);//二进制的数转换成星数
 
-		void stageReset(Player* player,bool needSend);//重置关卡次数
+		void stageReset(Player* player,bool needSend,UInt32 stageType);//重置关卡次数
 
 		bool initePreStageIDs();
 
@@ -84,6 +89,9 @@ namespace Lynx
 		Map<UInt16, PlayerChapterData *> getMapIDToChapter();
 
 		void delDoNotMeet(const ConnId& connId,Map<UInt16, PlayerChapterData *> &mapIDToChapter);
+
+
+		void getStageData(Guid playerID,UInt32 stageID,Json::Value &root );
 
 		
 
@@ -104,6 +112,12 @@ namespace Lynx
 		 List<UInt64> getMatchingPlayers();
 		
 		 void resetMatchingPlayers();
+
+		 void addMatchingPlayersTwelvePalace(UInt64 playerID);
+
+		 List<UInt64> getMatchingPlayersTwelvePalace();
+
+		 void resetMatchingPlayersTwelvePalace();
 
 		 
 		 void resetChapterUnlock();
@@ -132,12 +146,7 @@ namespace Lynx
 
 		rapidjson::Value& getArry();
 		  
-		 
-// 		 void addStageResetTimes(UInt32 stageID,UInt32 count);
-// 
-// 		  
-// 		 UInt32 getStageResetTimes(UInt32 stageID);
-		 
+		
 
 	private:
 		void stageInitial();
@@ -153,7 +162,9 @@ namespace Lynx
 
 		 UInt32 mTwelvePalaceNeedReset;
 
-		 List<UInt64> matchingPlayers;
+		 List<UInt64> matchingPlayers;//多人副本
+		
+		 List<UInt64> matchingPlayersTwelvePalace;//十二宗宫
 
 		 
 

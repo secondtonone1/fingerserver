@@ -56,7 +56,7 @@
 				Optimization="0"
 				InlineFunctionExpansion="0"
 				EnableIntrinsicFunctions="false"
-				AdditionalIncludeDirectories="..\..\jsoncpp\include\json;..\..\PlatformLib;..\..\NetworkLib;..\..\CommonLib;..\..\MysqlLib"
+				AdditionalIncludeDirectories="..\..\Log4cxx\include;..\..\jsoncpp\include\json;..\..\PlatformLib;..\..\NetworkLib;..\..\CommonLib;..\..\MysqlLib"
 				PreprocessorDefinitions="WIN32;_WINDOWS;_DEBUG;DEBUG;_WIN32_WINNT=0x501;_LYNX_BYTE_ORDER_NOT_CONVERT;_LYNX_USE_MEM_MANAGER;_LYNX_DEBUG"
 				StringPooling="false"
 				MinimalRebuild="true"
@@ -87,7 +87,7 @@
 			/>
 			<Tool
 				Name="VCLinkerTool"
-				AdditionalDependencies="ws2_32.lib winmm.lib PlatformLib_d.lib NetworkLib_d.lib CommonLib_d.lib libmysqld.lib json_vc71_libmtd.lib"
+				AdditionalDependencies="ws2_32.lib winmm.lib PlatformLib_d.lib NetworkLib_d.lib CommonLib_d.lib libmysqld.lib json_vc71_libmtd.lib log4cxx.lib"
 				OutputFile="..\Binaries\GameServer_d.exe"
 				LinkIncremental="2"
 				AdditionalLibraryDirectories="..\Binaries"
@@ -306,6 +306,14 @@
 					>
 				</File>
 				<File
+					RelativePath="..\..\ConsortManager.cpp"
+					>
+				</File>
+				<File
+					RelativePath="..\..\ConsortManager.h"
+					>
+				</File>
+				<File
 					RelativePath="..\..\DetailInfoManager.cpp"
 					>
 				</File>
@@ -494,6 +502,14 @@
 					>
 				</File>
 				<File
+					RelativePath="..\..\ConsortMsgHandler.cpp"
+					>
+				</File>
+				<File
+					RelativePath="..\..\ConsortMsgHandler.h"
+					>
+				</File>
+				<File
 					RelativePath="..\..\DebugMsgHandler.cpp"
 					>
 				</File>
@@ -590,6 +606,14 @@
 					>
 				</File>
 				<File
+					RelativePath="..\..\PVPMsgHandler.cpp"
+					>
+				</File>
+				<File
+					RelativePath="..\..\PVPMsgHandler.h"
+					>
+				</File>
+				<File
 					RelativePath="..\..\RhymeMsgHandler.cpp"
 					>
 				</File>
@@ -619,6 +643,14 @@
 			Name="Logger"
 			>
 			<File
+				RelativePath="..\..\Logcxx.cpp"
+				>
+			</File>
+			<File
+				RelativePath="..\..\Logcxx.h"
+				>
+			</File>
+			<File
 				RelativePath="..\..\LoggerSystem.cpp"
 				>
 			</File>
@@ -636,6 +668,14 @@
 			</File>
 			<File
 				RelativePath="..\..\LoggerWorker.h"
+				>
+			</File>
+			<File
+				RelativePath="..\..\LogZQ.cpp"
+				>
+			</File>
+			<File
+				RelativePath="..\..\LogZQ.h"
 				>
 			</File>
 		</Filter>
@@ -815,6 +855,14 @@
 				>
 			</File>
 			<File
+				RelativePath="..\..\FireConfirm\GlobalValue.cpp"
+				>
+			</File>
+			<File
+				RelativePath="..\..\FireConfirm\GlobalValue.h"
+				>
+			</File>
+			<File
 				RelativePath="..\..\FireConfirm\InlineActivity.cpp"
 				>
 			</File>
@@ -856,6 +904,14 @@
 			</File>
 			<File
 				RelativePath="..\..\FireConfirm\PVPWorker.h"
+				>
+			</File>
+			<File
+				RelativePath="..\..\FireConfirm\RankGame.cpp"
+				>
+			</File>
+			<File
+				RelativePath="..\..\FireConfirm\RankGame.h"
 				>
 			</File>
 			<File
@@ -1023,6 +1079,42 @@
 				>
 			</File>
 		</Filter>
+		<Filter
+			Name="PKSystem"
+			>
+			<File
+				RelativePath="..\..\PKSystem\PVPSystemWC.cpp"
+				>
+			</File>
+			<File
+				RelativePath="..\..\PKSystem\PVPSystemWC.h"
+				>
+			</File>
+			<File
+				RelativePath="..\..\PKSystem\pvpthread.cpp"
+				>
+			</File>
+			<File
+				RelativePath="..\..\PKSystem\pvpthread.h"
+				>
+			</File>
+		</Filter>
+		<Filter
+			Name="ConsortSystem"
+			>
+			<File
+				RelativePath="..\..\ConsortSystem\ConsortSystem.cpp"
+				>
+			</File>
+			<File
+				RelativePath="..\..\ConsortSystem\ConsortSystem.h"
+				>
+			</File>
+		</Filter>
+		<File
+			RelativePath=".\ClassDiagram1.cd"
+			>
+		</File>
 		<File
 			RelativePath="..\..\ConfigParser.h"
 			>
@@ -1045,6 +1137,14 @@
 		</File>
 		<File
 			RelativePath="..\..\GameServer.h"
+			>
+		</File>
+		<File
+			RelativePath="..\..\FireConfirm\GlobalValue.cpp"
+			>
+		</File>
+		<File
+			RelativePath="..\..\FireConfirm\GlobalValue.h"
 			>
 		</File>
 		<File

@@ -1,4 +1,4 @@
-#include "FireConfirmManager.h"
+Ôªø#include "FireConfirmManager.h"
 #include "../LogicSystem.h"
 #include "StringConverter.h"
 #include "../PlatformLib/SerializeType.h"
@@ -16,13 +16,10 @@
 #include "Shop.h"
 #include "ShopTable.h"
 #include "CourageChallenge.h"
+#include "BaseChang.h"
 
 //for test
 #include "Code.h"
-#include "InlineActivity.h"
-#include "Robot.h"
-
-
 
 using namespace Lynx;
 
@@ -50,7 +47,7 @@ void FireConfirmManager::release()
 {
 }
 
-//‘⁄n∏ˆ ˝÷–ÀÊª˙—°»°≤ªœ‡Õ¨µƒm∏ˆ
+//Âú®n‰∏™Êï∞‰∏≠ÈöèÊú∫ÈÄâÂèñ‰∏çÁõ∏ÂêåÁöÑm‰∏™
 void FireConfirmManager::ChoiseNFromEnum(UInt32 num ,UInt32 maxnum,List<UInt32> &OutList)
 {
 
@@ -82,7 +79,7 @@ void FireConfirmManager::ChoiseNFromEnum(UInt32 num ,UInt32 maxnum,List<UInt32> 
 }
 
 
-//∏˘æ›µ»º∂ªÒ»°–Ë—È÷§º∏œÓ
+//Ê†πÊçÆÁ≠âÁ∫ßËé∑ÂèñÈúÄÈ™åËØÅÂá†È°π
 UInt32 FireConfirmManager::GetConfirmTimes(UInt32 ConfirmLevel)
 {
 	UInt32 tmp=(UInt32) CONFIRM_LEVEL1_NEED_NUM;
@@ -105,20 +102,25 @@ UInt32 FireConfirmManager::GetConfirmTimes(UInt32 ConfirmLevel)
 void FireConfirmManager::UpdataConfirmLevel(ConnId connId,bool flag)
 {
 	Player* player = LogicSystem::getSingleton().getPlayerByConnId(connId);
+	if (player == NULL)
+	{
+		LOG_WARN("player not found!!");
+		return;
+	}
 
 	FireConfirmData = player->GetFireConfirmData();
 
-	if (flag == true)//—È÷§’˝»∑
+	if (flag == true)//È™åËØÅÊ≠£Á°Æ
 	{
 		FireConfirmData.m_ConfirnRightTimes ++;
 	}
-	else if (flag == false)//—È÷§ ß∞‹
+	else if (flag == false)//È™åËØÅÂ§±Ë¥•
 	{
 		FireConfirmData.m_ConfirnFailTimes ++;
 		FireConfirmData.m_CopyStartTime = -1;
 	}
 
-	if (FireConfirmData.m_ConfirmLevel == 1) // «∑Ò…˝º∂—È÷§µ»º∂
+	if (FireConfirmData.m_ConfirmLevel == 1) //ÊòØÂê¶ÂçáÁ∫ßÈ™åËØÅÁ≠âÁ∫ß
 	{
 		if (FireConfirmData.m_ConfirnFailTimes == (UInt32)CONFIRM_LEVEL1_ERROR_TIMES)
 		{
@@ -162,334 +164,339 @@ void FireConfirmManager::UpdataConfirmLevel(ConnId connId,bool flag)
 		FireConfirmData.m_ConfirnRightTimes=0;
 	}	
 	player->SetFireConfirmData(FireConfirmData);
-	SendFireConfirmCondition(connId);
 }
 
 void FireConfirmManager::ConfirmDataReq(const ConnId& connId, CGConfirmDataReq& msg)
 {
-	UInt32 iFlag = 0;
-	bool bFlag = false;
-	List<Int32> RecList;
-
-	msg.convertJsonToData(msg.strConfirmData);
-	iFlag = msg.confirmID;
-	Player* player = LogicSystem::getSingleton().getPlayerByConnId(connId);
-
-	List<ItemData>* m_pListItemData = new List<ItemData>();
-	ItemData data;
-	*m_pListItemData->insertTail(data);
-	m_pListItemData->insertTail(data);
-	List<ItemData>::Iter *it = m_pListItemData->begin();
-
-
-	FireConfirmData = player->GetFireConfirmData();
-	if (FireConfirmData.m_RecConfirmIDs.size()<31)
-	{
-		FireConfirmData.m_RecConfirmIDs.insertTail(iFlag);
-		player->SetFireConfirmData(FireConfirmData);
-	}
-
-	for( List<Int32>::Iter * it = msg.confirmDataList.begin(); it != NULL; it = msg.confirmDataList.next(it))
-	{
-		RecList.insertTail(it->mValue);
-	}
-
-	HeroTemplate herotemplate;
-	for (Map<UInt32, HeroTemplate>::Iter *iter = gHeroTable->mMap.begin();iter != NULL;iter = gHeroTable->mMap.next(iter))
-	{
-		if ((iter->mKey) == player->mPlayerData.mBaseData.m_nModelID)
-		{
-			herotemplate = iter->mValue; 
-		}
-	}
-
-	if (iFlag == CONFIRM_SPEED ) //RecList //speed speed
-	{
-
-		Int32 MaxSpeed = herotemplate.mMoveSpeed;			
-
-		for( List<Int32>::Iter * iter = RecList.begin(); iter != NULL; iter = RecList.next(iter))
-		{
-
-			if (MaxSpeed * OUT_OF_RANGE < iter->mValue )
-			{
-				bFlag = false;
-			}
-			else
-			{
-				bFlag = true;
-			}
-		}
-
-		UpdataConfirmLevel( connId, bFlag);
-	}
-	if (iFlag == CONFIRM_ATTACK_RATE ) //RecList //time1 time2
-	{
-		double AttackSpeed =-2/1/* herotemplate.mAttackSpeed*/;
-		for( List<Int32>::Iter * iter = RecList.begin(); iter != NULL; iter = RecList.next(iter))
-		{
-
-			if (RecList.next(iter) == NULL)
-			{
-				break;
-			}
-
-			if (AttackSpeed* OUT_OF_RANGE < 1/( ( RecList.next(iter)->mValue) -  (iter->mValue) ) )
-			{
-				bFlag = false;
-				break;
-			}
-			else
-			{
-				bFlag = true;
-			}
-		}
-
-		UpdataConfirmLevel( connId, bFlag);
-	}
-
-	if (iFlag == CONFIRM_SKILL_CD ) //RecList //time1 skill1 time2  skill2 
-	{
-		Int32 SkillCDTime = 0;	
-		SkillData skillData;
-		List<SkillData> listskills =  player->mPlayerData.mSkillListData.m_listSkills;
-		for( List<Int32>::Iter * iter = RecList.begin(); iter != NULL; iter = RecList.next(iter))
-		{
-			iter = RecList.next(iter);
-			if (iter == NULL)
-			{
-				break;
-			}
-			//¡Ω∏ˆººƒ‹÷Æº‰ Õ∑≈º‰∏Ù
-
-
-			for( List<Int32>::Iter * iter1 = RecList.next(iter); iter1 != NULL; iter1 = RecList.next(iter1)) //≈–∂œ“ª∏ˆººƒ‹ Õ∑≈∫ÛµΩœ¬“ª¥Œ Õ∑≈ ±º‰
-			{
-				iter1 = RecList.next(iter1);
-				if (iter1 == NULL)
-				{
-					break;
-				}
-
-				if(iter->mValue == iter1->mValue)
-				{
-					if (((RecList.prev(iter1)->mValue - RecList.prev(iter1)->mValue) * OUT_OF_RANGE) < SkillCDTime)
-					{
-						bFlag = false;
-						break;
-					}
-					bFlag = true;
-				}
-			}
-			iter = RecList.next(iter);			 
-		}
-
-		UpdataConfirmLevel( connId, bFlag);
-	}
-	//mark:ººƒ‹…À∫¶ªπ√ª∂¡≈‰÷√Œƒº˛ ActorSkillInfoMap
-	if (iFlag == CONFIRM_SKILL_DAMAGE ) //RecList //damage1 skill1 damage2  skill2 
-	{
-
+// 	UInt32 iFlag = 0;
+// 	bool bFlag = false;
+// 	List<Int32> RecList;
+// 
+// 	msg.convertJsonToData(msg.strConfirmData);
+// 	iFlag = msg.confirmID;
+// 	Player* player = LogicSystem::getSingleton().getPlayerByConnId(connId);
+// 	if (player == NULL)
+// 	{
+// 		LOG_WARN("player not found!!");
+// 		return;
+// 	}
+// 
+// 	List<ItemData>* m_pListItemData = new List<ItemData>();
+// 	ItemData data;
+// 	*m_pListItemData->insertTail(data);
+// 	m_pListItemData->insertTail(data);
+// 	List<ItemData>::Iter *it = m_pListItemData->begin();
+// 
+// 
+// 	FireConfirmData = player->GetFireConfirmData();
+// 	if (FireConfirmData.m_RecConfirmIDs.size()<31)
+// 	{
+// 		FireConfirmData.m_RecConfirmIDs.insertTail(iFlag);
+// 		player->SetFireConfirmData(FireConfirmData);
+// 	}
+// 
+// 	for( List<Int32>::Iter * it = msg.confirmDataList.begin(); it != NULL; it = msg.confirmDataList.next(it))
+// 	{
+// 		RecList.insertTail(it->mValue);
+// 	}
+// 
+// 	HeroTemplate herotemplate;
+// 	for (Map<UInt32, HeroTemplate>::Iter *iter = gHeroTable->mMap.begin();iter != NULL;iter = gHeroTable->mMap.next(iter))
+// 	{
+// 		if ((iter->mKey) == player->mPlayerData.mBaseData.m_nModelID)
+// 		{
+// 			herotemplate = iter->mValue; 
+// 		}
+// 	}
+// 
+// 	if (iFlag == CONFIRM_SPEED ) //RecList //speed speed
+// 	{
+// 
+// 		Int32 MaxSpeed = herotemplate.mMoveSpeed;			
+// 
+// 		for( List<Int32>::Iter * iter = RecList.begin(); iter != NULL; iter = RecList.next(iter))
+// 		{
+// 
+// 			if (MaxSpeed * OUT_OF_RANGE < iter->mValue )
+// 			{
+// 				bFlag = false;
+// 			}
+// 			else
+// 			{
+// 				bFlag = true;
+// 			}
+// 		}
+// 
+// 		UpdataConfirmLevel( connId, bFlag);
+// 	}
+// 	if (iFlag == CONFIRM_ATTACK_RATE ) //RecList //time1 time2
+// 	{
+// 		double AttackSpeed =-2/1/* herotemplate.mAttackSpeed*/;
+// 		for( List<Int32>::Iter * iter = RecList.begin(); iter != NULL; iter = RecList.next(iter))
+// 		{
+// 
+// 			if (RecList.next(iter) == NULL)
+// 			{
+// 				break;
+// 			}
+// 
+// 			if (AttackSpeed* OUT_OF_RANGE < 1/( ( RecList.next(iter)->mValue) -  (iter->mValue) ) )
+// 			{
+// 				bFlag = false;
+// 				break;
+// 			}
+// 			else
+// 			{
+// 				bFlag = true;
+// 			}
+// 		}
+// 
+// 		UpdataConfirmLevel( connId, bFlag);
+// 	}
+// 
+// 	if (iFlag == CONFIRM_SKILL_CD ) //RecList //time1 skill1 time2  skill2 
+// 	{
+// 		Int32 SkillCDTime = 0;	
+// 		SkillData skillData;
+// 		List<SkillData> listskills =  player->mPlayerData.mSkillListData.m_listSkills;
+// 		for( List<Int32>::Iter * iter = RecList.begin(); iter != NULL; iter = RecList.next(iter))
+// 		{
+// 			iter = RecList.next(iter);
+// 			if (iter == NULL)
+// 			{
+// 				break;
+// 			}
+// 			//‰∏§‰∏™ÊäÄËÉΩ‰πãÈó¥ÈáäÊîæÈó¥Èöî
+// 
+// 
+// 			for( List<Int32>::Iter * iter1 = RecList.next(iter); iter1 != NULL; iter1 = RecList.next(iter1)) //Âà§Êñ≠‰∏Ä‰∏™ÊäÄËÉΩÈáäÊîæÂêéÂà∞‰∏ã‰∏ÄÊ¨°ÈáäÊîæÊó∂Èó¥
+// 			{
+// 				iter1 = RecList.next(iter1);
+// 				if (iter1 == NULL)
+// 				{
+// 					break;
+// 				}
+// 
+// 				if(iter->mValue == iter1->mValue)
+// 				{
+// 					if (((RecList.prev(iter1)->mValue - RecList.prev(iter1)->mValue) * OUT_OF_RANGE) < SkillCDTime)
+// 					{
+// 						bFlag = false;
+// 						break;
+// 					}
+// 					bFlag = true;
+// 				}
+// 			}
+// 			iter = RecList.next(iter);			 
+// 		}
+// 
+// 		UpdataConfirmLevel( connId, bFlag);
+// 	}
+// 	//mark:ÊäÄËÉΩ‰º§ÂÆ≥ËøòÊ≤°ËØªÈÖçÁΩÆÊñá‰ª∂ ActorSkillInfoMap
+// 	if (iFlag == CONFIRM_SKILL_DAMAGE ) //RecList //damage1 skill1 damage2  skill2 
+// 	{
+// 
+// // 		Int32 Damage;
+// 
+// 		//sec
+// 		//SkillTemplate skilltemplate;
+// 
+// 		List<SkillData> listskills =  player->mPlayerData.mSkillListData.m_listSkills;
+// 		for( List<Int32>::Iter * iter = RecList.next( RecList.begin() ); iter != NULL; iter = RecList.next(iter))
+// 		{
+// 
+// 			/*skilltemplate = *gSkillTable->get(RecList.next(iter)->mValue);
+// 
+// 			Damage = skilltemplate.mPhysicsAttack + skilltemplate.mMagicAttack;
+// 			if (Damage * OUT_OF_RANGE <  RecList.prev(iter)->mValue)
+// 			{
+// 				bFlag = false;
+// 			}
+// 			else
+// 			{
+// 				bFlag = true;
+// 			}
+// 
+// 
+// 			iter = RecList.next(iter);*/
+// 
+// 		}
+// 
+// 		UpdataConfirmLevel( connId, bFlag);
+// 	}
+// 	if (iFlag == CONFIRM_CRITICAL_STRIKE_RATE )//mark:Èöæ‰ª•ËÆ°ÁÆó ÊöÇÊîæ‰∏ã
+// 	{
+// 		//BattleExtendData
+// 		Int32 SkillID = 0;
+// 		Int32 SkillCDTime = 0;
+// 		BattleExtendData battleextenddata;
+// 		for( List<Int32>::Iter * iter = RecList.begin(); iter != NULL; iter = RecList.next(iter))
+// 		{
+// 			if (SkillID ==  iter->mValue)
+// 			{
+// 				if (SkillCDTime * OUT_OF_RANGE <  iter->mValue )
+// 				{
+// 					bFlag = false;
+// 				}
+// 				else
+// 				{
+// 					bFlag = true;
+// 				}
+// 			}
+// 			iter = RecList.next(iter);
+// 
+// 		}
+// 
+// 		UpdataConfirmLevel( connId, bFlag);
+// 	}
+// 	if (iFlag == CONFIRM_CRITICAL_STRIKE_MAX_DAMAGE )
+// 	{
+// 		Int32 SkillID = 0;
+// 		Int32 SkillCDTime = 0;
+// 		for( List<Int32>::Iter * iter = RecList.begin(); iter != NULL; iter = RecList.next(iter))
+// 		{
+// 			if (SkillID ==  iter->mValue)
+// 			{
+// 				if (SkillCDTime * OUT_OF_RANGE <  iter->mValue )
+// 				{
+// 					bFlag = false;
+// 				}
+// 				else
+// 				{
+// 					bFlag = true;
+// 				}
+// 			}
+// 			iter = RecList.next(iter);
+// 
+// 		}
+// 
+// 		UpdataConfirmLevel( connId, bFlag);
+// 	}
+// 	if (iFlag == CONFIRM_SKILL_RANGE )//mark:ÊäÄËÉΩËåÉÂõ¥Ê≤°ËØªÂèñÈÖçÁΩÆÊñá‰ª∂ //skillmulti.xlsx attackarea1? //skillid posx,posy,posx2,posy2
+// 	{
+// 		Int32 SkillID = 0;
+// 		Int32 SkillCDTime = 0;		
+// 		Int32 SkillLevel;
 // 		Int32 Damage;
+// 
+// 		List<SkillData> listskills =  player->mPlayerData.mSkillListData.m_listSkills;
+// 
+// 		for( List<Int32>::Iter * iter = RecList.begin(); iter != NULL; iter = RecList.next(iter))
+// 		{
+// 
+// 			for( List<SkillData>::Iter * it = listskills.begin(); it != NULL; it = listskills.next(it))			 
+// 			{				  
+// 				SkillID = (Int32) (it->mValue.m_nID);
+// 				SkillCDTime = (Int32) (it->mValue.m_nCD);
+// 				SkillLevel = (Int32) (it->mValue.m_nLevel);
+// 
+// 				if (SkillID ==  iter->mValue)
+// 				{
+// 					Damage = SkillLevel;
+// 
+// 					if (SkillCDTime * OUT_OF_RANGE <  RecList.prev(iter)->mValue)
+// 					{
+// 						bFlag = false;
+// 					}
+// 					else
+// 					{
+// 						bFlag = true;
+// 					}
+// 				}
+// 				iter = RecList.next(iter);
+// 			}
+// 			UpdataConfirmLevel( connId, bFlag);
+// 		}
+// 
+// 		if (iFlag == CONFIRM_POS )
+// 		{
+// 			Int32 SkillID = 0;
+// 			Int32 SkillCDTime = 0;
+// 			for( List<Int32>::Iter * iter = RecList.begin(); iter != NULL; iter = RecList.next(iter))
+// 			{
+// 				if (SkillID ==  iter->mValue)
+// 				{
+// 					if (SkillCDTime * OUT_OF_RANGE <  iter->mValue )
+// 					{
+// 						bFlag = false;
+// 					}
+// 					else
+// 					{
+// 						bFlag = true;
+// 					}
+// 				}
+// 				iter = RecList.next(iter);
+// 			}
+// 
+// 			UpdataConfirmLevel( connId, bFlag);
+// 		}
+// 		if (iFlag == CONFIRM_HP || iFlag == CONFIRM_MP || iFlag == CONFIRM_SP)//ÂèóÂà∞ÊîªÂáª ÂêÉËçØËÜè ‰∏ÄÊÆµÊó∂Èó¥ÂêéË°ÄÈáèÂèòÂåñ
+// 		{
+// 			Int32 ChangValue = 0;
+// 			Int32 AllUpDownValue = 0;
+// 
+// 			ChangValue =(RecList.end()->mValue - RecList.begin()->mValue)* OUT_OF_RANGE ;
+// 
+// 			for( List<Int32>::Iter * iter = RecList.next(RecList.begin()); iter != RecList.prev(RecList.end()); iter = RecList.next(iter))
+// 			{
+// 				AllUpDownValue += iter->mValue;
+// 			}
+// 
+// 			if (ChangValue < 0)
+// 			{
+// 				if (ChangValue > AllUpDownValue)//-120 > -100
+// 				{
+// 					bFlag = false;
+// 				}
+// 				else
+// 				{
+// 					bFlag = true;
+// 				}
+// 			}
+// 			else
+// 			{
+// 				if (ChangValue < AllUpDownValue)
+// 				{
+// 					bFlag = false;
+// 				}
+// 				else
+// 				{
+// 					bFlag = true;
+// 				}
+// 			}			
+// 			UpdataConfirmLevel( connId, bFlag);
+// 		}
+// 
+// 		if (iFlag == CONFIRM_BUFFER )//RecList //bufferid gettime //‰∏çËÉΩÊòØÂêåÁ±ªbuffÔºå‰∏çÊòØËá™Â∑±ÁöÑbuffÊàñËÄÖ‰∏çÊòØÈòüÂèãÁöÑbuffÊàñËÄÖ‰∏çÊòØÊÄ™Áâ©‰º§ÂÆ≥buff //ÊØè30sÂèëÈÄÅ‰∏ÄÊ¨°
+// 		{
+// 			// 			Int32 SkillCDTime;
+// 			List<BufferData>BuffListData =  player->mPlayerData.mBuffListData.m_listBuffers;
+// 			for( List<Int32>::Iter * iter = RecList.begin(); iter != NULL; iter = RecList.next(iter))
+// 			{
+// 				for( List<BufferData>::Iter * it = BuffListData.begin(); it != NULL; it = BuffListData.next(it))
+// 				{
+// 					if (iter->mValue == (Int64)it->mValue.m_nBufferID)
+// 					{
+// 						RecList.erase(iter);
+// 					}
+// 				}		
+// 
+// 			}
+// 			if (RecList.mIterCount > 0 )
+// 			{
+// 				bFlag = false;
+// 			}
+// 			else
+// 			{
+// 				bFlag = true;
+// 			}
+// 
+// 			UpdataConfirmLevel( connId, bFlag);
+// 		}
+// 		return;
+// 	}
 
-		//sec
-		//SkillTemplate skilltemplate;
-
-		List<SkillData> listskills =  player->mPlayerData.mSkillListData.m_listSkills;
-		for( List<Int32>::Iter * iter = RecList.next( RecList.begin() ); iter != NULL; iter = RecList.next(iter))
-		{
-
-			/*skilltemplate = *gSkillTable->get(RecList.next(iter)->mValue);
-
-			Damage = skilltemplate.mPhysicsAttack + skilltemplate.mMagicAttack;
-			if (Damage * OUT_OF_RANGE <  RecList.prev(iter)->mValue)
-			{
-				bFlag = false;
-			}
-			else
-			{
-				bFlag = true;
-			}
-
-
-			iter = RecList.next(iter);*/
-
-		}
-
-		UpdataConfirmLevel( connId, bFlag);
-	}
-	if (iFlag == CONFIRM_CRITICAL_STRIKE_RATE )//mark:ƒ—“‘º∆À„ ‘›∑≈œ¬
-	{
-		//BattleExtendData
-		Int32 SkillID = 0;
-		Int32 SkillCDTime = 0;
-		BattleExtendData battleextenddata;
-		for( List<Int32>::Iter * iter = RecList.begin(); iter != NULL; iter = RecList.next(iter))
-		{
-			if (SkillID ==  iter->mValue)
-			{
-				if (SkillCDTime * OUT_OF_RANGE <  iter->mValue )
-				{
-					bFlag = false;
-				}
-				else
-				{
-					bFlag = true;
-				}
-			}
-			iter = RecList.next(iter);
-
-		}
-
-		UpdataConfirmLevel( connId, bFlag);
-	}
-	if (iFlag == CONFIRM_CRITICAL_STRIKE_MAX_DAMAGE )
-	{
-		Int32 SkillID = 0;
-		Int32 SkillCDTime = 0;
-		for( List<Int32>::Iter * iter = RecList.begin(); iter != NULL; iter = RecList.next(iter))
-		{
-			if (SkillID ==  iter->mValue)
-			{
-				if (SkillCDTime * OUT_OF_RANGE <  iter->mValue )
-				{
-					bFlag = false;
-				}
-				else
-				{
-					bFlag = true;
-				}
-			}
-			iter = RecList.next(iter);
-
-		}
-
-		UpdataConfirmLevel( connId, bFlag);
-	}
-	if (iFlag == CONFIRM_SKILL_RANGE )//mark:ººƒ‹∑∂Œß√ª∂¡»°≈‰÷√Œƒº˛ //skillmulti.xlsx attackarea1? //skillid posx,posy,posx2,posy2
-	{
-		Int32 SkillID = 0;
-		Int32 SkillCDTime = 0;		
-		Int32 SkillLevel;
-		Int32 Damage;
-
-		List<SkillData> listskills =  player->mPlayerData.mSkillListData.m_listSkills;
-
-		for( List<Int32>::Iter * iter = RecList.begin(); iter != NULL; iter = RecList.next(iter))
-		{
-
-			for( List<SkillData>::Iter * it = listskills.begin(); it != NULL; it = listskills.next(it))			 
-			{				  
-				SkillID = (Int32) (it->mValue.m_nID);
-				SkillCDTime = (Int32) (it->mValue.m_nCD);
-				SkillLevel = (Int32) (it->mValue.m_nLevel);
-
-				if (SkillID ==  iter->mValue)
-				{
-					Damage = SkillLevel;
-
-					if (SkillCDTime * OUT_OF_RANGE <  RecList.prev(iter)->mValue)
-					{
-						bFlag = false;
-					}
-					else
-					{
-						bFlag = true;
-					}
-				}
-				iter = RecList.next(iter);
-			}
-			UpdataConfirmLevel( connId, bFlag);
-		}
-
-		if (iFlag == CONFIRM_POS )
-		{
-			Int32 SkillID = 0;
-			Int32 SkillCDTime = 0;
-			for( List<Int32>::Iter * iter = RecList.begin(); iter != NULL; iter = RecList.next(iter))
-			{
-				if (SkillID ==  iter->mValue)
-				{
-					if (SkillCDTime * OUT_OF_RANGE <  iter->mValue )
-					{
-						bFlag = false;
-					}
-					else
-					{
-						bFlag = true;
-					}
-				}
-				iter = RecList.next(iter);
-			}
-
-			UpdataConfirmLevel( connId, bFlag);
-		}
-		if (iFlag == CONFIRM_HP || iFlag == CONFIRM_MP || iFlag == CONFIRM_SP)// ‹µΩπ•ª˜ ≥‘“©∏‡ “ª∂Œ ±º‰∫Û—™¡ø±‰ªØ
-		{
-			Int32 ChangValue = 0;
-			Int32 AllUpDownValue = 0;
-
-			ChangValue =(RecList.end()->mValue - RecList.begin()->mValue)* OUT_OF_RANGE ;
-
-			for( List<Int32>::Iter * iter = RecList.next(RecList.begin()); iter != RecList.prev(RecList.end()); iter = RecList.next(iter))
-			{
-				AllUpDownValue += iter->mValue;
-			}
-
-			if (ChangValue < 0)
-			{
-				if (ChangValue > AllUpDownValue)//-120 > -100
-				{
-					bFlag = false;
-				}
-				else
-				{
-					bFlag = true;
-				}
-			}
-			else
-			{
-				if (ChangValue < AllUpDownValue)
-				{
-					bFlag = false;
-				}
-				else
-				{
-					bFlag = true;
-				}
-			}			
-			UpdataConfirmLevel( connId, bFlag);
-		}
-
-		if (iFlag == CONFIRM_BUFFER )//RecList //bufferid gettime //≤ªƒ‹ «Õ¨¿‡buff£¨≤ª «◊‘º∫µƒbuffªÚ’ﬂ≤ª «∂””—µƒbuffªÚ’ﬂ≤ª «π÷ŒÔ…À∫¶buff //√ø30s∑¢ÀÕ“ª¥Œ
-		{
-			// 			Int32 SkillCDTime;
-			List<BufferData>BuffListData =  player->mPlayerData.mBuffListData.m_listBuffers;
-			for( List<Int32>::Iter * iter = RecList.begin(); iter != NULL; iter = RecList.next(iter))
-			{
-				for( List<BufferData>::Iter * it = BuffListData.begin(); it != NULL; it = BuffListData.next(it))
-				{
-					if (iter->mValue == (Int64)it->mValue.m_nBufferID)
-					{
-						RecList.erase(iter);
-					}
-				}		
-
-			}
-			if (RecList.mIterCount > 0 )
-			{
-				bFlag = false;
-			}
-			else
-			{
-				bFlag = true;
-			}
-
-			UpdataConfirmLevel( connId, bFlag);
-		}
-		return;
-	}
-
+	return;
 }
 
 void FireConfirmManager::onConfirmDataReq(const ConnId& connId, CGConfirmDataReq& msg)
@@ -498,7 +505,7 @@ void FireConfirmManager::onConfirmDataReq(const ConnId& connId, CGConfirmDataReq
 	return;	
 
 }
-//µ˜”√÷Æ«∞±ÿ–Îreset
+//Ë∞ÉÁî®‰πãÂâçÂøÖÈ°ªreset
 void FireConfirmManager::SetCopyStart(Player* player,UInt32 CopyID)
 {
 	PlayerFireConfirmData mFireConfirmData =  player->GetFireConfirmData();
@@ -526,6 +533,11 @@ UInt32 FireConfirmManager::CheckCopyFinishTime(Player* player)
 	DiffTime = TimeUtil::getTimeSec() - FireConfirmData.m_CopyStartTime;
 
 	//todo
+	if (gStageTable->get(FireConfirmData.m_CopyID) == NULL)
+	{
+		LOG_WARN("gStageTable->get(FireConfirmData.m_CopyID) not found!!");
+		return LynxErrno::TimeNotRight;
+	}
 	if(DiffTime < gStageTable->get(FireConfirmData.m_CopyID)->limittime1)
 	{
 		return LynxErrno::TimeNotRight;
@@ -556,14 +568,22 @@ UInt32 FireConfirmManager::CheckCopyFinishTime(Player* player)
 }
 
 
-void FireConfirmManager::SendFireConfirmCondition(const ConnId& connId)
+List<UInt32>& FireConfirmManager::getFireConfirmCondition(const ConnId& connId)
 {
 
-	List<UInt32> ConfirmIDs;
+	
 	UInt32 ConfirmMaxNum;
 	UInt32 NeedConfirmIDNum;
 	FireConfirmDataNotifyToJson resp;	
+	List<UInt32> ConfirmIDs;
+	FireConfirmData.m_ConfirmIDs.clear();
+
 	Player* player = LogicSystem::getSingleton().getPlayerByConnId(connId);
+	if (player == NULL)
+	{
+		LOG_WARN("player not found!!");
+		return FireConfirmData.m_ConfirmIDs;
+	}
 
 	FireConfirmData = player->GetFireConfirmData();
 
@@ -571,25 +591,21 @@ void FireConfirmManager::SendFireConfirmCondition(const ConnId& connId)
 	NeedConfirmIDNum = GetConfirmTimes(FireConfirmData.m_ConfirmLevel);
 	ChoiseNFromEnum(NeedConfirmIDNum,ConfirmMaxNum,ConfirmIDs);
 
-	FireConfirmData.m_ConfirmIDs.clear();
+	
 	for (List<UInt32>::Iter  *iter = ConfirmIDs.begin();iter != ConfirmIDs.end(); iter = ConfirmIDs.next(iter))
 	{
 		FireConfirmData.m_ConfirmIDs.insertTail(iter->mValue);
-		resp.ConfirmIDs.insertTail(iter->mValue);
 	}
+
+	//ÊàêÂ∞±Ê∑ªÂä†
+	FireConfirmData.m_ConfirmIDs.insertTail(CONFIRM_USERHYMESKILL);
+	FireConfirmData.m_ConfirmIDs.insertTail(CONFIRM_USERHYMESPEED);
+	FireConfirmData.m_ConfirmIDs.insertTail(CONFIRM_CALLSERVANTCNT);
+	FireConfirmData.m_ConfirmIDs.insertTail(CONFIRM_FINISHTIME);
+
 	player->SetFireConfirmData(FireConfirmData);
-	resp.mConfirmLevel = FireConfirmData.m_ConfirmLevel;
-
-	PlayerDailyResetData playerDailyResetData =player->getPlayerDailyResetData();
-
-	resp.m_NormalTimes =  playerDailyResetData.m_NormalTimes;
-	resp.m_SpecialTimes =  playerDailyResetData.m_SpecialTimes;
-	resp.m_EliteTimes =  playerDailyResetData.m_EliteTimes;
-	resp.m_Times = FireConfirmData.m_Times;
-
-	std::string jsonStr = resp.convertDataToJson();	
-
-	NetworkSystem::getSingleton().sender( connId,FIRE_CONDITION_RESP,jsonStr);
+	return FireConfirmData.m_ConfirmIDs;
+	
 }
 
 
@@ -614,6 +630,11 @@ void FireConfirmManager::SendForbiddenLogin(const ConnId& connId)
 void FireConfirmManager::updateFireConfirmData(const ConnId& connId)
 {
 	Player *player = LogicSystem::getSingleton().getPlayerByConnId(connId);
+	if (player == NULL)
+	{
+		LOG_WARN("player not found!!");
+		return;
+	}
 
 	PersistFireConfirmSaveReq req;
 	req.playerGuid = player->getPlayerGuid();
@@ -623,12 +644,17 @@ void FireConfirmManager::updateFireConfirmData(const ConnId& connId)
 }
 
 
-//onTwelvePalaceStartReq øΩ±¥¡ÀonStartCopy ¥˙¬Î
-void FireConfirmManager::onStartCopy(const  ConnId& connId,CGChapterStart & msg)		//ÃÙ’Ωπÿø®
+//onTwelvePalaceStartReq Êã∑Ë¥ù‰∫ÜonStartCopy ‰ª£Á†Å
+void FireConfirmManager::onStartCopy(const  ConnId& connId,CGChapterStart & msg)		//ÊåëÊàòÂÖ≥Âç°
 {
 	ChapterStartResp resp;
 	UInt32 flag;
 	Player *player = LogicSystem::getSingleton().getPlayerByConnId(connId);
+	if (player == NULL)
+	{
+		LOG_WARN("player not found!!");
+		return;
+	}
 	msg.convertJsonToData(msg.jsonStr);
 	player->ResetFireConfirmData();
 	flag = StageManager::getSingleton().canChallengeStage( connId, msg.stageID);
@@ -642,20 +668,28 @@ void FireConfirmManager::onStartCopy(const  ConnId& connId,CGChapterStart & msg)
 	}
 
 	FireConfirmManager::getSingleton().SetCopyStart(player,msg.stageID);	
+// 	resp.confirmIDs =  FireConfirmManager::getSingleton().getFireConfirmCondition(connId);
+
+
 	
 	resp.chapterID = msg.stageID;
 	resp.result =LynxErrno::None;
 	std::string jsonStr = resp.convertDataToJson();	
 	NetworkSystem::getSingleton().sender( connId,CHAPTER_START_RESP,jsonStr);
 
-	FireConfirmManager::getSingleton().SendFireConfirmCondition(connId);
+	
 
 	
 }
 
-void FireConfirmManager::onLeaveCopy(const  ConnId& connId,CGChapterLeave & msg)		//¿Îø™πÿø®
+void FireConfirmManager::onLeaveCopy(const  ConnId& connId,CGChapterLeave & msg)		//Á¶ªÂºÄÂÖ≥Âç°
 {
 	Player *player = LogicSystem::getSingleton().getPlayerByConnId(connId);
+	if (player == NULL)
+	{
+		LOG_WARN("player not found!!");
+		return;
+	}
 	msg.convertJsonToData(msg.jsonStr);
 	player->ResetFireConfirmData();
 	ChapterLeaveResp resp;
@@ -665,280 +699,507 @@ void FireConfirmManager::onLeaveCopy(const  ConnId& connId,CGChapterLeave & msg)
 }
 
 
-
-void FireConfirmManager::onRelive(const  ConnId& connId, CGRelive & msg)		//∏¥ªÓ
+//CGRelive ÁöÑflag 123ÈÄâÂì™‰∏Ä‰∏™buff 4ÊòØÂ§çÊ¥ªÈòüÂèã
+void FireConfirmManager::onRelive(const  ConnId& connId, CGRelive & msg)		//Â§çÊ¥ª
 {
 	UInt32 cost = 0;
 	UInt32 i =0;
+	std::string str;
 	ReliveResp resp;
 	Goods goods;
 	List<Goods> itemList;
-
 	PlayerFireConfirmData fireConfirmData;
 
-// 	resp.flag =LynxErrno::None;
+	//LOG_INFO("onRelive  = %s ",msg.jsonStr.c_str());
+
 	Player* player = LogicSystem::getSingleton().getPlayerByConnId(connId);
+	if (player == NULL)
+	{
+		LOG_WARN("player not found!!");
+		return;
+	}
 	fireConfirmData = player->GetFireConfirmData();
-	StageTemplate *stageTemplate = gStageTable->get(fireConfirmData.m_CopyID);
-
-	PlayerDailyResetData playerDailyResetData =player->getPlayerDailyResetData();
-
+	GlobalValue globalValue = GlobalValueManager::getSingleton().getGlobalValue();
 	msg.convertJsonToData(msg.jsonStr);
+	resp.flag = msg.flag;
 
- 	resp.flag = msg.flag;
-	if (stageTemplate->mType == STAGE_NORMAL)
+
+	//Êó†ÈôêÊåëÊàòÂéªÊéâ
+	if (fireConfirmData.m_CopyID < 100)//ÊãõÁ¶èÈõÜÂ∏Ç 
 	{
-		NormalReliveTemplate normalReliveTemplate;
-		normalReliveTemplate = GlobalVarManager::getSingleton().getNormalRelive();
+	}
+	else
+	{
+		StageTemplate *stageTemplate = gStageTable->get(fireConfirmData.m_CopyID);
+		if (stageTemplate == NULL)
+		{
+			LOG_WARN("stageTemplate not found!!");
+			return;
+		}
+		if (stageTemplate->mType == STAGE_NORMAL || stageTemplate->mType == STAGE_ELITE ||stageTemplate->mType == STAGE_BONUS ||stageTemplate->mType == STAGE_MASTAR ||stageTemplate->mType == STAGE_TRIAL ||stageTemplate->mType == STAGE_TWELVEPALACE ||stageTemplate->mType == STAGE_COURAGE )
+		{			
+		}
+		else
+		{
+			resp.result = LynxErrno::ClienServerDataNotMatch;
+			std::string sendStr = resp.convertDataToJson();
+			NetworkSystem::getSingleton().sender( connId,CHAPTER_RELIVE_RESP,sendStr);
+			return;
+		}
+	}
+	
+
+	if (msg.flag == 4)//Â§çÊ¥ªÈòüÂèã
+	{	
+ 		cost = pow((float)(globalValue.uRelivePlayer2BaseCost),(int)(fireConfirmData.m_Player2ReliveTimes+1))*globalValue.uRelivePlayer2Ratio;
+		if (cost > globalValue.uRelivePlayer2MaxCost )
+		{
+			cost = globalValue.uRelivePlayer2MaxCost;
+		}		
+	}
+	else
+	{		
+ 		cost = pow((float)(globalValue.uReliveBaseCost),(int)(fireConfirmData.m_ReliveTimes+1))*globalValue.uReliveRatio;
+		if (cost > globalValue.uReliveMaxCost )
+		{
+			cost = globalValue.uReliveMaxCost;
+		}
+	}
+	
+	if (player->getPlayerGold() < cost)
+	{
+		resp.result = LynxErrno::RmbNotEnough;				
+	}
+	
+	if(resp.result == LynxErrno::None)
+	{
+		if (msg.flag == 4)//Â§çÊ¥ªÈòüÂèã
+		{
+			fireConfirmData.m_Player2ReliveTimes ++;
+		}
+		else
+		{
+			fireConfirmData.m_ReliveTimes ++;
+		}
 		
-		if (normalReliveTemplate.dayfreetimes > playerDailyResetData.m_NormalTimes )
-		{
-			playerDailyResetData.m_NormalTimes ++;
-		}
-		else
-		{			
-			for(List<UInt32>::Iter* it = normalReliveTemplate.costs.begin();it != NULL;it = normalReliveTemplate.costs.next(it))
-			{
-				
-				if (i == fireConfirmData.m_Times)
-				{
-					cost = it->mValue;
-					break;
-				}
-				i++;
-			}
+		goods.resourcestype =1;
+		goods.subtype = 2;
+		goods.num =0 - cost;
+		itemList.insertTail(goods);
+		GiftManager::getSingleton().addToPlayer(player->getPlayerGuid(),REFLASH_AWARD,itemList,MiniLog140);
+		player->SetFireConfirmData(fireConfirmData);
+	}	
 
-			if (player->getPlayerGold() >= cost)
-			{
-				fireConfirmData.m_Times ++;
 
-				goods.resourcestype =1;
-				goods.subtype = 2;
-				goods.num -= cost;
-				itemList.insertTail(goods);
-				GiftManager::getSingleton().addToPlayer(player->getPlayerGuid(),REFLASH_AWARD,itemList);
-				resp.yuanbaoCost = player->getPlayerGold();
-			}
-			else
-			{
-				resp.result = LynxErrno::RmbNotEnough;				
-			}
-		}
-	}
-	if (stageTemplate->mType == STAGE_ELITE)
+	if (msg.flag == 4)//Â§çÊ¥ªÈòüÂèã
 	{
-		EliteReliveTemplate eliteReliveTemplate;
-		eliteReliveTemplate = GlobalVarManager::getSingleton().getEliteRelive();
-
-		if (eliteReliveTemplate.dayfreetimes > playerDailyResetData.m_NormalTimes )
-		{
-			playerDailyResetData.m_NormalTimes ++;
-		}
-		else
-		{			
-			for(List<UInt32>::Iter* it = eliteReliveTemplate.costs.begin();it != NULL;it = eliteReliveTemplate.costs.next(it))
-			{
-				i++;
-				if (i == fireConfirmData.m_Times)
-				{
-					cost = it->mValue;
-				}
-			}
-
-			if (player->getPlayerGold() >= cost)
-			{
-				fireConfirmData.m_Times ++;
-
-				goods.resourcestype =1;
-				goods.subtype = 2;
-				goods.num -= cost;
-				itemList.insertTail(goods);
-				GiftManager::getSingleton().addToPlayer(player->getPlayerGuid(),REFLASH_AWARD,itemList);
-				resp.yuanbaoCost = player->getPlayerGold();
-			}
-			else
-			{
-				resp.flag = LynxErrno::RmbNotEnough;				
-			}
-		}
+		resp.reliveTimes = fireConfirmData.m_Player2ReliveTimes;
 	}
-	if (stageTemplate->mType == STAGE_BONUS)
+	else
 	{
-		SpecialReliveTemplate specialReliveTemplate;
-		specialReliveTemplate = GlobalVarManager::getSingleton().getSpecialRelive();
-
-		if (specialReliveTemplate.dayfreetimes > playerDailyResetData.m_NormalTimes )
-		{
-			playerDailyResetData.m_NormalTimes ++;
-		}
-		else
-		{			
-			for(List<UInt32>::Iter* it = specialReliveTemplate.costs.begin();it != NULL;it = specialReliveTemplate.costs.next(it))
-			{
-				i++;
-				if (i == fireConfirmData.m_Times)
-				{
-					cost = it->mValue;
-				}
-			}
-
-			if (player->getPlayerGold() >= cost)
-			{
-				fireConfirmData.m_Times ++;
-
-				goods.resourcestype =1;
-				goods.subtype = 2;
-				goods.num -= cost;
-				itemList.insertTail(goods);
-				GiftManager::getSingleton().addToPlayer(player->getPlayerGuid(),REFLASH_AWARD,itemList);
-				resp.yuanbaoCost = player->getPlayerGold();
-			}
-			else
-			{
-				resp.flag = LynxErrno::RmbNotEnough;				
-			}
-		}
+		resp.reliveTimes = fireConfirmData.m_ReliveTimes;
 	}
-	if (stageTemplate->mType == STAGE_MASTAR)
-	{
-		SpecialReliveTemplate specialReliveTemplate;
-		specialReliveTemplate = GlobalVarManager::getSingleton().getSpecialRelive();
 
-		if (specialReliveTemplate.dayfreetimes > playerDailyResetData.m_NormalTimes )
-		{
-			playerDailyResetData.m_NormalTimes ++;
-		}
-		else
-		{			
-			for(List<UInt32>::Iter* it = specialReliveTemplate.costs.begin();it != NULL;it = specialReliveTemplate.costs.next(it))
-			{
-				i++;
-				if (i == fireConfirmData.m_Times)
-				{
-					cost = it->mValue;
-				}
-			}
-
-			if (player->getPlayerGold() >= cost)
-			{
-				fireConfirmData.m_Times ++;
-
-				goods.resourcestype =1;
-				goods.subtype = 2;
-				goods.num -= cost;
-				itemList.insertTail(goods);
-				GiftManager::getSingleton().addToPlayer(player->getPlayerGuid(),REFLASH_AWARD,itemList);
-				resp.yuanbaoCost = player->getPlayerGold();
-			}
-			else
-			{
-				resp.flag = LynxErrno::RmbNotEnough;				
-			}
-		}
-	}
-	if (stageTemplate->mType == STAGE_SPECIAL)
-	{
-		SpecialReliveTemplate specialReliveTemplate;
-		specialReliveTemplate = GlobalVarManager::getSingleton().getSpecialRelive();
-
-		if (specialReliveTemplate.dayfreetimes > playerDailyResetData.m_NormalTimes )
-		{
-			playerDailyResetData.m_NormalTimes ++;
-		}
-		else
-		{			
-			for(List<UInt32>::Iter* it = specialReliveTemplate.costs.begin();it != NULL;it = specialReliveTemplate.costs.next(it))
-			{
-				i++;
-				if (i == fireConfirmData.m_Times)
-				{
-					cost = it->mValue;
-				}
-			}
-
-			if (player->getPlayerGold() >= cost)
-			{
-				fireConfirmData.m_Times ++;
-
-				goods.resourcestype =1;
-				goods.subtype = 2;
-				goods.num -= cost;
-				itemList.insertTail(goods);
-				GiftManager::getSingleton().addToPlayer(player->getPlayerGuid(),REFLASH_AWARD,itemList);
-				resp.yuanbaoCost = player->getPlayerGold();
-			}
-			else
-			{
-				resp.flag = LynxErrno::RmbNotEnough;				
-			}
-		}
-	}
-	if (stageTemplate->mType == STAGE_TRIAL)
-	{
-
-		TrialTemplate trialTemplate = GlobalVarManager::getSingleton().gettrial();
-
-// 		if ((trialTemplate.dayfreetimes+fireConfirmData.m_trialTimes)
-// 		{
-// 		}
-// 
-		SpecialReliveTemplate specialReliveTemplate;
-		specialReliveTemplate = GlobalVarManager::getSingleton().getSpecialRelive();
-		if (trialTemplate.dayfreetimes > fireConfirmData.m_trialTimes )
-		{
-			fireConfirmData.m_trialTimes ++;
-		}
-		else
-		{			
-			for(List<UInt32>::Iter* it = specialReliveTemplate.costs.begin();it != NULL;it = specialReliveTemplate.costs.next(it))
-			{
-				i++;
-				if (i == fireConfirmData.m_Times)
-				{
-					cost = it->mValue;
-				}
-			}
-
-			if (player->getPlayerGold() >= cost)
-			{
-				fireConfirmData.m_Times ++;
-
-				goods.resourcestype =1;
-				goods.subtype = 2;
-				goods.num -= cost;
-				itemList.insertTail(goods);
-				GiftManager::getSingleton().addToPlayer(player->getPlayerGuid(),REFLASH_AWARD,itemList);
-				resp.yuanbaoCost = player->getPlayerGold();
-			}
-			else
-			{
-				resp.flag = LynxErrno::RmbNotEnough;				
-			}
-		}
-	}
-	player->setPlayerDailyResetData(playerDailyResetData);
-	resp.reliveTimes = fireConfirmData.m_Times;
-	resp.coinCost = player->getPlayerCoin();
-	std::string str;
+	resp.coinCost = player->getPlayerCoin();	
+	resp.yuanbaoCost = player->getPlayerGold();
 	str = resp.convertDataToJson();
+	//LOG_INFO("CHAPTER_RELIVE_RESP  = %s ",str.c_str());
 	NetworkSystem::getSingleton().sender(connId,CHAPTER_RELIVE_RESP,str);
 
 }
-void FireConfirmManager::onisRecieve(const  ConnId& connId, CGisRecievedReq & msg)		//øÕªß∂ÀΩ” ’µΩ–≠“È
+void FireConfirmManager::onisRecieve(const  ConnId& connId, CGisRecievedReq & msg)		//ÂÆ¢Êà∑Á´ØÊé•Êî∂Âà∞ÂçèËÆÆ
 {
 	msg.convertJsonToData(msg.jsonStr);
-	Player * player = LogicSystem::getSingleton().getPlayerByConnId(connId);	
+	Player * player = LogicSystem::getSingleton().getPlayerByConnId(connId);
+	if (player == NULL)
+	{
+		LOG_WARN("player not found!!");
+		return;
+	}
 	PlayerFireConfirmData mFireConfirmData =  player->GetFireConfirmData();
 
 	mFireConfirmData.m_LastSendItemList.clear();
 	player->SetFireConfirmData(mFireConfirmData);
 
 }
-// onTwelvePalaceEndReqøΩ±¥¡ÀonEndCopy¥˙¬Î
-void FireConfirmManager::onEndCopy(const  ConnId& connId, CGChapterEnd & msg)		//πÿø®Ω· ¯ 
+UInt32 FireConfirmManager::checkIsCheat(Guid playerID, List<FireConfirm> &fireConfirmDatas,UInt32 reqResult)
 {
-	UInt32 isRecord =0;//∆∆ºÕ¬º	
-	UInt32 finishTimes =0 ;
+
+	GlobalValue globalValue = GlobalValueManager::getSingleton().getGlobalValue();
+	Player * player = LogicSystem::getSingleton().getPlayerByGuid(playerID);
+
+	PlayerFireConfirmData mFireConfirmData =  player->GetFireConfirmData();
+
+	//ÊàêÂ∞±ÁªüËÆ° ‰∏çÁÆ°ÊàòÊñóÊàêÂäüÊàñËÄÖÂ§±Ë¥•ÈÉΩÁªüËÆ°
+	for(List<FireConfirm>::Iter *iter = fireConfirmDatas.begin();iter != NULL;iter = fireConfirmDatas.next(iter))
+	{
+		if (iter->mValue.index == CONFIRM_USERHYMESKILL)
+		{
+			if (iter->mValue.count > 0)
+			{
+				player->getAchieveManager().updateAchieveData(USERHYMESKILL,iter->mValue.count);
+			}
+		}
+		else if (iter->mValue.index == CONFIRM_USERHYMESPEED)
+		{
+			if (iter->mValue.count > 0)
+			{
+				player->getAchieveManager().updateAchieveData(USERHYMESPEED,iter->mValue.count);
+			}
+		}
+		else if (iter->mValue.index == CONFIRM_CALLSERVANTCNT)
+		{
+			if (iter->mValue.count > 0)
+			{
+				player->getAchieveManager().updateAchieveData(CALLSERVANTCNT,iter->mValue.count);
+			}
+		}
+		else if (iter->mValue.index == CONFIRM_FINISHTIME)
+		{
+			UInt32 copyFinishTime = TimeUtil::getTimeSec() - mFireConfirmData.m_CopyStartTime;
+			if (iter->mValue.keyValue.key >= (copyFinishTime + globalValue.uCopyFinishTimeDeviation))
+			{
+				return LynxErrno::PlayerCheating;
+			}
+			if (iter->mValue.keyValue.value >= (copyFinishTime + globalValue.uCopyFinishTimeDeviation))
+			{
+				return LynxErrno::PlayerCheating;
+			}
+		}
+	}
+	if (reqResult != LynxErrno::None)//Â§±Ë¥•‰∏çÁªüËÆ°ÊàòÊñóÈ™åËØÅ
+	{
+		return LynxErrno::None;
+	}
+	//for test
+	return LynxErrno::None;
+
+	List<FireConfirm> tmpFireConfirmDatas;
+	for(List<FireConfirm>::Iter *iter = fireConfirmDatas.begin();iter != NULL;iter = fireConfirmDatas.next(iter))
+	{
+		if (iter->mValue.index == CONFIRM_SPEED)
+		{
+			if (iter->mValue.count > 0)
+			{
+				return LynxErrno::PlayerCheating;
+			}
+			
+		}
+		else if (iter->mValue.index == CONFIRM_ATTACK_RATE)
+		{
+			if (iter->mValue.count > 0)
+			{
+				return LynxErrno::PlayerCheating;
+			}
+
+		}
+		else if (iter->mValue.index == CONFIRM_POS)
+		{
+			if (iter->mValue.count > 0)
+			{
+				return LynxErrno::PlayerCheating;
+			}
+		}
+		else if (iter->mValue.index == CONFIRM_HP ||iter->mValue.index == CONFIRM_MP ||iter->mValue.index == CONFIRM_SP)
+		{
+			UInt32 ret = checkBaseAttr(playerID,iter->mValue.index,iter->mValue.keyValue,tmpFireConfirmDatas);
+			if (ret != LynxErrno::None)
+			{
+				return LynxErrno::PlayerCheating;
+			}
+		}
+		else if (iter->mValue.index == CONFIRM_SKILL_DAMAGE)
+		{
+			if (iter->mValue.count > 0)
+			{
+				return LynxErrno::PlayerCheating;
+			}
+		}
+		else if (iter->mValue.index == CONFIRM_CRITICAL_STRIKE_RATE)
+		{
+			if (iter->mValue.count > 8000)//Êö¥ÂáªÁéá*10000
+			{
+				return LynxErrno::PlayerCheating;
+			}
+		}
+		
+
+	
+
+	}
+	KeyValue keyValue;
+	UInt32 ret = checkBaseAttr(playerID,0,keyValue,fireConfirmDatas);
+	if (ret != LynxErrno::None)
+	{
+		return LynxErrno::PlayerCheating;
+	}
+
+	return LynxErrno::None;
+}
+
+UInt32 FireConfirmManager::checkBaseAttr(Guid playerID,UInt32 subIndex, KeyValue kevalue, List<FireConfirm> &fireConfirmDatas)
+{
+	String playerUidStr;
+	std::string str;
+	String detailStr;
+	char dest[64] = {};
+
+
+	sprintf(dest,"%llu",playerID);
+	playerUidStr = (String)dest;
+	str = LogicSystem::getSingleton().getDetailInfo(playerUidStr.c_str());
+	detailStr = str.c_str();
+// 	if (detailStr == NULL)
+// 	{
+// 		return LynxErrno::None;
+// 	}	
+
+	//for test
+// 	detailStr = "[1,10100,51,\"\xe7\x94\x9f\xe7\x9a\x84\xe6\x99\x93\xe6\xa2\xa6\",10,40569,\"\",\"\",[700020,814,435,7344,11300,42275,10263,5568],[2171540.6,105,31701.6,78179.2,70338.4,41573.3,41984.3,0,0,14400,30,800,600,175,99,1378,0,0,0,0,0,0,13077.4,6727,14253,0,0,0,0,0,0,99999,0,0,0,0],[101,-104],[6010,1012,2014,3015,4017,5019],[{},{},[1003,7,0],[1004,8,1],[1005,42,3],[1006,1,0],[1007,1,0],[1008,51,2],[1009,1,0],[1010,1,0],[1011,1,0]],[10,132,[74,73,75,72,71,70,69,68,67,66,65,64]],[1000,500,600,100,100,2700,7000,8000,9000,0,0,0],[[11391],[11473],[0],[0],[0],[0]],[[[13,0,1,1],[24,0,1,1],[26,0,1,1],[0,0,0,0],[0,0,0,0]],[[39,0,1,1,1],[31,0,1,1,1],[19,0,1,1,1],[11,0,1,1,1],[6,0,1,1,1],[8,0,1,1,1],[32,0,1,1,1]],[42,41,36,56,48,49,39,29,21,1,24,22,31,19,5,20,6,50,8,27,26,13,30,11,32]],[[6010,[1015,1015,1015,1015,1015,1015]],[1012,[2015,2015,2015,2015,2015,2015]],[2014,[3015,3015,3015,3015,3015,3015]],[3015,[4015,4015,4015,4015,4015,4015]],[4017,[5015,5015,5015,5015,5015,5015]],[5019,[6015,6015,6015,6015,6015,6015]]],[[[11391,[1,91805]],[11473,[1,60989]]],[[11391,[[5,714,505],[24,106,503],[0,0,0],[0,0,0]]],[11473,[[25,194,504],[7,416,502],[0,0,0]]]],[[11391,5051],[11473,5042]]],[[111,111,112,112,122,123],[0,0,0,0,0,0],[0,0,0,0,0,0],[0,0,0,0,0,0],[0,0,0,0,0,0],[0,0,0,0,0,0],[0,0,0,0,0,0],[0,0,0,0,0,0],[0,0,0,0,0,0],[0,0,0,0,0,0],[0,0,0,0,0,0],[0,0,0,0,0,0]],[[[3,14868],[1,233969],[10,1404],[6,8300],[25,7800],[7,8309],[23,8496],[5,12893],[4,12799]],[[2,5],[3,293],[1,5264],[5,91],[4,164]],[[7,416],[1,152794],[25,194],[5,714],[24,106]],[[16,671],[3,6006],[4,7684],[10,248],[6,4276],[23,652],[7,4272],[24,1276],[25,304],[5,7685],[1,240854]],[[4,7792.2],[3,325.6],[1,20637.6],[7,266.3],[6,266.3],[23,103.4],[5,685.4]],[[7,1419],[3,10],[4,2148],[23,14],[6,1452],[5,1177],[1,270]]]]";
+
+
+	Vector<String> strVector;
+	Vector<String> strVector1;
+	lynxStrSplit(detailStr, ",", strVector, true);
+	if (strVector.size() < 1)
+	{
+		return LynxErrno::None;
+	}
+	
+	lynxStrSplit(strVector[16], "[", strVector1, true);
+	if (strVector1.size() < 1)
+	{
+		return LynxErrno::None;
+	}
+	
+	UInt32 hp = atoi(strVector1[0].c_str());
+	UInt32 mp = atoi(strVector[17].c_str());
+	UInt32 sp = atoi(strVector[18].c_str());
+	UInt32 ap = atoi(strVector[19].c_str());
+	UInt32 magicAP = atoi(strVector[20].c_str());
+	UInt32 df = atoi(strVector[21].c_str());
+	UInt32 magicDF = atoi(strVector[22].c_str());
+	
+
+
+	if (subIndex == CONFIRM_HP)
+	{
+		if (kevalue.key > mp - kevalue.value)
+		{
+			return LynxErrno::PlayerCheating;
+		}
+	}
+	else if (subIndex == CONFIRM_MP)
+	{
+		if (kevalue.key > hp - kevalue.value)
+		{
+			return LynxErrno::PlayerCheating;
+		}
+	}
+	else if (subIndex == CONFIRM_SP)
+	{
+		if (kevalue.key > sp - kevalue.value)
+		{
+			return LynxErrno::PlayerCheating;
+		}
+	}
+
+	for(List<FireConfirm>::Iter *iter = fireConfirmDatas.begin();iter != NULL;iter = fireConfirmDatas.next(iter))
+	{
+		if (iter->mValue.index == CONFIRM_MAX_AP)
+		{
+			if (iter->mValue.count > ap*2)
+			{
+				return LynxErrno::PlayerCheating;
+			}
+
+		}
+		else if(iter->mValue.index == CONFIRM_MAX_DF)
+		{
+
+			if (iter->mValue.count > df*2)
+			{
+				return LynxErrno::PlayerCheating;
+			}
+
+		}
+		else if (iter->mValue.index == CONFIRM_MAX_MAGIC_AP)
+		{
+			if (iter->mValue.count > magicAP*2)
+			{
+				return LynxErrno::PlayerCheating;
+			}
+		}
+		else if(iter->mValue.index == CONFIRM_MAX_MAGIC_DF)
+		{
+
+			if (iter->mValue.count > magicDF*2)
+			{
+				return LynxErrno::PlayerCheating;
+			}
+		}
+		else if(iter->mValue.index == CONFIRM_BUFFER)
+		{
+			for (List<IndexList>::Iter *it = iter->mValue.groupList.begin();it!=NULL;it = iter->mValue.groupList.next(it))
+			{
+				if (it->mValue.subIndex == CONFIRM_INVINCIBLE)
+				{
+					UInt32 count = 0;
+					for (List<float>::Iter*it1= it->mValue.valueList.begin();it1!= NULL;it1= it->mValue.valueList.next(it1))
+					{
+						count ++;
+						if (count  == 1)
+						{
+							if (it1->mValue > 5)
+							{
+								return LynxErrno::PlayerCheating;		
+							}							 
+						}
+						if (count  == 2)
+						{
+							if (it1->mValue > 10)
+							{
+								return LynxErrno::PlayerCheating;		
+							}							 
+						}						
+					}					
+				}
+				else if (it->mValue.subIndex == CONFIRM_SPBUFF)
+				{
+					UInt32 count = 0;
+					for (List<float>::Iter*it1= it->mValue.valueList.begin();it1!= NULL;it1= it->mValue.valueList.next(it1))
+					{
+						count ++;
+						if (count  == 1)
+						{
+							if (it1->mValue > 5)
+							{
+								return LynxErrno::PlayerCheating;		
+							}							 
+						}
+						if (count  == 2)
+						{
+							if (it1->mValue > 10)
+							{
+								return LynxErrno::PlayerCheating;		
+							}							 
+						}						
+					}					
+				}
+				else if (it->mValue.subIndex == CONFIRM_SPBUFF)
+				{
+					UInt32 count = 0;
+					for (List<float>::Iter*it1= it->mValue.valueList.begin();it1!= NULL;it1= it->mValue.valueList.next(it1))
+					{
+						count ++;
+						if (count  == 1)
+						{
+							if (it1->mValue > 5)
+							{
+								return LynxErrno::PlayerCheating;		
+							}							 
+						}
+						if (count  == 2)//ÂõûÂ§çÊúÄÂ∞èÂÄº
+						{
+							if (it1->mValue < 10)
+							{
+								return LynxErrno::PlayerCheating;		
+							}							 
+						}						
+					}					
+				}
+				else if (it->mValue.subIndex == CONFIRM_INFINITEHIT)
+				{
+					UInt32 count = 0;
+					for (List<float>::Iter*it1= it->mValue.valueList.begin();it1!= NULL;it1= it->mValue.valueList.next(it1))
+					{
+						count ++;
+						if (count  == 1)
+						{
+							if (it1->mValue > 5)
+							{
+								return LynxErrno::PlayerCheating;		
+							}							 
+						}
+						if (count  == 2)//
+						{
+							if (it1->mValue < 5)
+							{
+								return LynxErrno::PlayerCheating;		
+							}							 
+						}	
+						if (count  == 3)
+						{
+							if (it1->mValue > 10)
+							{
+								return LynxErrno::PlayerCheating;		
+							}							 
+						}
+						if (count  == 4)//
+						{
+							if (it1->mValue < 10)
+							{
+								return LynxErrno::PlayerCheating;		
+							}							 
+						}		
+					}					
+				}
+				else if (it->mValue.subIndex == CONFIRM_VERTIGO)
+				{
+					UInt32 count = 0;
+					for (List<float>::Iter*it1= it->mValue.valueList.begin();it1!= NULL;it1= it->mValue.valueList.next(it1))
+					{
+						count ++;
+						if (count  == 1)
+						{
+							if (it1->mValue > 5)
+							{
+								return LynxErrno::PlayerCheating;		
+							}							 
+						}
+						if (count  == 2)
+						{
+							if (it1->mValue > 10)
+							{
+								return LynxErrno::PlayerCheating;		
+							}							 
+						}						
+					}					
+				}
+				else if (it->mValue.subIndex == CONFIRM_DECELERATION)
+				{
+					UInt32 count = 0;
+					for (List<float>::Iter*it1= it->mValue.valueList.begin();it1!= NULL;it1= it->mValue.valueList.next(it1))
+					{
+						count ++;
+						if (count  == 1)
+						{
+							if (it1->mValue > 5)
+							{
+								return LynxErrno::PlayerCheating;		
+							}							 
+						}
+						if (count  == 2)
+						{
+							if (it1->mValue > 10)
+							{
+								return LynxErrno::PlayerCheating;		
+							}							 
+						}						
+					}					
+				}
+			}
+				
+		}
+	}
+
+	return LynxErrno::None;
+}
+// onTwelvePalaceEndReqÊã∑Ë¥ù‰∫ÜonEndCopy‰ª£Á†Å
+void FireConfirmManager::onEndCopy(const  ConnId& connId, CGChapterEnd & msg)		//ÂÖ≥Âç°ÁªìÊùü 
+{
+	UInt32 isRecord =0;//Á†¥Á∫™ÂΩï	
+	UInt32 finishTimes =0;
 	UInt32 recordBreaking =0;
 	UInt32 star = 0;
 	KeyValue keyValue;
@@ -952,15 +1213,41 @@ void FireConfirmManager::onEndCopy(const  ConnId& connId, CGChapterEnd & msg)		/
 	List<KeyValue> counter;	
 	ChapterEndResp resp;
 	
+	//LOG_INFO("onEndCopy %s",msg.jsonStr.c_str());
 
-	msg.convertJsonToData(msg.jsonStr);
+
+	BaseChangManager::getSingleton().cGChapterEndconvertJsonToData(msg);
 	resp.chapterID = msg.chapterID;
 	resp.result = msg.result;
 
 	
 	Player *player = LogicSystem::getSingleton().getPlayerByConnId(connId);
+	if (player == NULL)
+	{
+		LOG_WARN("player not found!!");
+		return;
+	}
+	StageTemplate* stageTemplate = gStageTable->get(msg.chapterID);
+	if (stageTemplate == NULL)
+	{
+		resp.result = LynxErrno::ClienServerDataNotMatch;
+		std::string sendStr = resp.convertDataToJson();
+		NetworkSystem::getSingleton().sender( connId,CHAPTER_END_RESP,sendStr);
+		return;
+	}
+
+	//Âà§Êñ≠ÊòØÂê¶‰ΩúÂºä
+	UInt32 checkRet =  FireConfirmManager::getSingleton().checkIsCheat(player->getPlayerGuid(), msg.fireConfirmData,msg.result);	
+	if(checkRet != LynxErrno::None)
+	{
+		FireConfirmManager::getSingleton().UpdataConfirmLevel(connId,true);
+		resp.result = checkRet;
+		std::string jsonStr = resp.convertDataToJson();	
+		NetworkSystem::getSingleton().sender( connId,CHAPTER_END_RESP,jsonStr);
+		return;
+	}
 	
-	if (gStageTable->get(msg.chapterID)->mType == STAGE_TRIAL)//∂‡»À∏±±æ
+	if (stageTemplate->mType == STAGE_TRIAL)//Â§ö‰∫∫ÂâØÊú¨
 	{
 		PVPSystem::getSingleton().removeRoom(player->getRoomID());
 		player->setRoomID(0);		
@@ -981,7 +1268,7 @@ void FireConfirmManager::onEndCopy(const  ConnId& connId, CGChapterEnd & msg)		/
 		return;
 	}	
 		
-	star = msg.star;		
+	resp.star = msg.star;
 
 	StageCalcManager::getSingleton().getAwards( connId ,1, msg.awardMonsterList,msg.chapterID,1);
 
@@ -990,6 +1277,7 @@ void FireConfirmManager::onEndCopy(const  ConnId& connId, CGChapterEnd & msg)		/
 	PlayerFireConfirmData mFireConfirmData =  player->GetFireConfirmData();
 
 	mFireConfirmData.m_Star = msg.star;
+	finishTimes = TimeUtil::getTimeSec() - mFireConfirmData.m_CopyStartTime;
 
 	if (mFireConfirmData.m_CopyStartTime == -1 || mFireConfirmData.m_CopyID != msg.chapterID)
 	{		
@@ -1009,67 +1297,68 @@ void FireConfirmManager::onEndCopy(const  ConnId& connId, CGChapterEnd & msg)		/
 	}
 
 
-	UInt32 goldcost =0;
+	UInt32 goldcost = 0;
 	UInt32  gold = player->getPlayerGold();
-	if (gStageTable->get(msg.chapterID)->mType == STAGE_TRIAL)//∂‡»À∏±±æ 
+ 	if (stageTemplate->mType == STAGE_TRIAL)//Â§ö‰∫∫ÂâØÊú¨ 
 	{
-		TrialTemplate trialTemplate = GlobalVarManager::getSingleton().gettrial();
-		goldcost = trialTemplate.ratecost.findValue(mFireConfirmData.m_AwardTimes);//±∂ ˝ ‘™±¶ª®∑—
-
-		if (gold < goldcost)
-		{
-			resp.result = LynxErrno::RmbNotEnough;
-
-		}
+		resp.star = finishTimes;
+		
+		GlobalValue globalValue = GlobalValueManager::getSingleton().getGlobalValue();
+		UInt32 ii = 0;
+		//Ê≠£Â∏∏ÊòØ10000‰∏çÊâ£Èí±Ôºå2ÂÄçÊòØ20000 Êâ£Èí±
+	
 		PlayerDailyResetData playerDailyResetData =player->getPlayerDailyResetData();
 		
 		
-		VipTemplate vipTemplate;//todo mei yanzheng
-		for(List<VipTemplate>::Iter *iter1 = gVipTable->mVip.begin();iter1 != NULL;iter1 = gVipTable->mVip.next(iter1))
-		{
-			if (iter1->mValue.id == player->getVipLevel())
-			{
-				vipTemplate = iter1->mValue;
-				break;
-			}
-		}
-		if (resp.result != LynxErrno::None)// ß∞‹
+	
+		if (resp.result != LynxErrno::None)//Â§±Ë¥•
 		{
 			std::string jsonStr = resp.convertDataToJson();	
 			NetworkSystem::getSingleton().sender( connId,CHAPTER_END_RESP,jsonStr);
 			return;
 		}	
-		double multiply =0;
-		multiply += mFireConfirmData.m_AwardTimes;
+		double multiply = 0;
+		multiply += (double)mFireConfirmData.m_AwardTimes/10000;//10000ÊòØ0ÂÄç
+		//LOG_INFO("multiply1  = %f ",multiply);
 		Record record;
 		record.name = player->getPlayerName();
-		record.playerID = player->getPlayerGuid();
-		record.val = msg.star;
-		if (msg.star <= gStageTable->get(msg.chapterID)->limittime1)
+		record.playerID = player->getPlayerGuid();		
+		record.val = finishTimes;
+
+		if (finishTimes <= stageTemplate->limittime1)
 		{
-			multiply += 0.1;
-			if (RankingManager::getSingleton().setRecord(STAGE_RECORD_TYPE,mFireConfirmData.m_CopyID,record,true) <4)//todo∆∆ºÕ¬º 4“‘œ¬ «≥…π¶
+			multiply += (double)globalValue.uTRIALFastRate/10000;
+			//LOG_INFO("multiply2  = %f ",multiply);
+			if (RankingManager::getSingleton().setRecord(STAGE_RECORD_TYPE,mFireConfirmData.m_CopyID,record,true) <4)//todoÁ†¥Á∫™ÂΩï 4‰ª•‰∏ãÊòØÊàêÂäü
 			{
 				CGRecord recordMsg;
 				recordMsg.typeID = STAGE_RECORD_TYPE;
 				RankingManager::getSingleton().onRecordReq( connId,recordMsg);
 				recordBreaking =1;
-				//todo º”»ÎµΩ≥…æÕ 
+				//todo Âä†ÂÖ•Âà∞ÊàêÂ∞± 
 				
 			}
 		}
 		
-		if (/*isFriend()*/1)// «∑Ò «∫√”—
+		if (player->getFriendBlackManager().judgeFriend(mFireConfirmData.m_OtherPlayerID) == true)//ÊòØÂê¶ÊòØÂ•ΩÂèã
 		{
-			multiply += 0.1;
+			multiply += (double)globalValue.uTRIALFriendRate/10000;
 		}
+		//LOG_INFO("multiply3  = %f ",multiply);
 
+
+		for( List<Goods>::Iter * iter = mFireConfirmData.m_FixedList.begin();iter != NULL;iter = mFireConfirmData.m_FixedList.next(iter))
+		{
+			//LOG_INFO("iter->mValue.num1  = %d ",iter->mValue.num);
+			iter->mValue.num = iter->mValue.num * (multiply); 
+			//LOG_INFO("iter->mValue.num2  = %d ",iter->mValue.num);
+		}
 
 		for(List<Award>::Iter * item = mFireConfirmData.m_AwardsList.begin();item != NULL; item = mFireConfirmData.m_AwardsList.next(item))
 		{			
 			for( List<Goods>::Iter * iter = item->mValue.award.begin();iter != NULL;iter = item->mValue.award.next(iter))
 			{
-				iter->mValue.num = iter->mValue.num * (multiply + mFireConfirmData.m_AwardTimes); 
+				iter->mValue.num = iter->mValue.num * (multiply); 
 			}
 			break;
 		}
@@ -1077,62 +1366,78 @@ void FireConfirmManager::onEndCopy(const  ConnId& connId, CGChapterEnd & msg)		/
 		{			
 			for( List<Goods>::Iter * iter = item1->mValue.card.begin();iter != NULL;iter = item1->mValue.card.next(iter))
 			{
-				iter->mValue.num = iter->mValue.num * (multiply + mFireConfirmData.m_AwardTimes); 
+				iter->mValue.num = iter->mValue.num * (multiply); 
 			}
 			break;
 		}
 
-		goods.resourcestype =1;
-		goods.subtype =2;
-		goods.num -= goldcost;
-		mFireConfirmData.m_CostList.insertTail(goods);
-
-		
+				
 	}
-// 	else//≤ª «∂‡»À∏±±æ saveand ¿Ô”–
-// 	{
-// 		goods.resourcestype =20;
-// 		goods.subtype = msg.chapterID;
-// 		goods.num = star;
-// // 		mFireConfirmData.m_CostList.insertTail(goods);//œ˚∫ƒ∏±±æ¥Œ ˝
-// 
-// 		for(List<Award>::Iter * item = mFireConfirmData.m_AwardsList.begin();item != NULL; item = mFireConfirmData.m_AwardsList.next(item))
-// 		{		
-// 			item->mValue.award.insertTail(goods);
-// 			break;
-// 		}
-// 
-// 	}
 
-
-	//∆’Õ®πÿø® “ª∞„œ˚∫ƒ£¨∂‡»À∏±±æŒ™¡„
-	StageTemplate *stageTemplate;
+	//ÊôÆÈÄöÂÖ≥Âç° ‰∏ÄËà¨Ê∂àËÄóÔºåÂ§ö‰∫∫ÂâØÊú¨‰∏∫Èõ∂
 	stageTemplate = gStageTable->get(mFireConfirmData.m_CopyID);
+	if (stageTemplate == NULL)
+	{
+		LOG_WARN("stageTemplate not found!!");
+		resp.result = LynxErrno::ClienServerDataNotMatch;
+		std::string sendStr = resp.convertDataToJson();
+		NetworkSystem::getSingleton().sender( connId,CHAPTER_END_RESP,sendStr);
+		return;
+	}
 	if (stageTemplate->mStrengthCost >0)
 	{
 		goods.resourcestype =1;
 		goods.subtype =3;
-		goods.num -= stageTemplate->mStrengthCost;
+		goods.num = 0 - stageTemplate->mStrengthCost;
 		mFireConfirmData.m_CostList.insertTail(goods);
 	}
 	
 	player->SetFireConfirmData(mFireConfirmData);
-	FireConfirmManager::getSingleton().saveAndGetResult(connId,resp,1);	
 	
+
+	if (stageTemplate->mType == STAGE_TRIAL)//Â§ö‰∫∫ÂâØÊú¨
+	{
+		FireConfirmManager::getSingleton().saveAndGetResult(connId,resp,1,MiniLog9);	
+	}
+	else if (stageTemplate->mType == STAGE_ELITE)
+	{
+		FireConfirmManager::getSingleton().saveAndGetResult(connId,resp,1,MiniLog53);	
+	}
+	else if (stageTemplate->mType == STAGE_BONUS)
+	{
+		FireConfirmManager::getSingleton().saveAndGetResult(connId,resp,1,MiniLog52);	
+	}
+	else if (stageTemplate->mType == STAGE_MASTAR)
+	{
+		FireConfirmManager::getSingleton().saveAndGetResult(connId,resp,1,MiniLog54);	
+	}
+	else
+	{
+		FireConfirmManager::getSingleton().saveAndGetResult(connId,resp,1,MiniLog56);	
+	}
+
 	mFireConfirmData =  player->GetFireConfirmData();
 
+	//LOG_INFO("finishTimes  = %d ",finishTimes);
+	//LOG_INFO("resp.star  = %d ",resp.star);
 
-	resp.result =LynxErrno::None;
-	resp.star = star;
+	resp.result =LynxErrno::None;	
 	resp.recordBreaking =recordBreaking;
-	resp.allAttr = mFireConfirmData.m_AddSendjs;
+// 	resp.allAttr = mFireConfirmData.m_AddSendjs;
+// 	resp.stages = 
 
 	std::string jsonStr = resp.convertDataToJson();	
 	NetworkSystem::getSingleton().sender( connId,CHAPTER_END_RESP,jsonStr);
-	//∏¸–¬≥…æÕœµÕ≥ wwc
+	//LOG_INFO("CHAPTER_END_RESP = %s",jsonStr.c_str());
+	//Êõ¥Êñ∞ÊàêÂ∞±Á≥ªÁªü wwc
 	player->getAchieveManager().updateAchieveData(BARRIER,msg.chapterID);
 	player->getAchieveManager().updateAchieveData(ELITEBARRIER,msg.chapterID);
-	//∏¸–¬√ø»’œµÕ≥ wwc
+	//Êõ¥Êñ∞ÊØèÊó•Á≥ªÁªü wwc
+	if (gStageTable->get(msg.chapterID) == NULL)
+	{
+		LOG_WARN("gStageTable->get(msg.chapterID) not found!!");
+		return;
+	}
 	UInt32 stateType = gStageTable->get(msg.chapterID)->mType;
 	if(stateType == STAGE_NORMAL || stateType==STAGE_ELITE )
 	{
@@ -1140,9 +1445,25 @@ void FireConfirmManager::onEndCopy(const  ConnId& connId, CGChapterEnd & msg)		/
 	}
 	
 	if(stateType == STAGE_ELITE)
-	{
-			player->getAchieveManager().updateDailyTaskData(DLYELITEBARRIRECNT, 1);
+	{		
+		player->getAchieveManager().updateDailyTaskData(DLYELITEBARRIRECNT, 1);
 	}
+
+	
+
+	if (stageTemplate->mType == STAGE_MASTAR)
+	{
+		//Êõ¥Êñ∞‰∏ÉÊó•ËÆ≠
+		LogicSystem::getSingleton().updateSevenDayTask(player->getPlayerGuid(),SDT15,1);
+	}
+	if (stageTemplate->mType == STAGE_TRIAL)
+	{
+		if (resp.result == LynxErrno::None)
+		{
+			LogicSystem::getSingleton().updateSevenDayTask(player->getPlayerGuid(),SDT11,1);
+		}
+	}
+	LogicSystem::getSingleton().updateSevenDayTask(player->getPlayerGuid(),SDT01,1);
 }
 	 
 // 
@@ -1155,7 +1476,7 @@ void FireConfirmManager::onEndCopy(const  ConnId& connId, CGChapterEnd & msg)		/
 // 	UInt32 i =0;
 // 	UInt32 star =0;
 // 	UInt32 recvStar = 0;
-// 	for(Map<UInt64, StageTemplate>::Iter *item = gStageTable->mMap.begin();item != NULL ; item = gStageTable->mMap.next(item))//µÿÕºµÙ¬‰
+// 	for(Map<UInt64, StageTemplate>::Iter *item = gStageTable->mMap.begin();item != NULL ; item = gStageTable->mMap.next(item))//Âú∞ÂõæÊéâËêΩ
 // 	{
 // 		if (msg.chapterID == item->mKey)
 // 		{
@@ -1210,7 +1531,7 @@ void FireConfirmManager::onEndCopy(const  ConnId& connId, CGChapterEnd & msg)		/
 // 
 // }
 
- void FireConfirmManager::onChapterAwardCard(const  ConnId& connId ,CGChapterAwardCard &msg )	//∑≠≈∆
+ void FireConfirmManager::onChapterAwardCard(const  ConnId& connId ,CGChapterAwardCard &msg )	//ÁøªÁâå
 {
 	ChapterAwardCardResp resp;
 	UInt32 needGoldNum =0;
@@ -1220,7 +1541,12 @@ void FireConfirmManager::onEndCopy(const  ConnId& connId, CGChapterEnd & msg)		/
 	List<Goods> cardList;
 	UInt32 i = 0;
 	Goods goods;
-	Player * player = LogicSystem::getSingleton().getPlayerByConnId(connId);	
+	Player * player = LogicSystem::getSingleton().getPlayerByConnId(connId);
+	if (player == NULL)
+	{
+		LOG_WARN("player not found!!");
+		return;
+	}
 	PlayerFireConfirmData mFireConfirmData =  player->GetFireConfirmData();
 
 	msg.convertJsonToData(msg.jsonStr);	
@@ -1234,7 +1560,7 @@ void FireConfirmManager::onEndCopy(const  ConnId& connId, CGChapterEnd & msg)		/
 	if ((4 - msg.flag + 1) != cardList.size() )
 	{
 		//todo
-		if ((4 - msg.flag ) == cardList.size())//todo÷ÿ∏¥∑¢…œ“ª¥Œ
+		if ((4 - msg.flag ) == cardList.size())//todoÈáçÂ§çÂèë‰∏ä‰∏ÄÊ¨°
 		{
 // 			GiftManager::getSingleton().addToPlayer(player->getPlayerGuid(),REFLASH_AWARD_CARD,itemList);
 		}
@@ -1291,9 +1617,7 @@ void FireConfirmManager::onEndCopy(const  ConnId& connId, CGChapterEnd & msg)		/
 
 	resp.ends = itemList;
 		
-	GiftManager::getSingleton().combineSame(resp.ends);
-	GiftManager::getSingleton().addToPlayer(player->getPlayerGuid(),REFLASH_AWARD,resp.ends);
-	GiftManager::getSingleton().PlayerItemChangeResult(player->getPlayerGuid(),0,resp.ends);
+	GiftManager::getSingleton().saveEndsGetAttr(player->getPlayerGuid(),resp.ends,resp.allAttr,MiniLog59);
 
 	std::string jsonStr = resp.convertDataToJson();
 	NetworkSystem::getSingleton().sender( connId,CHAPTER_AWARD_CARD_RESP,jsonStr);
@@ -1319,45 +1643,44 @@ void FireConfirmManager::onEndCopy(const  ConnId& connId, CGChapterEnd & msg)		/
 	 UInt32 i = 0;
 	 UInt32 ii = 0;
 
-	 MeiShiWuTemplate meiShiWuTemplate = GlobalVarManager::getSingleton().getMeiShiWu();
 	 Player *player = LogicSystem::getSingleton().getPlayerByConnId(connId);
 	 PlayerFireConfirmData mFireConfirmData =  player->GetFireConfirmData();
+	 GlobalValue globalValue = GlobalValueManager::getSingleton().getGlobalValue();
 
 
 	 if (foodType == 1)
 	 {
-		 mFireConfirmData.m_Gain = meiShiWuTemplate.rate1;
+		 mFireConfirmData.m_Gain = globalValue.uMSWrate1;
 	 }
 	 else if (foodType == 2)
 	 {
-		 mFireConfirmData.m_Gain = meiShiWuTemplate.rate2;
+		 mFireConfirmData.m_Gain = globalValue.uMSWrate2;
 	 }
 	 else if (foodType == 3)
 	 {
-		 mFireConfirmData.m_Gain = meiShiWuTemplate.rate3;
+		 mFireConfirmData.m_Gain = globalValue.uMSWrate3;
 	 }
-	 else if (foodType == 4)//‘™±¶…®µ¥
+	 else if (foodType == 4)//ÂÖÉÂÆùÊâ´Ëç°
 	 {
 		 mFireConfirmData.m_Gain = 10000;
 	 }
-	 else if (foodType == 5)//œ¡¬∑œ‡∑Í£¨»Î«÷’ﬂ
+	 else if (foodType == 5)//Áã≠Ë∑ØÁõ∏ÈÄ¢ÔºåÂÖ•‰æµËÄÖ
 	 {
 		 mFireConfirmData.m_Gain = 20000;
 	 }
 	 else
 	 {
-		 mFireConfirmData.m_Gain = 10000;//≥ı ºªØ
-
+		 mFireConfirmData.m_Gain = 10000;//ÂàùÂßãÂåñ
 	 }
 
 	
 	 player->SetFireConfirmData(mFireConfirmData);
 	
 	 return;
-
  }
-//…®µ¥◊‹¥Œ ˝£¨…®µ¥√‚∑—¥Œ ˝£¨…®µ¥–Ë“™ÃÂ¡¶£¨…®µ¥ø™∆ÙÃıº˛–« ˝£¨…®µ¥ £”‡µƒ ≥ŒÔ∏ˆ ˝£¨–Ë“™µƒ‘™±¶£¨
-void FireConfirmManager::onStageMopUp(const  ConnId& connId,CGStageMopUp &msg )		//πÿø®…®µ¥
+
+//Êâ´Ëç°ÊÄªÊ¨°Êï∞ÔºåÊâ´Ëç°ÂÖçË¥πÊ¨°Êï∞ÔºåÊâ´Ëç°ÈúÄË¶Å‰ΩìÂäõÔºåÊâ´Ëç°ÂºÄÂêØÊù°‰ª∂ÊòüÊï∞ÔºåÊâ´Ëç°Ââ©‰ΩôÁöÑÈ£üÁâ©‰∏™Êï∞ÔºåÈúÄË¶ÅÁöÑÂÖÉÂÆùÔºå
+void FireConfirmManager::onStageMopUp(const  ConnId& connId,CGStageMopUp &msg )		//ÂÖ≥Âç°Êâ´Ëç°
 {
 
 
@@ -1367,9 +1690,7 @@ void FireConfirmManager::onStageMopUp(const  ConnId& connId,CGStageMopUp &msg )	
 	UInt32 food2 = 0;
 	UInt32 food3 = 0;
 	UInt32 food4 = 0;
-
 	UInt32 mopupTimes = 0;
-
 	Goods goods;
 	List<Goods> cost;	
 	List<Goods> itemList;
@@ -1378,7 +1699,6 @@ void FireConfirmManager::onStageMopUp(const  ConnId& connId,CGStageMopUp &msg )	
 	List<AwardMonsterDamage> awardMonsterList;
 	StageMopUpResp resp;
 
-	rapidjson::Document tmpDocument;
 	
 	msg.convertJsonToData(msg.jsonStr);
 	if( msg.id == 0)
@@ -1428,17 +1748,37 @@ void FireConfirmManager::onStageMopUp(const  ConnId& connId,CGStageMopUp &msg )	
 	}
 
 	Player *player = LogicSystem::getSingleton().getPlayerByConnId(connId);
+	if (player == NULL)
+	{
+		LOG_WARN("player not found!!");
+		return;
+	}
 
 	UInt32 leftTimes = StageManager::getSingleton().getNormalStageLeftTimes(connId,msg.id);
-
 	player->ResetFireConfirmData();
 	FireConfirmManager::getSingleton().SetCopyStart(player,msg.id);	
 	StageTemplate *stageTemplate =gStageTable->get(msg.id);
-	MeiShiWuTemplate meiShiWuTemplate = GlobalVarManager::getSingleton().getMeiShiWu();
-	SaoDangTemplate saoDangTemplate = GlobalVarManager::getSingleton().getSaoDang();
+	if (stageTemplate == NULL)
+	{
+		LOG_WARN("stageTemplate not found!!");
+		resp.result = LynxErrno::ClienServerDataNotMatch;
+		std::string sendStr = resp.convertDataToJson();
+		NetworkSystem::getSingleton().sender( connId,CHAPTER_MOP_UP_RESP,sendStr);
+		return;
+	}
+
+	GlobalValue globalValue = GlobalValueManager::getSingleton().getGlobalValue();
 	PlayerFireConfirmData mFireConfirmData = player->GetFireConfirmData();
+	mFireConfirmData.m_IsMopUp = 1;
+	player->SetFireConfirmData(mFireConfirmData);
+	
 
 	PlayerDailyResetData playerDailyResetData = player->getPlayerDailyResetData();
+	CGFoods foodsmsg;
+	foodsmsg.reqType =0;
+	FireConfirmManager::onFoodsReq(connId ,foodsmsg);	
+	PlayerFoodsData foodsData = player->getFoodsData();//‰ΩçÁΩÆ‰∏çËÉΩÈîô
+
 
 	if (msg.mopUpType >3)
 	{
@@ -1449,34 +1789,61 @@ void FireConfirmManager::onStageMopUp(const  ConnId& connId,CGStageMopUp &msg )	
 		mopupTimes = food1 + food2 + food3;
 	}
 
-	if (leftTimes < mopupTimes)
-	{		
-		resp.result = LynxErrno::TimesNotEnough;
-		std::string jsonStr = resp.convertDataToJson();	
-		NetworkSystem::getSingleton().sender( connId,CHAPTER_MOP_UP_RESP,jsonStr);
-		return;
-	}
+	//ÊúâÈ£üÁâ©Â∞±ËÉΩÊâ´Ëç°ÔºåÊúâ‰ΩìÂäõÂ∞±ËÉΩÊâ´Ëç°
+// 	if (leftTimes < mopupTimes)
+// 	{		
+// 		resp.result = LynxErrno::TimesNotEnough;
+// 		std::string jsonStr = resp.convertDataToJson();	
+// 		NetworkSystem::getSingleton().sender( connId,CHAPTER_MOP_UP_RESP,jsonStr);
+// 		return;
+// 	}
 
-	if (msg.mopUpType > 3)//æ´”¢πÿø®…®µ¥œ˚∫ƒÃÂ¡¶
+	if (msg.mopUpType > 3)//Á≤æËã±ÂÖ≥Âç°Êâ´Ëç°Ê∂àËÄó‰ΩìÂäõ
 	{
 		int needSubTimes = food4;
-		if (saoDangTemplate.sweepfreetimes > playerDailyResetData.m_EliteMopUpTimes)
+		if (globalValue.uSDsweeptimes > playerDailyResetData.m_EliteMopUpTimes)
 		{
-			needSubTimes -= (saoDangTemplate.sweepfreetimes - playerDailyResetData.m_EliteMopUpTimes);
-			if (needSubTimes <0)
+			if (needSubTimes > (globalValue.uSDsweeptimes - playerDailyResetData.m_EliteMopUpTimes) )
 			{
-				needSubTimes =0;
+				needSubTimes = globalValue.uSDsweeptimes - playerDailyResetData.m_EliteMopUpTimes;
+			}
+			else
+			{
+				needSubTimes = needSubTimes;
 			}
 		}
-		
-		if (saoDangTemplate.sweeptimes < (playerDailyResetData.m_EliteMopUpTimes +food4)	)
+		else
+		{
+			needSubTimes = 0;			
+		}
+
+		if (needSubTimes > 0)
+		{
+			if (needSubTimes >leftTimes)
+			{
+				needSubTimes = leftTimes;
+			}
+			else
+			{
+				needSubTimes = needSubTimes;
+			}			
+		}
+	
+		if (needSubTimes <= 0)
 		{
 			resp.result =LynxErrno::NumberNotRight;
 			std::string jsonStr = resp.convertDataToJson();	
 			NetworkSystem::getSingleton().sender( connId,CHAPTER_MOP_UP_RESP,jsonStr);
 			return;
 		}
-		if (FireConfirmManager::getSingleton().refreshgetStrength(connId) < (stageTemplate->mStrengthCost* needSubTimes) )
+	
+
+		UInt32 strengthCount = FireConfirmManager::getSingleton().refreshgetStrength(connId);
+		if (strengthCount < (stageTemplate->mStrengthCost* needSubTimes) )
+		{
+			needSubTimes = strengthCount/stageTemplate->mStrengthCost;			
+		}
+		if (needSubTimes == 0)
 		{
 			resp.result =LynxErrno::StrengthNotEnough;
 			std::string jsonStr = resp.convertDataToJson();	
@@ -1484,94 +1851,100 @@ void FireConfirmManager::onStageMopUp(const  ConnId& connId,CGStageMopUp &msg )	
 			return;
 		}
 		
-		playerDailyResetData.m_EliteMopUpTimes += food4;
-		goods.resourcestype =1;
-		goods.subtype = 3;
+		playerDailyResetData.m_EliteMopUpTimes += needSubTimes;
+		goods.resourcestype =AWARD_BASE;
+		goods.subtype = AWARD_BASE_STRENGTH;
 		goods.num -= stageTemplate->mStrengthCost*needSubTimes;
 		mFireConfirmData.m_CostList.insertTail(goods);
 		player->SetFireConfirmData(mFireConfirmData);
+		player->setPlayerDailyResetData(playerDailyResetData);
+		player->getPersistManager().setDirtyBit(DAILYRESETBIT);
 
-		for (UInt32 j=0;j<food4;j++)
+		for (UInt32 j=0;j<needSubTimes;j++)
 		{
 			FireConfirmManager::getSingleton().getAwardOnce(connId,msg.id);
 		}
 
 	}
 
-	if (msg.mopUpType <=3)//∆’Õ®πÿø®…®µ¥œ˚∫ƒ ≥ŒÔ
+	if (msg.mopUpType <=3)//ÊôÆÈÄöÂÖ≥Âç°Êâ´Ëç°Ê∂àËÄóÈ£üÁâ©
 	{
-		if (saoDangTemplate.sweeptimes < (playerDailyResetData.m_NormalMopUpTimes + food1+ food2+ food3)	)
+
+		int needSubTimes = food1 +food2 + food3;
+		if (globalValue.uSDsweeptimes > playerDailyResetData.m_NormalMopUpTimes)
 		{
-			resp.result =LynxErrno::NumberNotRight;
-			std::string jsonStr = resp.convertDataToJson();	
-			NetworkSystem::getSingleton().sender( connId,CHAPTER_MOP_UP_RESP,jsonStr);
-			return;
+			if (needSubTimes > (globalValue.uSDsweeptimes - playerDailyResetData.m_NormalMopUpTimes) )
+			{
+				needSubTimes = globalValue.uSDsweeptimes - playerDailyResetData.m_NormalMopUpTimes;
+			}
+			else
+			{
+				needSubTimes = needSubTimes;
+			}
+		}
+		else
+		{
+			needSubTimes = 0;			
 		}
 
-		
-
-		if (leftTimes < ( food1+ food2+ food3)	)
+		if (needSubTimes > 0)
 		{
-			if (leftTimes <food1 )
+			if (needSubTimes >leftTimes)
 			{
-				food1 = leftTimes;
-				food2 = 0;
-				food3 = 0;
+				needSubTimes = leftTimes;
 			}
-			else if (leftTimes < ( food1+ food2))
+			else
 			{
-				food2 = leftTimes - food1;
-				food3 = 0;
-			}
-			else if (leftTimes < ( food1+ food2+ food3))
-			{
-				food3 = leftTimes - food1 - food2;
+				needSubTimes = needSubTimes;
 			}			
 		}
-		
 
-		CGFoods foodsmsg;
-		foodsmsg.reqType =0;
-		FireConfirmManager::onFoodsReq(connId ,foodsmsg);				
-		PlayerFoodsData foodsData = player->getFoodsData();
-		if (foodsData.food1 <food1 || foodsData.food2 <food2 || foodsData.food3 <food3 )
+		if (needSubTimes <= 0)
 		{
 			resp.result =LynxErrno::NumberNotRight;
 			std::string jsonStr = resp.convertDataToJson();	
 			NetworkSystem::getSingleton().sender( connId,CHAPTER_MOP_UP_RESP,jsonStr);
 			return;
 		}
+		
+		if ((foodsData.food1+foodsData.food11) <food1 || (foodsData.food2+foodsData.food12)  <food2 ||(foodsData.food3+foodsData.food13)  <food3 )
+		{
+			resp.result =LynxErrno::FoodNotEnough;
+			std::string jsonStr = resp.convertDataToJson();	
+			NetworkSystem::getSingleton().sender( connId,CHAPTER_MOP_UP_RESP,jsonStr);
+			return;
+		}
 
-		foodsData.food1 -= food1;
-		foodsData.food2 -= food2;
-		foodsData.food3 -= food3;
+		if (food1 > 0)
+		{
+			FireConfirmManager::getSingleton().typeFoodSubNum(player->getPlayerGuid(),foodsData,food1,1 );
+		}
+		if (food2 > 0)
+		{
+			FireConfirmManager::getSingleton().typeFoodSubNum(player->getPlayerGuid(),foodsData,food2,2 );
+		}
+		if (food3 > 0)
+		{
+			FireConfirmManager::getSingleton().typeFoodSubNum(player->getPlayerGuid(),foodsData,food3,3 );
+		}
+		
 		if(foodsData.beginTime ==0)
 		{
 			foodsData.beginTime = TimeUtil::getTimeSec();
 		}
-		if (foodsData.vipFoodLeftNumber > (food1+food2+food3))
-		{
-			foodsData.vipFoodLeftNumber -= (food1+food2+food3);
-		}
-		else
-		{
-			foodsData.vipFoodLeftNumber = 0;
-		}
 
 		playerDailyResetData.m_NormalMopUpTimes += (food1 + food2 + food3);
 		player->setPlayerDailyResetData(playerDailyResetData);
+		player->getPersistManager().setDirtyBit(DAILYRESETBIT);
 
+		if( (food1+food2+food3) == 0)
+		{
+			resp.result = LynxErrno::NumberNotRight;
+		}
+		player->setFoodsData(foodsData);		
+		player->getPersistManager().setDirtyBit(FOODDATABIT );
 
-		player->setFoodsData(foodsData);
-		goods.resourcestype = AWARD_FOODDATA;
-		goods.subtype = 0;
-		goods.num = 0;
-		mFireConfirmData.m_CostList.insertTail(goods);
 		player->SetFireConfirmData(mFireConfirmData);
-
-		resp.foodList.insertTail(foodsData.food1);
-		resp.foodList.insertTail(foodsData.food2);
-		resp.foodList.insertTail(foodsData.food3);
 
 		FireConfirmManager::getSingleton().foodGain(connId, 1);
 		for (UInt32 j=0;j<food1;j++)
@@ -1592,15 +1965,38 @@ void FireConfirmManager::onStageMopUp(const  ConnId& connId,CGStageMopUp &msg )	
 		{
 			FireConfirmManager::getSingleton().getAwardOnce(connId,msg.id);			
 		}
-		FireConfirmManager::getSingleton().foodGain(connId, 0);//”√ÕÍ¡À÷ÿ÷√
+		FireConfirmManager::getSingleton().foodGain(connId, 0);//Áî®ÂÆå‰∫ÜÈáçÁΩÆ
 		
 	}
 
 	FireConfirmManager::getSingleton().updateFireConfirmData(connId);
 	ChapterEndResp awardResult;
-	FireConfirmManager::getSingleton().saveAndGetResult(connId,awardResult,0);
+
+
+	if (stageTemplate->mType == STAGE_ELITE)
+	{
+		FireConfirmManager::getSingleton().saveAndGetResult(connId,awardResult,0,MiniLog63);	
+	}
+	else if (stageTemplate->mType == STAGE_BONUS)
+	{
+		FireConfirmManager::getSingleton().saveAndGetResult(connId,awardResult,0,MiniLog62);	
+	}
+	else if (stageTemplate->mType == STAGE_MASTAR)
+	{
+		FireConfirmManager::getSingleton().saveAndGetResult(connId,awardResult,0,MiniLog64);	
+	}
+	else
+	{
+		FireConfirmManager::getSingleton().saveAndGetResult(connId,awardResult,0,MiniLog57);	
+	}
 
 	
+	resp.foodRecoverList.insertTail(foodsData.food1);
+	resp.foodRecoverList.insertTail(foodsData.food2);
+	resp.foodRecoverList.insertTail(foodsData.food3);
+	resp.foodbuyList.insertTail(foodsData.food11);
+	resp.foodbuyList.insertTail(foodsData.food12);
+	resp.foodbuyList.insertTail(foodsData.food13);
 
 	resp.firstAwards = awardResult.firstAwards;	
 	resp.awards = awardResult.awards;
@@ -1610,19 +2006,22 @@ void FireConfirmManager::onStageMopUp(const  ConnId& connId,CGStageMopUp &msg )	
 	resp.fixedList = awardResult.fixedList;
 	resp.ends = awardResult.ends;
 	resp.result =LynxErrno::None;
-	resp.leftTimes = saoDangTemplate.rate - (playerDailyResetData.m_NormalMopUpTimes + food1+ food2+ food3);
+	resp.leftTimes =  leftTimes - (food1 + food2 + food3 + food4);//ÂÖçË¥πÊ¨°Êï∞‰∏ç‰∏∫0Êó∂Ë¶Å‰øÆÊîπ
 
 	resp.mopupTimes = mopupTimes;
 	
 
 	mFireConfirmData = player->GetFireConfirmData();
-	resp.allAttr = mFireConfirmData.m_AddSendjs;
+	resp.allAttr =awardResult.allAttr;
+	resp.stages =awardResult.stages;
 
-	std::string jsonStr = resp.convertDataToJson();	
+	std::string jsonStr = resp.convertDataToJson();
+
+	LOG_WARN("jsonStr = %s",jsonStr.c_str());
 
 	NetworkSystem::getSingleton().sender( connId,CHAPTER_MOP_UP_RESP,jsonStr);
 
-	//ÃÌº”…®µ¥√ø»’∏±±æ∫Õæ´”¢∏±±æ»’≥£
+	//Ê∑ªÂä†Êâ´Ëç°ÊØèÊó•ÂâØÊú¨ÂíåÁ≤æËã±ÂâØÊú¨Êó•Â∏∏
 
 	if(stageTemplate->mType == STAGE_NORMAL ||stageTemplate->mType == STAGE_ELITE)
 	{
@@ -1634,9 +2033,21 @@ void FireConfirmManager::onStageMopUp(const  ConnId& connId,CGStageMopUp &msg )	
 		player->getAchieveManager().updateDailyTaskData(DLYELITEBARRIRECNT, mopupTimes );
 	}
 
+	
+	//Êõ¥Êñ∞‰∏ÉÊó•ËÆ≠
+	LogicSystem::getSingleton().updateSevenDayTask(player->getPlayerGuid(),SDT06,food4);
+
+	LogicSystem::getSingleton().updateSevenDayTask(player->getPlayerGuid(),SDT01,mopupTimes);
+
+	if (stageTemplate->mType == STAGE_MASTAR)
+	{
+		LogicSystem::getSingleton().updateSevenDayTask(player->getPlayerGuid(),SDT15,mopupTimes);
+	}
+	
+
 }
-//fanPaiType 0  «÷ª∑¢ÀÕ√‚∑—µƒ∑≠≈∆£¨1  «∑¢ÀÕ4’≈
-void FireConfirmManager::saveAndGetResult(const  ConnId& connId,ChapterEndResp &resp,UInt32 fanPaiType = 0)
+//fanPaiType 0 ÊòØÂè™ÂèëÈÄÅÂÖçË¥πÁöÑÁøªÁâåÔºå1 ÊòØÂèëÈÄÅ4Âº†
+void FireConfirmManager::saveAndGetResult(const  ConnId& connId,ChapterEndResp &resp,UInt32 fanPaiType = 0,UInt32 systemID = 0)
 {
 
 
@@ -1658,7 +2069,9 @@ void FireConfirmManager::saveAndGetResult(const  ConnId& connId,ChapterEndResp &
 
 	GiftManager::getSingleton().servanNeedChangeToPiece(player->getPlayerGuid(),mFireConfirmData.m_FirstAwardsList,resp.ends);
 	resp.firstAwards = mFireConfirmData.m_FirstAwardsList;
-	
+
+	GiftManager::getSingleton().servanNeedChangeToPiece(player->getPlayerGuid(),mFireConfirmData.m_MonsterAwardList,resp.ends);
+	resp.monsterDropList = mFireConfirmData.m_MonsterAwardList;
 	
 	VipTemplate vipTemplate;//todo mei yanzheng
 	for(List<VipTemplate>::Iter *iter1 = gVipTable->mVip.begin();iter1 != NULL;iter1 = gVipTable->mVip.next(iter1))
@@ -1716,9 +2129,9 @@ void FireConfirmManager::saveAndGetResult(const  ConnId& connId,ChapterEndResp &
 		player->SetFireConfirmData(mFireConfirmData);
 
 		resp.ends += card;
-		//∑≠≈∆µƒ≤ªƒ‹∫œ“≤≤ªƒ‹≤
+		//ÁøªÁâåÁöÑ‰∏çËÉΩÂêà‰πü‰∏çËÉΩÊãÜ
 		
-		if(fanPaiType == 0)//÷ª∑¢√‚∑—µƒ
+		if(fanPaiType == 0)//Âè™ÂèëÂÖçË¥πÁöÑ
 		{
 			if (card.size() != 0)
 			{
@@ -1738,11 +2151,7 @@ void FireConfirmManager::saveAndGetResult(const  ConnId& connId,ChapterEndResp &
 
 	resp.cost = mFireConfirmData.m_CostList;	
 	GiftManager::getSingleton().combineSame(resp.cost);
-	resp.ends += resp.cost;
-
-	resp.monsterDropList = mFireConfirmData.m_MonsterAwardList;
-	GiftManager::getSingleton().combineSame(resp.monsterDropList);
-	resp.ends += resp.monsterDropList;
+	resp.ends += resp.cost;	
 
 	resp.intruderAwardList = mFireConfirmData.m_IntruderAwardList;
 	GiftManager::getSingleton().combineSame(resp.intruderAwardList);
@@ -1751,16 +2160,40 @@ void FireConfirmManager::saveAndGetResult(const  ConnId& connId,ChapterEndResp &
 	resp.fixedList = mFireConfirmData.m_FixedList;
 	GiftManager::getSingleton().combineSame(resp.fixedList);
 	resp.ends += resp.fixedList;
-	
-// 	GiftManager::getSingleton().splitKind(resp.monsterDropList, resp.fistKind,AWARD_BASE);
-	
 
 	GiftManager::getSingleton().combineSame(resp.ends);
 
+// 	GiftManager::getSingleton().addToPlayer(player->getPlayerGuid(),REFLASH_AWARD,resp.ends);
 
-	GiftManager::getSingleton().addToPlayer(player->getPlayerGuid(),REFLASH_AWARD,resp.ends);
+	List<Goods> stagesEnds;
+	List<Goods> stagesNullEnds;
+	for(List<Goods>::Iter *endsIter = resp.ends.begin();endsIter!=NULL;endsIter = resp.ends.next(endsIter))
+	{
+		if (endsIter->mValue.resourcestype == AWARD_STAGEDATA||endsIter->mValue.resourcestype == AWARD_TWELVEPALACE_STAGEDATA)
+		{
+			stagesEnds.insertTail(endsIter->mValue);
+		}
+		else
+		{
+
+			stagesNullEnds.insertTail(endsIter->mValue);
+		}
+
+	}
 	
+	List<ReturnItemEle> rtItemList;
+	GiftManager::getSingleton().addToPlayerAttr(player->getPlayerGuid(),rtItemList,resp.allAttr, stagesNullEnds,systemID);
+
+	List<ReturnItemEle> stageRtItemList;
+	GiftManager::getSingleton().addToPlayerAttr(player->getPlayerGuid(),stageRtItemList,resp.stages, stagesEnds,systemID);
+
+
 	GiftManager::getSingleton().PlayerItemChangeResult(player->getPlayerGuid(),0,resp.ends);
+
+
+
+// 	mFireConfirmData =  player->GetFireConfirmData();
+// 	resp.allAttr = mFireConfirmData.m_AddSendjs;	
 	return;
 }
 
@@ -1777,49 +2210,209 @@ void FireConfirmManager::getChapterCounter(const  ConnId& connId)
 	NetworkSystem::getSingleton().sender( connId,CHAPTER_COUNTER_RESP,jsonStr);
 }
 
+UInt32 FireConfirmManager::typeFoodLeftNum(PlayerFoodsData &foodsData,UInt32 num,UInt32 type )	
+{
+	UInt32 canSubNum = 0;
+	if (type == 1)
+	{
+		if (foodsData.food11 >= num)
+		{
+			canSubNum = num;
+		}
+		else
+		{
+			if (foodsData.food1 >= (num - foodsData.food11))
+			{
+				canSubNum = num;
+			}
+			else
+			{
+				canSubNum = num - foodsData.food1 - foodsData.food11;
+			}
+		}
+	}
+	else if (type == 2)
+	{
+		if (foodsData.food12 >= num)
+		{
+			canSubNum = num;
+		}
+		else
+		{
+			if (foodsData.food2 >= (num - foodsData.food12))
+			{
+				canSubNum = num;
+			}
+			else
+			{
+				canSubNum = num - foodsData.food2 - foodsData.food12;
+			}
+		}
+	}
+	else if (type == 3)
+	{
+		if (foodsData.food13 >= num)
+		{
+			canSubNum = num;
+		}
+		else
+		{
+			if (foodsData.food3 >= (num - foodsData.food13))
+			{
+				canSubNum = num;
+			}
+			else
+			{
+				canSubNum = num - foodsData.food3 - foodsData.food13;
+			}
+		}
+	}
+
+
+	return canSubNum;
+	
+}
+void FireConfirmManager::typeFoodSubNum(UInt64 playerID, PlayerFoodsData &foodsData,UInt32 num,UInt32 type)	
+{
+	char dest[1024]={0};
+
+	UInt32 lastFoodNum = foodsData.food1 + foodsData.food2 + foodsData.food3 + foodsData.food11 + foodsData.food12 + foodsData.food13;
+	UInt32 canSubNum = 0;
+	if (type == 1)
+	{
+		if (foodsData.food11 >= num)
+		{
+			foodsData.food11 -= num;
+		}
+		else
+		{
+			if (foodsData.food1 >= (num - foodsData.food11))
+			{				
+				foodsData.food1 -=  (num - foodsData.food11);
+				foodsData.food11 = 0;//È°∫Â∫è‰∏çËÉΩÈîô
+			}
+			else
+			{
+				foodsData.food11 = 0;
+				foodsData.food1 = 0;
+			}
+		}
+	}
+	else if (type == 2)
+	{
+		if (foodsData.food12 >= num)
+		{
+			foodsData.food12 -= num;
+		}
+		else
+		{
+			if (foodsData.food2 >= (num - foodsData.food12))
+			{
+				
+				foodsData.food2 -=  (num - foodsData.food12);
+				foodsData.food12 = 0;
+			}
+			else
+			{
+				foodsData.food12 = 0;
+				foodsData.food2 = 0;
+			}
+		}
+	}
+	else if (type == 3)
+	{
+		if (foodsData.food13 >= num)
+		{
+			foodsData.food13-= num;
+		}
+		else
+		{
+			if (foodsData.food3 >= (num - foodsData.food13))
+			{
+				
+				foodsData.food3 -=  (num - foodsData.food13);
+				foodsData.food13 = 0;
+			}
+			else
+			{
+				foodsData.food13 = 0;
+				foodsData.food3 = 0;
+			}
+		}
+	}
+	UInt32 nowFoodNum = foodsData.food1 + foodsData.food2 + foodsData.food3 + foodsData.food11 + foodsData.food12 + foodsData.food13;
+
+	snprintf(dest,sizeof(dest),"%d,%d",lastFoodNum,nowFoodNum );
+	LogicSystem::getSingleton().write_log( LogType66,playerID, dest,LogInfo);
+}
+
 static UInt32 kickCount =0;
 
-void FireConfirmManager::onFoodsReq(const  ConnId& connId ,CGFoods &msg )	//√¿ ≥Œ›
+void FireConfirmManager::onFoodsReq(const  ConnId& connId ,CGFoods &msg )	//ÁæéÈ£üÂ±ã
 {
 
+	//for test
+// 	RankGameManager::getSingleton().getNullPlayerID();
+
+// 	CodeReq req;
+// 	req.reqType = 1;
+// 	req.code = "EPLMN4FQ";
+// 	CodeManager::getSingleton().onCodeReq( connId,req);
+
 	UInt32 maxBuyTimes =0;
-	double maxCanAddTimes;
+	double maxCanAddCount = 0;
+	double maxCanRecoverTimes = 0;
 	UInt32 nowTime = TimeUtil::getTimeSec();
-	UInt32 finishTimes;
+	int finishCount = 0;
 	UInt32 flag = 1;
-	double lastFinishTimes =0;
+	int lastFoodNum = 0;
+	UInt32 nowFoodNum = 0;
+	char dest[1024]={0};
+
+	double lastFinishCount =0;
 	List<Goods> itemList;
 	Goods goods;
 	List<UInt32> foods;
 	PlayerFoodsData foodsData;
 	PlayerBaseData baseData;
 	FoodsResp resp;
-	MeiShiWuTemplate meiShiWuTemplate;
-
-	meiShiWuTemplate = GlobalVarManager::getSingleton().getMeiShiWu();
-
+	
 	msg.convertJsonToData(msg.jsonStr);
+	
 	Player * player  = LogicSystem::getSingleton().getPlayerByConnId(connId);	
 	if(!player)
 	{
 		return;
 	}
-
-	if (player->getPlayerGuid() == 1245)
+	GlobalValue globalValue = GlobalValueManager::getSingleton().getGlobalValue();
+	foodsData = player->getFoodsData();
+	baseData = player->getPlayerBaseData();
+	SystemInfoTemplate *systemInfoTemplate  = SYSTEMINFO_TABLE().get(SYSTEM_FOOD);
+	if (systemInfoTemplate == NULL)
 	{
-		SevenDayTaskReq req46;
-		InlineActivityManager::onSevenDayTaskReq(connId,req46);
-
-		InlineActivityManager::getSingleton().updateSevenDayTaskData(player->getPlayerGuid(),3002,2);
-
-	
-
+		return;
 	}
 
 
-	foodsData = player->getFoodsData();
-	baseData = player->getPlayerBaseData();
 
+	if (foodsData.resetState == 0 &&player->getPlayerLeval() < systemInfoTemplate->openConditionValue)
+	{
+		foodsData.leftTimes = 3;
+		player->setFoodsData(foodsData);
+		player->getPersistManager().setDirtyBit(FOODDATABIT );
+
+		foodsData.beginTime = nowTime;
+	}
+	else
+	{
+		if (foodsData.resetState == 0)
+		{
+			foodsData.resetState = 1;
+			player->setFoodsData(foodsData);
+			player->getPersistManager().setDirtyBit(FOODDATABIT );
+		}		
+	}
+	
 	
 	for (List<VipTemplate>::Iter * iter = gVipTable->mVip.begin();iter!= NULL;iter = gVipTable->mVip.next(iter))
 	{
@@ -1835,34 +2428,79 @@ void FireConfirmManager::onFoodsReq(const  ConnId& connId ,CGFoods &msg )	//√¿ ≥
 		}
 	}
 		
-	lastFinishTimes = (nowTime - foodsData.beginTime) / (meiShiWuTemplate.time);
-
-
-	if(lastFinishTimes < 0)//”– ± ±º‰“Ï≥£
+	lastFinishCount = (double)nowTime - foodsData.beginTime;
+	if (lastFinishCount < 0)
 	{
-		finishTimes = 0;
+		lastFinishCount = 0;
+		foodsData.beginTime = nowTime;
+		player->setFoodsData(foodsData);
+		player->getPersistManager().setDirtyBit(FOODDATABIT );
 	}
-	else if (lastFinishTimes > meiShiWuTemplate.recover)
+	lastFinishCount = lastFinishCount / globalValue.uMSWtime;
+	if(lastFinishCount < 0)//ÊúâÊó∂Êó∂Èó¥ÂºÇÂ∏∏
 	{
-		finishTimes = meiShiWuTemplate.recover;
+		finishCount = 0;
 	}
 	else
 	{
-		finishTimes = lastFinishTimes;
+		finishCount = lastFinishCount;
 	}
-	
-	maxCanAddTimes =(double)( meiShiWuTemplate.recover + foodsData.vipFoodLeftNumber) - (foodsData.leftTimes + foodsData.food1 + foodsData.food2 + foodsData.food3);
-	if (maxCanAddTimes > 0 )
+
+// 	int canRecoverCount = ( globalValue.uMSWrecover - (foodsData.leftTimes + foodsData.food1 + foodsData.food2 + foodsData.food3) );
+// 	if (canRecoverCount < 0)
+// 	{
+// 		canRecoverCount = 0;
+// 	}
+// 	if (finishCount >canRecoverCount)
+// 	{
+// 		finishCount = canRecoverCount;
+// 	}
+// 	else
+// 	{
+// 		finishCount = finishCount;
+// 	}
+
+	maxCanAddCount =(double)(globalValue.uMSWmax ) - (foodsData.leftTimes + foodsData.food1 + foodsData.food2 + foodsData.food3 + foodsData.food11 + foodsData.food12 + foodsData.food13);
+
+	if (maxCanAddCount > 0 )
 	{
-		if (maxCanAddTimes <= finishTimes )//¥Œ ˝¬˙¡À
+		if (maxCanAddCount <= finishCount )//Ê¨°Êï∞Êª°‰∫Ü
 		{
-			foodsData.leftTimes += maxCanAddTimes;
+			lastFoodNum = foodsData.leftTimes;
+			foodsData.leftTimes += maxCanAddCount;
 			foodsData.beginTime = nowTime;
+
+			snprintf(dest,sizeof(dest),"%d,%d,%d",lastFoodNum,maxCanAddCount,foodsData.leftTimes );
+			LogicSystem::getSingleton().write_log( LogType65,baseData.m_nPlayerID, dest,LogInfo);
 		}
-		else //¥Œ ˝√ª¬˙ªπ“™µπº∆ ±
+		else //Ê¨°Êï∞Ê≤°Êª°ËøòË¶ÅÂÄíËÆ°Êó∂
 		{
-			foodsData.leftTimes += finishTimes;
-			foodsData.beginTime = foodsData.beginTime + finishTimes * (meiShiWuTemplate.time);			
+			lastFoodNum = foodsData.leftTimes;
+			foodsData.leftTimes += finishCount;
+
+			if (finishCount != 0)
+			{
+				snprintf(dest,sizeof(dest),"%d,%d,%d",lastFoodNum,finishCount,foodsData.leftTimes );
+				LogicSystem::getSingleton().write_log( LogType65,baseData.m_nPlayerID, dest,LogInfo);
+			}
+		
+
+			if ((foodsData.leftTimes + foodsData.food1 + foodsData.food2 + foodsData.food3) == globalValue.uMSWmax)
+			{
+				foodsData.beginTime = nowTime;
+			}			
+			else
+			{
+				if ((foodsData.leftTimes + foodsData.food1 + foodsData.food2 + foodsData.food3) > globalValue.uMSWmax)
+				{
+					ASSERT(false);				
+				}
+				else
+				{
+					foodsData.beginTime = foodsData.beginTime + finishCount * (globalValue.uMSWtime);
+				}				
+			}
+			
 		}			
 	}
 	else
@@ -1870,43 +2508,37 @@ void FireConfirmManager::onFoodsReq(const  ConnId& connId ,CGFoods &msg )	//√¿ ≥
 		foodsData.beginTime = nowTime;
 	}
 
+	maxCanAddCount =(double)(globalValue.uMSWmax ) - (foodsData.leftTimes + foodsData.food1 + foodsData.food2 + foodsData.food3 + foodsData.food11 + foodsData.food12 + foodsData.food13);
+	if (maxCanAddCount < 0)
+	{
+		maxCanAddCount = 0;
+	}
 	resp.flag = flag;
-	resp.gold = player->getPlayerGold();
 	
-	if (msg.reqType == 0)//¥¶¿Ì“ª¥Œ ≤ª∑¢ÀÕ ˝æ›
+	
+	if (msg.reqType == 0)//Â§ÑÁêÜ‰∏ÄÊ¨° ‰∏çÂèëÈÄÅÊï∞ÊçÆ
 	{	
 		player->setFoodsData(foodsData);
 		return;
 	}
-	else if (msg.reqType == 1)//ªÒ»°–≈œ¢
+	else if (msg.reqType == 1)//Ëé∑Âèñ‰ø°ÊÅØ
 	{		
 		resp.viableNum  = foodsData.leftTimes;
 		if (foodsData.beginTime ==0)
 		{
-			resp.needTime =  meiShiWuTemplate.time;
+			resp.needTime =  globalValue.uMSWtime;
 		}
 		else
 		{
-			resp.needTime =  meiShiWuTemplate.time -  (nowTime - foodsData.beginTime)%(meiShiWuTemplate.time);	
-		}
-		
-		resp.viableAmount = meiShiWuTemplate.recover;
-		resp.restbuyNumber = maxBuyTimes - foodsData.vipLeftTimes;
-		resp.vipFoodLeftNumber = foodsData.vipFoodLeftNumber;
-		resp.foodList.insertTail(foodsData.food1);
-		resp.foodList.insertTail(foodsData.food2);
-		resp.foodList.insertTail(foodsData.food3);
-
-		std::string jsonStr = resp.convertDataToJson();
-		NetworkSystem::getSingleton().sender( connId,CHAPTER_FOOD_RESP,jsonStr);
-
-		player->setFoodsData(foodsData);
-		return;
+			resp.needTime =  globalValue.uMSWtime -  (nowTime - foodsData.beginTime)%(globalValue.uMSWtime);	
+		}	
 	}
-	else if (msg.reqType == 2)//≈Î‚ø
+	else if (msg.reqType == 2)//ÁÉπÈ•™
 	{
 		if (foodsData.leftTimes > 0)
 		{
+			lastFoodNum = foodsData.food1 + foodsData.food2 + foodsData.food3 + foodsData.food11 + foodsData.food12 + foodsData.food13;
+
 			UInt32 tmp =0;
 			UInt32 i =0;
 			foods.insertTail(tmp);
@@ -1930,6 +2562,15 @@ void FireConfirmManager::onFoodsReq(const  ConnId& connId ,CGFoods &msg )	//√¿ ≥
 				i++;
 			}
 			foodsData.leftTimes = 0;
+
+			//ÁæéÈ£üÂ±ãÁÉπÈ•™ÊâìÁÇπwwc
+			player->getAchieveManager().updateDailyTaskData(DLYFOODCOOK, 1 );
+			resp.reqType = msg.reqType;//ÊàêÂäüÊâçÂèë
+
+			nowFoodNum = foodsData.food1 + foodsData.food2 + foodsData.food3 + foodsData.food11 + foodsData.food12 + foodsData.food13;
+			snprintf(dest,sizeof(dest),"%d,%d",lastFoodNum,nowFoodNum);
+			LogicSystem::getSingleton().write_log( LogType66,baseData.m_nPlayerID, dest,LogInfo);
+
 		}
 		else
 		{
@@ -1937,205 +2578,214 @@ void FireConfirmManager::onFoodsReq(const  ConnId& connId ,CGFoods &msg )	//√¿ ≥
 			resp.viableNum  = foodsData.leftTimes;
 			if (foodsData.beginTime ==0)
 			{
-				resp.needTime =  meiShiWuTemplate.time;
+				resp.needTime =  globalValue.uMSWtime;
 			}
 			else
 			{
-				resp.needTime =  meiShiWuTemplate.time -  (nowTime - foodsData.beginTime)%(meiShiWuTemplate.time);	
+				resp.needTime =  globalValue.uMSWtime -  (nowTime - foodsData.beginTime)%(globalValue.uMSWtime);	
 			}
-			resp.viableAmount = meiShiWuTemplate.recover;
-			resp.restbuyNumber = maxBuyTimes - foodsData.vipLeftTimes;
-			resp.vipFoodLeftNumber = foodsData.vipFoodLeftNumber;
-			resp.foodList.insertTail(foodsData.food1);
-			resp.foodList.insertTail(foodsData.food2);
-			resp.foodList.insertTail(foodsData.food3);
-
-			std::string jsonStr = resp.convertDataToJson();
-			NetworkSystem::getSingleton().sender( connId,CHAPTER_FOOD_RESP,jsonStr);
-
-			return;
+			
 		}		
 	}
-	else if (msg.reqType == 3)//π∫¬Ú¥Œ ˝
+	else if (msg.reqType == 3)//Ë¥≠‰π∞Ê¨°Êï∞
 	{		
 		do 
 		{
-			if(baseData.m_nGold < msg.num * meiShiWuTemplate.price )
+			if(baseData.m_nGold < msg.num * globalValue.uMSWprice )
 			{
 				flag = LynxErrno::RmbNotEnough;
 				break;
 			}
+
+			lastFoodNum =  foodsData.leftTimes;
+
+
 			if( (maxBuyTimes - foodsData.vipLeftTimes) < msg.num  )
 			{
 				flag = LynxErrno::TimesNotEnough;
 				break;
 			}
-			if (( foodsData.food1 + foodsData.food2 + foodsData.food3 + foodsData.leftTimes) > meiShiWuTemplate.max)
+
+// 			if ((lastFoodNum + foodsData.leftTimes+ msg.num) > globalValue.uMSWrecover)
+// 			{
+// 				flag = LynxErrno::FoodIsFull;
+// 				break;
+// 			}
+
+			if (maxCanAddCount < (msg.num * globalValue.uMSWeachBuy))
 			{
 				flag = LynxErrno::OverMaxTimes;
 				break;
 			}
+			
 			foodsData.vipLeftTimes += msg.num ;
-			foodsData.vipFoodLeftNumber += msg.num * meiShiWuTemplate.eachBuy;
-			goods.resourcestype = 1;
-			goods.subtype = 2;
-			goods.num -= msg.num * meiShiWuTemplate.price;		
+			goods.resourcestype = AWARD_BASE;
+			goods.subtype = AWARD_BASE_GOLD;
+			goods.num -= msg.num * globalValue.uMSWprice;		
 			itemList.insertTail(goods);
+			GiftManager::getSingleton().addToPlayer(player->getPlayerGuid(),1,itemList,MiniLog70);
 
-			UInt32 tmp =0;
-			UInt32 i =0;
-			foods.insertTail(tmp);
-			foods.insertTail(tmp);
-			foods.insertTail(tmp);
-			FireConfirmManager::getSingleton().getfoods( msg.num * meiShiWuTemplate.eachBuy,foods);
-			for (List<UInt32>::Iter * it = foods.begin();it != NULL;it = foods.next(it))
-			{
-				if (i == 0)
-				{
-					foodsData.food1 += it->mValue;
-				}
-				else if (i == 1)
-				{
-					foodsData.food2 += it->mValue;
-				}
-				else if (i == 2)
-				{
-					foodsData.food3 += it->mValue;
-				}
-				i++;
-			}
+			 foodsData.leftTimes += msg.num * globalValue.uMSWeachBuy;
+
+			snprintf(dest,sizeof(dest),"%d,%d",lastFoodNum, foodsData.leftTimes);
+			LogicSystem::getSingleton().write_log( LogType67,baseData.m_nPlayerID, dest,LogInfo);
 		} while (0);
 
 		
 	}
-	else if (msg.reqType == 4)//ø™œ‰◊”Ω±¿¯ø…”√¥Œ ˝
+	else if (msg.reqType == 4)//ÂºÄÁÆ±Â≠êÂ•ñÂä±ÂèØÁî®Ê¨°Êï∞
 	{
-		if ((foodsData.food1 + foodsData.food2 + foodsData.food3 + foodsData.leftTimes + msg.num  ) > meiShiWuTemplate.max)//≥¨π˝◊Ó∏ﬂ…œœﬁ
+		lastFoodNum = foodsData.food1 + foodsData.food2 + foodsData.food3 + foodsData.food11 + foodsData.food12 + foodsData.food13;
+		if (maxCanAddCount < msg.num)
 		{
-			foodsData.leftTimes = meiShiWuTemplate.max - (foodsData.food1 + foodsData.food2 + foodsData.food3 + foodsData.leftTimes );		
+			msg.num = maxCanAddCount;
 		}
 		else
 		{
-			foodsData.leftTimes += msg.num;	
+			 msg.num =  msg.num;
 		}
-		if (( foodsData.food1 + foodsData.food2 + foodsData.food3 + foodsData.leftTimes - foodsData.vipFoodLeftNumber) >= meiShiWuTemplate.recover)
-		{
-			foodsData.beginTime = nowTime;
-		}			
-	}
-	else if (msg.reqType == 5)// π”√ ≥ŒÔ
-	{
-		if (foodsData.food1 >= msg.num)
-		{
-			foodsData.food1 -= msg.num;
-			if (foodsData.vipFoodLeftNumber >= msg.num)
-			{
-				foodsData.vipFoodLeftNumber -= msg.num;
-			}
-			else
-			{			
-				foodsData.vipFoodLeftNumber =0;			
-			}
-		}
-		else 
-		{
-			flag = 4;
-		}
-	}
-	else if (msg.reqType == 6)// π”√ ≥ŒÔ
-	{
-		if (foodsData.food2 >= msg.num)
-		{
-			foodsData.food2 -= msg.num;
-			if (foodsData.vipFoodLeftNumber >= msg.num)
-			{
-				foodsData.vipFoodLeftNumber -= msg.num;
-			}
-			else
-			{			
-				foodsData.vipFoodLeftNumber =0;			
-			}
-		}
-		else 
-		{
-			flag = 4;
-		}
+// 		1	ÁæéÈ£üÁÉßÂà∂Ê¨°Êï∞
+// 			2	ÂÖ®È±ºÁÅ´ÈîÖ
+// 			3	Á≥ñÁ®ÄÈ±º‰∏∏
+// 			4	È±ºÂ∞æÁÉßÈ∫¶
 
-	}
-	else if (msg.reqType == 7)// π”√ ≥ŒÔ
-	{
-		if (foodsData.food3 >= msg.num)
-		{
-			foodsData.food3 -= msg.num;
-			if (foodsData.vipFoodLeftNumber >= msg.num)
-			{
-				foodsData.vipFoodLeftNumber -= msg.num;
-			}
-			else
-			{			
-				foodsData.vipFoodLeftNumber =0;			
-			}
-		}
-		else 
-		{
-			flag = 4;
-		}
 
+		if (msg.subType == 1)
+		{
+			foodsData.leftTimes += msg.num;			
+		}
+		else 	if (msg.subType == 2)
+		{
+			foodsData.food3 += msg.num;
+		}
+		else 	if (msg.subType == 3)
+		{			
+			foodsData.food2 += msg.num;
+		}
+		else 	if (msg.subType == 4)
+		{
+			foodsData.food1 += msg.num;			
+		}
+		
+		nowFoodNum = foodsData.food1 + foodsData.food2 + foodsData.food3 + foodsData.food11 + foodsData.food12 + foodsData.food13;
+		snprintf(dest,sizeof(dest),"%d,%d",lastFoodNum,nowFoodNum);
+		LogicSystem::getSingleton().write_log( LogType66,baseData.m_nPlayerID, dest,LogInfo);
+		
 	}
-	else if (msg.reqType == 10)//«Âø’√¿ ≥Œ›
+	else if (msg.reqType == 10)//Ê∏ÖÁ©∫ÁæéÈ£üÂ±ã
 	{
+
+		lastFoodNum = foodsData.food1 + foodsData.food2 + foodsData.food3 + foodsData.food11 + foodsData.food12 + foodsData.food13;
+
 		foodsData.leftTimes = 0;
 		foodsData.beginTime = nowTime;
 		foodsData.food1 = 0;		
 		foodsData.food2 = 0;
 		foodsData.food3 = 0;
-		foodsData.vipLeftTimes = 0;
-		foodsData.vipFoodLeftNumber = 0;
+		foodsData.food11 = 0;		
+		foodsData.food12 = 0;
+		foodsData.food13 = 0;
+		foodsData.vipLeftTimes = 0;	
 		player->setFoodsData(foodsData);
 		player->getPersistManager().setDirtyBit(FOODDATABIT );
+
+		nowFoodNum = foodsData.food1 + foodsData.food2 + foodsData.food3 + foodsData.food11 + foodsData.food12 + foodsData.food13;
+		snprintf(dest,sizeof(dest),"%d,%d",lastFoodNum,nowFoodNum);
+		LogicSystem::getSingleton().write_log( LogType66,baseData.m_nPlayerID, dest,LogInfo);
+
 		return;
 	}
-	else if (msg.reqType == 11)//…Ë÷√≥…◊Ó¥Û÷µ
+	else if (msg.reqType == 11)//ËÆæÁΩÆÊàêÊúÄÂ§ßÂÄº
 	{
-		int addNum = (int)meiShiWuTemplate.recover - (foodsData.food1 + foodsData.food2 + foodsData.food3);
-		if (addNum < 0)
-		{
-			addNum = 0;
-		}
-		foodsData.leftTimes = addNum;
+		lastFoodNum = foodsData.food1 + foodsData.food2 + foodsData.food3 + foodsData.food11 + foodsData.food12 + foodsData.food13;
+
+// 		int addNum = (int)globalValue.uMSWrecover - (foodsData.food1 + foodsData.food2 + foodsData.food3);
+// 		if (addNum < 0)
+// 		{
+// 			addNum = 0;
+// 		}
+		foodsData.leftTimes = maxCanAddCount;
 		foodsData.beginTime = nowTime;
-		foodsData.vipLeftTimes = 0;
-		foodsData.vipFoodLeftNumber = 0;
+		foodsData.vipLeftTimes = 0;	
 		player->setFoodsData(foodsData);
 		player->getPersistManager().setDirtyBit(FOODDATABIT );
+
+		UInt32 nowFoodNum = foodsData.food1 + foodsData.food2 + foodsData.food3 + foodsData.food11 + foodsData.food12 + foodsData.food13;
+		snprintf(dest,sizeof(dest),"%d,%d",lastFoodNum,nowFoodNum);
+		LogicSystem::getSingleton().write_log( LogType66,baseData.m_nPlayerID, dest,LogInfo);
+
 		return;
 	}
 	player->setFoodsData(foodsData);
-	player->getPersistManager().setDirtyBit(FOODDATABIT );
+	if (msg.reqType != 1)
+	{
+		player->getPersistManager().setDirtyBit(FOODDATABIT );
+	}
 	
-	resp.gold = player->getPlayerGold();
 	resp.flag = flag;
 	resp.viableNum  = foodsData.leftTimes;
 	if (foodsData.beginTime ==0)
 	{
-		resp.needTime =  meiShiWuTemplate.time;
-	}
-	else
-	{
-		resp.needTime =  meiShiWuTemplate.time -  (nowTime - foodsData.beginTime)%(meiShiWuTemplate.time);	
-	}
+		ASSERT(false);
+	}	
+		
+	resp.needTime =  globalValue.uMSWtime -  (nowTime - foodsData.beginTime)%(globalValue.uMSWtime);	
+// 	resp.viableAmount = globalValue.uMSWrecover;
+	resp.viableNum = foodsData.food1 + foodsData.food2 + foodsData.food3 +foodsData.leftTimes;
+	resp.restbuyNumber = foodsData.vipLeftTimes;
 
-	resp.viableAmount = meiShiWuTemplate.recover;
-	resp.restbuyNumber = maxBuyTimes - foodsData.vipLeftTimes;
-	resp.vipFoodLeftNumber = foodsData.vipFoodLeftNumber;
-	resp.foodList.insertTail(foodsData.food1);
-	resp.foodList.insertTail(foodsData.food2);
-	resp.foodList.insertTail(foodsData.food3);
+	resp.foodRecoverList.insertTail(foodsData.food1);
+	resp.foodRecoverList.insertTail(foodsData.food2);
+	resp.foodRecoverList.insertTail(foodsData.food3);
+	resp.foodbuyList.insertTail(foodsData.food11);
+	resp.foodbuyList.insertTail(foodsData.food12);
+	resp.foodbuyList.insertTail(foodsData.food13);
+
+	resp.buyCost = globalValue.uMSWprice;
+	resp.onceBuyFoodNum = globalValue.uMSWeachBuy;
+	resp.recoverNum = foodsData.leftTimes;
+	resp.vipFoodLeftNumber = foodsData.food11+ foodsData.food12+ foodsData.food13;
+	resp.gold = player->getPlayerGold();
+
 
 	std::string jsonStr = resp.convertDataToJson();
 	NetworkSystem::getSingleton().sender( connId,CHAPTER_FOOD_RESP,jsonStr);
-	
+
+
 }
+
+void  FireConfirmManager::foodsInit(UInt64 playerID)
+{
+	PlayerFoodsData foodsData;
+	Player *player = LogicSystem::getSingleton().getPlayerByGuid(playerID);	
+	SystemInfoTemplate *systemInfoTemplate  = SYSTEMINFO_TABLE().get(SYSTEM_FOOD);
+	if (player->getPlayerLeval() < systemInfoTemplate->openConditionValue)
+	{		
+		return;
+	}
+	
+
+
+	
+	foodsData = player->getFoodsData();
+	if(foodsData.resetState == 1)//Â∑≤ÁªìÈáçÁΩÆ
+	{
+		return;
+	}
+	foodsData.food1 = 0;
+	foodsData.food2 = 0;
+	foodsData.food3 = 0;	
+	foodsData.beginTime =  TimeUtil::getTimeSec();
+	
+	foodsData.leftTimes = 3;
+	foodsData.resetState = 1;
+
+
+
+	player->setFoodsData(foodsData);
+	player->getPersistManager().setDirtyBit(FOODDATABIT );
+}
+
 
 
 void FireConfirmManager::getfoods(UInt32 num,List<UInt32> &foods)
@@ -2147,14 +2797,13 @@ void FireConfirmManager::getfoods(UInt32 num,List<UInt32> &foods)
 	UInt32 ii;
 	UInt32 jj;
 
-	MeiShiWuTemplate meiShiWuTemplate;
-	meiShiWuTemplate = GlobalVarManager::getSingleton().getMeiShiWu();
+	GlobalValue globalValue = GlobalValueManager::getSingleton().getGlobalValue();
 
 
-	allWeight = meiShiWuTemplate.weight1+ meiShiWuTemplate.weight2 + meiShiWuTemplate.weight3;
-	randomNumbers.insertTail(meiShiWuTemplate.weight1);
-	randomNumbers.insertTail(meiShiWuTemplate.weight2);
-	randomNumbers.insertTail(meiShiWuTemplate.weight3);
+	allWeight = globalValue.uMSWweight1 + globalValue.uMSWweight2 + globalValue.uMSWweight3;
+	randomNumbers.insertTail(globalValue.uMSWweight1);
+	randomNumbers.insertTail(globalValue.uMSWweight2);
+	randomNumbers.insertTail(globalValue.uMSWweight3);
 	
 	if (allWeight == 0)
 	{
@@ -2200,8 +2849,26 @@ void FireConfirmManager::onWelfaleBeginReq(const  ConnId& connId ,CGWelfareBegin
 	WelfareBeginResp resp;	
 	WelfareMarket welfareMarket;
 	Player *player = LogicSystem::getSingleton().getPlayerByConnId(connId);
+	if (player == NULL)
+	{
+		LOG_WARN("player not found!!");
+		return;
+	}
+	player->ResetFireConfirmData();
+
 	UInt32 level = player->getPlayerLeval();
 	msg.convertJsonToData(msg.jsonStr);
+
+	//Âà§Êñ≠ÊòØÂê¶‰ΩúÂºä
+	UInt32 checkRet =  FireConfirmManager::getSingleton().checkIsCheat(player->getPlayerGuid(), msg.fireConfirmData,0);	
+	if(checkRet != LynxErrno::None)
+	{
+		FireConfirmManager::getSingleton().UpdataConfirmLevel(connId,true);
+		resp.result = checkRet;
+		std::string jsonStr = resp.convertDataToJson();	
+		NetworkSystem::getSingleton().sender( connId,WELFALE_MARKET_BEGIN_RESP,jsonStr);
+		return;
+	}
 
 	PlayerDailyResetData dailyResetData = player->getPlayerDailyResetData();
 	for(List<VipTemplate>::Iter * iter = gVipTable->mVip.begin();iter!=NULL;iter = gVipTable->mVip.next(iter))
@@ -2343,11 +3010,22 @@ void FireConfirmManager::onWelfaleEndReq(const  ConnId& connId ,CGWelfareEnd &ms
 	WelfareMarket welfareMarket;
 	List<Goods> tmpItemList;
 	WelfareEndResp resp;
-	List<Goods> award;//ŒÔ∆∑
-	List<Goods> cost;//ŒÔ∆∑
+	List<Goods> award;//Áâ©ÂìÅ
+	List<Goods> cost;//Áâ©ÂìÅ
 
 	msg.convertJsonToData(msg.jsonStr);
 	Player *player = LogicSystem::getSingleton().getPlayerByConnId(connId);
+	if (player == NULL)
+	{
+		LOG_WARN("player not found!!");
+		return;
+	}
+	
+	if(msg.doType != 0 &&msg.doType !=  1 )
+	{
+		resp.result = msg.doType;
+		msg.doType = 1;
+	}
 	level = player->getPlayerLeval();
 	PlayerDailyResetData dailyResetData = player->getPlayerDailyResetData();
 
@@ -2418,7 +3096,7 @@ void FireConfirmManager::onWelfaleEndReq(const  ConnId& connId ,CGWelfareEnd &ms
 				if (level >= it->mValue.difficulty6.levelRequireDifficulty)
 				{
 					difficulty =6;
-					if (msg.doType == 0 ||(msg.doType == 1 && msg.difficulty == difficulty))//…®µ¥ ◊Ó∏ﬂƒ—∂»
+					if (msg.doType == 0 ||(msg.doType == 1 && msg.difficulty == difficulty))//Êâ´Ëç° ÊúÄÈ´òÈöæÂ∫¶
 					{
 						awardID = it->mValue.difficulty6.awardDifficulty;
 						awardChange = it->mValue.difficulty6.awardChangeDifficulty;
@@ -2430,7 +3108,7 @@ void FireConfirmManager::onWelfaleEndReq(const  ConnId& connId ,CGWelfareEnd &ms
 				{
 					difficulty =5;
 					
-					if (msg.doType == 0 ||(msg.doType == 1 && msg.difficulty == difficulty))//…®µ¥ ◊Ó∏ﬂƒ—∂»
+					if (msg.doType == 0 ||(msg.doType == 1 && msg.difficulty == difficulty))//Êâ´Ëç° ÊúÄÈ´òÈöæÂ∫¶
 					{
 						awardID = it->mValue.difficulty5.awardDifficulty;
 						awardChange = it->mValue.difficulty5.awardChangeDifficulty;
@@ -2440,7 +3118,7 @@ void FireConfirmManager::onWelfaleEndReq(const  ConnId& connId ,CGWelfareEnd &ms
 				if (level >= it->mValue.difficulty4.levelRequireDifficulty)
 				{
 					difficulty =4;
-					if (msg.doType == 0 ||(msg.doType == 1 && msg.difficulty == difficulty))//…®µ¥ ◊Ó∏ﬂƒ—∂»
+					if (msg.doType == 0 ||(msg.doType == 1 && msg.difficulty == difficulty))//Êâ´Ëç° ÊúÄÈ´òÈöæÂ∫¶
 					{
 						awardID = it->mValue.difficulty4.awardDifficulty;
 						awardChange = it->mValue.difficulty4.awardChangeDifficulty;
@@ -2450,7 +3128,7 @@ void FireConfirmManager::onWelfaleEndReq(const  ConnId& connId ,CGWelfareEnd &ms
 				if (level >= it->mValue.difficulty3.levelRequireDifficulty)
 				{
 					difficulty =3;
-					if (msg.doType == 0 ||(msg.doType == 1 && msg.difficulty == difficulty))//…®µ¥ ◊Ó∏ﬂƒ—∂»
+					if (msg.doType == 0 ||(msg.doType == 1 && msg.difficulty == difficulty))//Êâ´Ëç° ÊúÄÈ´òÈöæÂ∫¶
 					{
 						awardID = it->mValue.difficulty3.awardDifficulty;
 						awardChange = it->mValue.difficulty3.awardChangeDifficulty;
@@ -2460,7 +3138,7 @@ void FireConfirmManager::onWelfaleEndReq(const  ConnId& connId ,CGWelfareEnd &ms
 				if (level >= it->mValue.difficulty2.levelRequireDifficulty)
 				{
 					difficulty =2;
-					if (msg.doType == 0 ||(msg.doType == 1 && msg.difficulty == difficulty))//…®µ¥ ◊Ó∏ﬂƒ—∂»
+					if (msg.doType == 0 ||(msg.doType == 1 && msg.difficulty == difficulty))//Êâ´Ëç° ÊúÄÈ´òÈöæÂ∫¶
 					{
 						awardID = it->mValue.difficulty2.awardDifficulty;
 						awardChange = it->mValue.difficulty2.awardChangeDifficulty;
@@ -2470,7 +3148,7 @@ void FireConfirmManager::onWelfaleEndReq(const  ConnId& connId ,CGWelfareEnd &ms
 				if (level >= it->mValue.difficulty1.levelRequireDifficulty)
 				{
 					difficulty =1;
-					if (msg.doType == 0 ||(msg.doType == 1 && msg.difficulty == difficulty))//…®µ¥ ◊Ó∏ﬂƒ—∂»
+					if (msg.doType == 0 ||(msg.doType == 1 && msg.difficulty == difficulty))//Êâ´Ëç° ÊúÄÈ´òÈöæÂ∫¶
 					{
 						awardID = it->mValue.difficulty1.awardDifficulty;
 						awardChange = it->mValue.difficulty1.awardChangeDifficulty;
@@ -2486,8 +3164,11 @@ void FireConfirmManager::onWelfaleEndReq(const  ConnId& connId ,CGWelfareEnd &ms
 		}
 	}
 
-	if (awardID == 0)
+	if (awardID == 0&&resp.result ==LynxErrno::None&&(msg.doType == 0 ||msg.doType == 1))
 	{
+		resp.result =LynxErrno::LevelNotEnough;
+		std::string jsonStr = resp.convertDataToJson();
+		NetworkSystem::getSingleton().sender(connId,WELFALE_MARKET_END_RESP,jsonStr);
 		return;
 	}
 
@@ -2527,7 +3208,7 @@ void FireConfirmManager::onWelfaleEndReq(const  ConnId& connId ,CGWelfareEnd &ms
 		}
 	}
 	
-	if (resp.result == LynxErrno::None)//…Ì…œº”ŒÔ∆∑≤¢∑¢ÀÕ∏¯øÕªß∂À
+	if (resp.result == LynxErrno::None)//Ë∫´‰∏äÂä†Áâ©ÂìÅÂπ∂ÂèëÈÄÅÁªôÂÆ¢Êà∑Á´Ø
 	{	
 		if (msg.id == 3)
 		{
@@ -2546,10 +3227,12 @@ void FireConfirmManager::onWelfaleEndReq(const  ConnId& connId ,CGWelfareEnd &ms
 		else if (msg.id == 1)
 		{	
 			dailyResetData.m_nDailyChaiCount = finishTimes;
+			goods.num = 0;
+			
 			for(UInt32 jj =0;jj< doneTimes;jj++)
 			{
-				UInt32 itmp = awardID*2*100*awardChange;
- 				goods.num = awardID -(awardID*awardChange - (rand()%itmp )/100 );						
+				float randNum = rand()%100;			
+				goods.num += (1 + ((randNum/100) *2 - 1)*awardChange) * awardID;					
 			}
 			goods.resourcestype =1;
 			goods.subtype = 1;			
@@ -2558,10 +3241,11 @@ void FireConfirmManager::onWelfaleEndReq(const  ConnId& connId ,CGWelfareEnd &ms
 		else if (msg.id == 2)
 		{		
 			dailyResetData.m_nDailyMiCount = finishTimes;
+			goods.num = 0;
 			for(UInt32 jj =0;jj< doneTimes;jj++)
 			{
-				UInt32 itmp = awardID*awardChange*2*100;
-				goods.num = awardID -(awardID*awardChange - (rand()%itmp )/100 );				
+				float randNum = rand()%100;			
+				goods.num += (1 + ((randNum/100) *2 - 1)*awardChange) * awardID;			
 			}
 			goods.resourcestype =1;
 			goods.subtype = 4;			
@@ -2570,10 +3254,11 @@ void FireConfirmManager::onWelfaleEndReq(const  ConnId& connId ,CGWelfareEnd &ms
 		else if (msg.id == 4)
 		{	
 			dailyResetData.m_nDailyYanCount = finishTimes;
+			goods.num = 0;
 			for(UInt32 jj =0;jj< doneTimes;jj++)
 			{
-				UInt32 itmp = awardID*awardChange*2*100;
-				goods.num = awardID -(awardID*awardChange - (rand()%itmp )/100 );				
+				float randNum = rand()%100;			
+				goods.num += (1 + ((randNum/100) *2 - 1)*awardChange) * awardID;	
 			}
 			goods.resourcestype =1;
 			goods.subtype = 6;			
@@ -2590,7 +3275,7 @@ void FireConfirmManager::onWelfaleEndReq(const  ConnId& connId ,CGWelfareEnd &ms
 	}
 
 
-// 	Ω±¿¯∫œ∆¿¥’‚¿Ô√ª”–∑≠≈∆
+// 	Â•ñÂä±ÂêàËµ∑Êù•ËøôÈáåÊ≤°ÊúâÁøªÁâå
 // 	for(List<Award>::Iter * item = mFireConfirmData.m_AwardsList.begin();item != NULL; item = mFireConfirmData.m_AwardsList.next(item))
 // 	{
 // 		for(List<Goods>::Iter * it = item->mValue.award.begin(); it != NULL; it = item->mValue.award.next(it))
@@ -2614,17 +3299,22 @@ void FireConfirmManager::onWelfaleEndReq(const  ConnId& connId ,CGWelfareEnd &ms
 	mFireConfirmData.m_MonsterAwardList = resp.monsterDropList;
 	player->SetFireConfirmData(mFireConfirmData);
 
-
-	FireConfirmManager::getSingleton().saveAndGetResult(connId,tmpResp,0);
-
-
+	if (msg.doType == 0)
+	{
+		FireConfirmManager::getSingleton().saveAndGetResult(connId,tmpResp,0,MiniLog61);
+	}
+	else
+	{
+		FireConfirmManager::getSingleton().saveAndGetResult(connId,tmpResp,1,MiniLog60);
+	}
+	
 // 	resp.firstAwards = tmpResp.firstAwards;
 	resp.awards = tmpResp.awards;
 	resp.cost = tmpResp.cost;
 	resp.cards = tmpResp.cards;
 	resp.monsterDropList = tmpResp.monsterDropList;
 	resp.fixedList = tmpResp.fixedList;
-	resp.ends = tmpResp.ends;
+// 	resp.ends = tmpResp.ends;
 
 	resp.chaiCount = dailyResetData.m_nDailyChaiCount;
 	resp.miCount = dailyResetData.m_nDailyMiCount;
@@ -2633,63 +3323,92 @@ void FireConfirmManager::onWelfaleEndReq(const  ConnId& connId ,CGWelfareEnd &ms
 	resp.id = msg.id;
 	resp.doType = msg.doType;
  	resp.difficulty = msg.difficulty;
+	resp.allAttr = tmpResp.allAttr;
+
 	std::string jsonStr = resp.convertDataToJson();
 	NetworkSystem::getSingleton().sender(connId,WELFALE_MARKET_END_RESP,jsonStr);
 
-	//’–∏£ºØ –√ø»’»ŒŒÒ¥Úµ„
+	//ÊãõÁ¶èÈõÜÂ∏ÇÊØèÊó•‰ªªÂä°ÊâìÁÇπ
 	if(msg.doType == 0 || msg.doType == 1)
 	{
-		player->getAchieveManager().updateDailyTaskData(DLYDOMARKETCNT, 1 );
+		player->getAchieveManager().updateDailyTaskData(DLYDOMARKETCNT, 1 *doneTimes);
 	}
+
+	if( msg.doType == 0  )
+	{
+// 		LogicSystem::getSingleton().updateSevenDayTask(player->getPlayerGuid(),SDT01,doneTimes);	
+		LogicSystem::getSingleton().updateSevenDayTask(player->getPlayerGuid(),SDT12,doneTimes);		
+	}
+	else if(msg.doType == 1)
+	{
+		//Êõ¥Êñ∞‰∏ÉÊó•ËÆ≠
+		LogicSystem::getSingleton().updateSevenDayTask(player->getPlayerGuid(),SDT12,1);		
+	}
+	
+
+	
 }
 
 
 
-void FireConfirmManager::onStrengthReq(const  ConnId& connId ,CGStrength &msg )	//ÃÂ¡¶
+void FireConfirmManager::onStrengthReq(const  ConnId& connId ,CGStrength &msg )	//‰ΩìÂäõ
 {
 
-	List<UInt32> foods;
-	UInt32 maxBuyTimes =0;
-	double maxCanAddTimes;
+	UInt32 maxBuyTimes =0;	
 	UInt32 nowTime = TimeUtil::getTimeSec();
 	UInt32 finishTimes;
 	UInt32 flag = 1;
 	UInt32 price = 0;
 	UInt32 num = 0;
 	UInt32 nowBuyTimes = 0;
+	UInt32 lastStrengthNum = 0;
+	double maxCanAddTimes;
 	double lastFinishTimes =0;
+	char dest[1024]={0};
+	List<UInt32> foods;
 	List<Goods> itemList;
 	Goods goods;
 	PlayerStrengthData strengthData;
 	PlayerBaseData baseData;
 	StrengthResp resp;
-	StrengthTemplate strengthTemplate;
 
 	msg.convertJsonToData(msg.jsonStr);
+	resp.reqType = msg.reqType;
 	Player * player  = LogicSystem::getSingleton().getPlayerByConnId(connId);	
 	if(!player)
 	{
 		return;
 	}
 	PlayerExpTemplate *expTemplate = gPlayerExpTable->get(player->getPlayerLeval());
-	strengthTemplate = GlobalVarManager::getSingleton().getStrength();
+
+	if (expTemplate == NULL)
+	{
+		LOG_WARN("expTemplate not found!!");
+		return;
+	}
+	GlobalValue globalValue = GlobalValueManager::getSingleton().getGlobalValue();
 
 	strengthData = player->getStrengthData();
 	baseData = player->getPlayerBaseData();
 
 
+
 	maxBuyTimes = ShopManager::getSingleton().getStrengthBuyMaxTimes(player->getVipLevel());
 
-	if(TimeManager::timeIsToday(strengthData.buyTime - 5) ==false)
+	UInt32 systemRefreshHour =  LogicSystem::getSingleton().getRefreshTime(TIME_REFRESH_ID04) /3600;
+
+	if(TimeManager::timeIsTodayDelayHours(strengthData.buyTime, systemRefreshHour) ==false)
 	{
 		strengthData.buyTime = nowTime;
 		strengthData.vipLeftTimes = 0;
+		player->setStrengthData(strengthData);
+		player->getPersistManager().setDirtyBit(STRENGTHDATABIT );
 	}
 
-	lastFinishTimes = (nowTime - strengthData.beginTime) / (strengthTemplate.time);
+	lastFinishTimes = (nowTime - strengthData.beginTime) / (globalValue.uSTtime);
 
 
-	if(lastFinishTimes < 0)//”– ± ±º‰“Ï≥£
+	if(lastFinishTimes < 0)//ÊúâÊó∂Êó∂Èó¥ÂºÇÂ∏∏
 	{
 		finishTimes = 0;
 	}
@@ -2702,18 +3421,27 @@ void FireConfirmManager::onStrengthReq(const  ConnId& connId ,CGStrength &msg )	
 		finishTimes = lastFinishTimes;
 	}
 
+
+	lastStrengthNum = strengthData.strength;
 	maxCanAddTimes =(double) expTemplate->mStrength -  strengthData.strength;
 	if (maxCanAddTimes > 0 )
 	{
-		if (maxCanAddTimes <= finishTimes )//¥Œ ˝¬˙¡À
+		if (maxCanAddTimes <= finishTimes )//Ê¨°Êï∞Êª°‰∫Ü
 		{
-			strengthData.strength += maxCanAddTimes;
+			strengthData.strength += maxCanAddTimes;	
 			strengthData.beginTime = nowTime;
+
+			snprintf(dest,sizeof(dest),"%d,%d,%d",lastStrengthNum,maxCanAddTimes,strengthData.strength );
+			LogicSystem::getSingleton().write_log( LogType62,baseData.m_nPlayerID, dest,LogInfo);
+
 		}
-		else //¥Œ ˝√ª¬˙ªπ“™µπº∆ ±
+		else //Ê¨°Êï∞Ê≤°Êª°ËøòË¶ÅÂÄíËÆ°Êó∂
 		{
 			strengthData.strength += finishTimes;
-			strengthData.beginTime = strengthData.beginTime + finishTimes * (strengthTemplate.time);			
+			strengthData.beginTime = strengthData.beginTime + finishTimes * (globalValue.uSTtime);	
+
+			snprintf(dest,sizeof(dest),"%d,%d,%d",lastStrengthNum,finishTimes,strengthData.strength );
+			LogicSystem::getSingleton().write_log( LogType62,baseData.m_nPlayerID, dest,LogInfo);
 		}			
 	}
 	else
@@ -2724,25 +3452,25 @@ void FireConfirmManager::onStrengthReq(const  ConnId& connId ,CGStrength &msg )	
 	resp.flag = flag;
 	resp.gold = player->getPlayerGold();
 
-	if (msg.reqType == 0)//¥¶¿Ì“ª¥Œ ≤ª∑¢ÀÕ ˝æ›
+	if (msg.reqType == 0)//Â§ÑÁêÜ‰∏ÄÊ¨° ‰∏çÂèëÈÄÅÊï∞ÊçÆ
 	{	
 		player->setStrengthData(strengthData);
 		return;
 	}
-	else if (msg.reqType == 1)//ªÒ»°–≈œ¢
+	else if (msg.reqType == 1)//Ëé∑Âèñ‰ø°ÊÅØ
 	{		
 		if (strengthData.beginTime ==0)
 		{
-			resp.needTime =  strengthTemplate.time;
+			resp.needTime =  globalValue.uSTtime;
 		}
 		else
 		{
-			resp.needTime =  strengthTemplate.time -  (nowTime - strengthData.beginTime)%(strengthTemplate.time);	
+			resp.needTime =   globalValue.uSTtime -  (nowTime - strengthData.beginTime)%(globalValue.uSTtime);	
 		}
 
 		resp.viableAmount = expTemplate->mStrength;
 		resp.restbuyNumber = strengthData.vipLeftTimes;
-		resp.vipStrengthLeftNumber = maxBuyTimes;
+// 		resp.vipStrengthLeftNumber = maxBuyTimes;
 		resp.strength = strengthData.strength;
 		
 
@@ -2753,13 +3481,17 @@ void FireConfirmManager::onStrengthReq(const  ConnId& connId ,CGStrength &msg )	
 		}	
 
 		player->setStrengthData(strengthData);
+		player->getPersistManager().setDirtyBit(STRENGTHDATABIT);
 		return;
 	}
 	
-	else if (msg.reqType == 3)//π∫¬Ú¥Œ ˝
+	else if (msg.reqType == 3)//Ë¥≠‰π∞Ê¨°Êï∞
 	{	
 		if (msg.num != 1)
 		{
+			resp.flag = LynxErrno::ClienServerDataNotMatch;
+			std::string sendStr = resp.convertDataToJson();
+			NetworkSystem::getSingleton().sender( connId,CHAPTER_STRENGTH_RESP,sendStr);
 			return;
 		}
 		
@@ -2778,7 +3510,7 @@ void FireConfirmManager::onStrengthReq(const  ConnId& connId ,CGStrength &msg )	
 				flag = LynxErrno::TimesNotEnough;
 				break;
 			}
-			if (strengthData.strength  > strengthTemplate.max)
+			if ((strengthData.strength+ msg.num * num)  > globalValue.uSTmax)
 			{
 				flag = LynxErrno::OverMaxTimes;
 				break;
@@ -2788,50 +3520,92 @@ void FireConfirmManager::onStrengthReq(const  ConnId& connId ,CGStrength &msg )	
 			goods.subtype = AWARD_BASE_GOLD;
 			goods.num -= msg.num * price;		
 			itemList.insertTail(goods);
+			lastStrengthNum = strengthData.strength;
 			strengthData.strength += msg.num * num;
 			strengthData.buyTime = nowTime;
-			GiftManager::getSingleton().addToPlayer(player->getPlayerGuid(),REFLASH_AWARD,itemList);
+			GiftManager::getSingleton().addToPlayer(player->getPlayerGuid(),REFLASH_AWARD,itemList,MiniLog58);
+
+			snprintf(dest,sizeof(dest),"%d,%d,%d",lastStrengthNum,msg.num * num,strengthData.strength );
+			LogicSystem::getSingleton().write_log( LogType63,baseData.m_nPlayerID, dest,LogInfo);
 
 		} while (0);
 	}
-	else if (msg.reqType == 8)//‘ˆº” todo πÊ‘Ú≤ª√˜»∑
+	else if (msg.reqType == 8)//Â¢ûÂä† todo ËßÑÂàô‰∏çÊòéÁ°Æ
 	{		
 
-		if((strengthData.strength +  msg.num) > strengthTemplate.max)
+		if(strengthData.strength > globalValue.uSTmax)
 		{
-			strengthData.strength += strengthTemplate.max - strengthData.strength;				
+			flag = LynxErrno::OverMaxTimes;
+
+// 			int addCount = globalValue.uSTmax - strengthData.strength;
+// 			if (addCount < 0)
+// 			{
+// 				strengthData.strength +=0;
+// 			}
+// 			else
+// 			{
+// 				lastStrengthNum = strengthData.strength;
+// 				strengthData.strength +=addCount;
+// 
+// 				snprintf(dest,sizeof(dest),"%d,%d,%d",lastStrengthNum,addCount,strengthData.strength );
+// 				LogicSystem::getSingleton().write_log( LogType63,baseData.m_nPlayerID, dest,LogInfo);
+// 			}
 		}
 		else
 		{
-			strengthData.strength += msg.num;				
+			lastStrengthNum = strengthData.strength;
+			strengthData.strength += msg.num;		
+
+			if ( msg.num != 0)
+			{
+				snprintf(dest,sizeof(dest),"%d,%d,%d",lastStrengthNum,msg.num,strengthData.strength );
+				LogicSystem::getSingleton().write_log( LogType63,baseData.m_nPlayerID, dest,LogInfo);
+			}
+			
 		}
 
 	}
-	else if (msg.reqType == 9)//ºı…Ÿ // ±º‰«∞√Ê“—æ≠÷ÿ÷√
+	else if (msg.reqType == 9)//ÂáèÂ∞ë //Êó∂Èó¥ÂâçÈù¢Â∑≤ÁªèÈáçÁΩÆ
 	{				
 		if(strengthData.strength  < msg.num)
 		{
-			strengthData.strength = 0;					
+			lastStrengthNum = strengthData.strength;
+			strengthData.strength = 0;		
+
+			int changNum = strengthData.strength - lastStrengthNum;
+			snprintf(dest,sizeof(dest),"%d,%d,%d",lastStrengthNum,changNum,strengthData.strength );
+			LogicSystem::getSingleton().write_log( LogType64,baseData.m_nPlayerID, dest,LogInfo);
+
 		}
 		else
 		{
+			lastStrengthNum = strengthData.strength;
 			strengthData.strength -= msg.num;
+			int changNum = strengthData.strength - lastStrengthNum;
+			snprintf(dest,sizeof(dest),"%d,%d,%d",lastStrengthNum,changNum,strengthData.strength );
+			LogicSystem::getSingleton().write_log( LogType64,baseData.m_nPlayerID, dest,LogInfo);
 
 		}
 	}
-	else if (msg.reqType == 10)//«Âø’√¿ ≥Œ›
+	else if (msg.reqType == 10)//Ê∏ÖÁ©∫ÁæéÈ£üÂ±ã
 	{
+		lastStrengthNum = strengthData.strength;
 		strengthData.leftTimes = 0;
 		strengthData.beginTime = nowTime;
 		strengthData.strength = 0;		
 		strengthData.vipLeftTimes = 0;
-		strengthData.vipFoodLeftNumber = 0;
 		player->setStrengthData(strengthData);
 		player->getPersistManager().setDirtyBit(STRENGTHDATABIT );
+
+		int changNum = strengthData.strength - lastStrengthNum;
+		snprintf(dest,sizeof(dest),"%d,%d,%d",lastStrengthNum,changNum,strengthData.strength );
+		LogicSystem::getSingleton().write_log( LogType64,baseData.m_nPlayerID, dest,LogInfo);
 		return;
 	}
-	else if (msg.reqType == 11)//…Ë÷√≥…◊Ó¥Û÷µ
+	else if (msg.reqType == 11)//ËÆæÁΩÆÊàêÊúÄÂ§ßÂÄº
 	{
+
+		lastStrengthNum = strengthData.strength;
 		
 		strengthData.strength = expTemplate->mStrength;
 		strengthData.beginTime = nowTime;
@@ -2839,6 +3613,11 @@ void FireConfirmManager::onStrengthReq(const  ConnId& connId ,CGStrength &msg )	
 		strengthData.vipFoodLeftNumber = 0;
 		player->setStrengthData(strengthData);
 		player->getPersistManager().setDirtyBit(STRENGTHDATABIT );
+
+		int changNum = strengthData.strength - lastStrengthNum;
+		snprintf(dest,sizeof(dest),"%d,%d,%d",lastStrengthNum,changNum,strengthData.strength );
+		LogicSystem::getSingleton().write_log( LogType64,baseData.m_nPlayerID, dest,LogInfo);
+
 		return;
 	}
 
@@ -2850,28 +3629,30 @@ void FireConfirmManager::onStrengthReq(const  ConnId& connId ,CGStrength &msg )	
 	resp.flag = flag;
 	if (strengthData.beginTime ==0)
 	{
-		resp.needTime =  strengthTemplate.time;
+		resp.needTime =  globalValue.uSTtime;
 	}
 	else
 	{
-		resp.needTime =  strengthTemplate.time -  (nowTime - strengthData.beginTime)%(strengthTemplate.time);	
+		resp.needTime =  globalValue.uSTtime -  (nowTime - strengthData.beginTime)%(globalValue.uSTtime);	
 	}
 
 	resp.viableAmount = expTemplate->mStrength;
 	resp.restbuyNumber = strengthData.vipLeftTimes;
-	resp.vipStrengthLeftNumber = maxBuyTimes;
+// 	resp.vipStrengthLeftNumber = maxBuyTimes;
 	resp.strength = strengthData.strength;
-
+	
 	if (msg.needSend == true)
 	{
 		std::string jsonStr = resp.convertDataToJson();
 		NetworkSystem::getSingleton().sender( connId,CHAPTER_STRENGTH_RESP,jsonStr);
 	}
 
-	if(msg.reqType == 3)
+	if(msg.reqType == 3&&flag == 1)//flagÂíåresultÊúâÂå∫Âà´
 	{
-		//√ø»’»ŒŒÒπ∫¬ÚÃÂ¡¶¥Úµ„ wwc
+		//ÊØèÊó•‰ªªÂä°Ë¥≠‰π∞‰ΩìÂäõÊâìÁÇπ wwc
 		player->getAchieveManager().updateDailyTaskData(DLYBUYENERGE, 1 );
+		//Êõ¥Êñ∞‰∏ÉÊó•ËÆ≠
+		LogicSystem::getSingleton().updateSevenDayTask(player->getPlayerGuid(),SDT05,1);
 	}
 
 }

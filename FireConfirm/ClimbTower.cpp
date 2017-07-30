@@ -6,6 +6,8 @@
 #include "../CommonLib/CopyFinishTime.h"
 #include "Gift.h"
 #include "ClimbTower.h"
+#include "GlobalValue.h"
+#include "../LoggerSystem.h"
 
 using namespace Lynx;
 
@@ -24,6 +26,13 @@ void ClimbTowerManager::onTowerReq(const  ConnId& connId,TowerReq & req)
 	PlayerTowerData towerData;
 	req.convertJsonToData(req.strReceive);
 	Player *player = LogicSystem::getSingleton().getPlayerByConnId(connId);	
+	if (player == NULL)
+	{
+		LOG_WARN("player not found!!");
+		return;
+	}
+
+
 	towerData = player->getPlayerTowerData();
 	PlayerDailyResetData dailyResetData= player->getPlayerDailyResetData();
 
@@ -32,6 +41,9 @@ void ClimbTowerManager::onTowerReq(const  ConnId& connId,TowerReq & req)
 		TowerTypeTemplate* towerTypeTemplate = gTowerTypeTable->get(chapterID);
 		if (towerTypeTemplate == NULL)
 		{
+			resp.result = LynxErrno::ClienServerDataNotMatch;
+			std::string sendStr = resp.convertDataToJson();
+			NetworkSystem::getSingleton().sender( connId,TOWER_INFO_RESP,sendStr);
 			return;
 		}
 		towerData.m_HighID = firstStageID - 1;
@@ -44,9 +56,14 @@ void ClimbTowerManager::onTowerReq(const  ConnId& connId,TowerReq & req)
 
 	if (req.reqtype == 2)
 	{
-		ClimbTowerTemplate climbTowerTemplate =  GlobalVarManager::getSingleton().getclimbtower();
+		if (gVipTable->get(player->getVipLevel()) == NULL)
+		{
+			LOG_WARN("gVipTable->get(player->getVipLevel()) not found!!");
+			return;
+		}
+		GlobalValue globalValue = GlobalValueManager::getSingleton().getGlobalValue();
 		gold = player->getPlayerGold();
-		if (gold < climbTowerTemplate.buycost)
+		if (gold < globalValue.uCLIMBTbuycost)
 		{
 			resp.result = LynxErrno::RmbNotEnough;
 		}
@@ -56,18 +73,26 @@ void ClimbTowerManager::onTowerReq(const  ConnId& connId,TowerReq & req)
 		}
 		else
 		{
-			gold -= climbTowerTemplate.buycost;
-			player->setPlayerGold(gold);
+			Goods goods;
+			List<Goods> itemList;
+
+			goods.resourcestype =AWARD_BASE;
+			goods.subtype = AWARD_BASE_GOLD;
+			goods.num = 0 - globalValue.uCLIMBTbuycost;
+			itemList.insertTail(goods);
+			GiftManager::getSingleton().addToPlayer(player->getPlayerGuid(),REFLASH_AWARD,itemList,MiniLog105);
+
+		
 
 			dailyResetData.m_nClimbTowerTimes ++;
 			dailyResetData.m_nTowerBuyTimes ++;
 			player->setPlayerDailyResetData(dailyResetData);
 			player->getPersistManager().setDirtyBit(DAILYRESETBIT);			
-			player->getPersistManager().setDirtyBit(BASEDATABIT);
 
 		}
 	}
-	player->setPlayerTowerData(towerData);
+// 	player->setPlayerTowerData(towerData);
+// 	player->getPersistManager().setDirtyBit(TOWERDATABIT);
 
 	resp.reqtype = req.reqtype;	
 	resp.highID = towerData.m_HighID;
@@ -75,10 +100,20 @@ void ClimbTowerManager::onTowerReq(const  ConnId& connId,TowerReq & req)
 	resp.ap = towerData.m_AP;
 	resp.hp = towerData.m_HP;
 	resp.times = dailyResetData.m_nClimbTowerTimes;
+	if (gVipTable->get(player->getVipLevel()) == NULL)
+	{
+		LOG_WARN("gVipTable->get(player->getVipLevel()) not found!!");
+		resp.result = LynxErrno::ClienServerDataNotMatch;
+		std::string sendStr = resp.convertDataToJson();
+		NetworkSystem::getSingleton().sender( connId,TOWER_INFO_RESP,sendStr);
+		return;
+	}
 	resp.buyTimes = gVipTable->get(player->getVipLevel())->climtowertimes - dailyResetData.m_nTowerBuyTimes;
 
 	std::string jsonStr = resp.convertDataToJson();
 	NetworkSystem::getSingleton().sender( connId,TOWER_INFO_RESP,jsonStr);
+	//LOG_INFO("TOWER_INFO_RESP= %s",jsonStr.c_str());
+
 
 
 }
@@ -86,7 +121,6 @@ void ClimbTowerManager::onTowerReq(const  ConnId& connId,TowerReq & req)
 void ClimbTowerManager::onTowerBeginReq(const  ConnId& connId,TowerBeginReq & req)
 {
 
-	UInt32 road = 1;//初始路为1
 	UInt32 stageID = 0;
 	UInt32 chapterID = 0;
 
@@ -98,6 +132,8 @@ void ClimbTowerManager::onTowerBeginReq(const  ConnId& connId,TowerBeginReq & re
 	{
 		return;
 	}
+	player->ResetFireConfirmData();	
+
 	towerData = player->getPlayerTowerData();
 	req.convertJsonToData(req.strReceive);
 	resp.result = LynxErrno::None;
@@ -115,7 +151,7 @@ void ClimbTowerManager::onTowerBeginReq(const  ConnId& connId,TowerBeginReq & re
 
 	TowerTemplate* towerTemplate = gTowersTable->get(stageID);
 	if (towerTemplate != NULL)
-	{
+	{		
 		chapterID = towerTemplate->chapterId;
 	}
 
@@ -138,25 +174,43 @@ void ClimbTowerManager::onTowerBeginReq(const  ConnId& connId,TowerBeginReq & re
 	EventList eventList;
 	eventList.towerHight = stageID;
 	eventList.startTime = TimeUtil::getTimeSec();
-	eventList.roadType = road;
+	eventList.SPStartTime = TimeUtil::getTimeSec();
 	towerTemplate = gTowersTable->get(stageID);
 	if (towerTemplate == NULL)
 	{
+		resp.result = LynxErrno::ClienServerDataNotMatch;
+		std::string sendStr = resp.convertDataToJson();
+		NetworkSystem::getSingleton().sender( connId,TOWER_BEGIN_RESP,sendStr);
 		return;
 	}
 	TowerTypeTemplate* towerTypeTemplate = gTowerTypeTable->get(towerTemplate->chapterId);
-	eventList.towerData.m_HighID = stageID;
-	eventList.towerData.m_Score = towerTypeTemplate->startscore + towerData.m_Score;
+	if (towerTypeTemplate == NULL)
+	{
+		LOG_WARN("towerTypeTemplate not found!!");
+		resp.result = LynxErrno::ClienServerDataNotMatch;
+		std::string sendStr = resp.convertDataToJson();
+		NetworkSystem::getSingleton().sender( connId,TOWER_BEGIN_RESP,sendStr);
+		return;
+	}
+
+
+	eventList.towerData.m_HighID = stageID;	
+ 	eventList.towerData.m_Score = towerTypeTemplate->startscore + towerData.m_Score;
 	eventList.towerData.m_AP = towerData.m_AP;
 	eventList.towerData.m_HP = towerData.m_HP;
 	eventList.towerData.m_SP = towerTypeTemplate->strength;
+// 	eventList.reliveTimes = 0;//已经remove掉了，所以不用再清了 
+// 	eventList.buyList.clear();
+// 	eventList.towerBuff.clear();
+// 	eventList.goods.clear();
+
 
 	towerData.m_SP = towerTypeTemplate->strength;
 
 	player->setPlayerTowerData(towerData);
 	player->getPersistManager().setDirtyBit(TOWERDATABIT);
 	ClimbTowerManager::getSingleton().setEventList(player->getPlayerGuid(),eventList);
-	ClimbTowerManager::getSingleton().getNextEvents(player->getPlayerGuid(),stageID,resp.events,eventList.roadType,1000);
+	ClimbTowerManager::getSingleton().getNextEvents(player->getPlayerGuid(),stageID,resp.events,DefaultRoad,1000);
 
 	resp.id = req.id;
 	resp.score = towerTypeTemplate->startscore + towerData.m_Score;	
@@ -170,6 +224,11 @@ void ClimbTowerManager::onTowerBeginReq(const  ConnId& connId,TowerBeginReq & re
 void ClimbTowerManager::setEventList(Guid playerID,EventList &eventList)
 {
 	Player *player = LogicSystem::getSingleton().getPlayerByGuid(playerID);	
+	if (player == NULL)
+	{
+		LOG_WARN("player not found!!");
+		return;
+	}
 
 	for (Map<Guid,EventList>::Iter * it = mTowerEvents.begin();it!= NULL;it = mTowerEvents.next(it) )
 	{
@@ -186,6 +245,11 @@ void ClimbTowerManager::setEventList(Guid playerID,EventList &eventList)
 void ClimbTowerManager::removeEvent(Guid playerID)
 {
 	Player *player = LogicSystem::getSingleton().getPlayerByGuid(playerID);	
+	if (player == NULL)
+	{
+		LOG_WARN("player not found!!");
+		return;
+	}
 
 	for (Map<Guid,EventList>::Iter * it = mTowerEvents.begin();it!= NULL;it = mTowerEvents.next(it) )
 	{
@@ -212,47 +276,56 @@ void ClimbTowerManager::onInTowerChoiseReq(const  ConnId& connId,InTowerChoiseRe
 	TowerTemplate*	towerTemplate1 =gTowersTable->get(req.tID);
 	if (towerTemplate1 == NULL)
 	{
+		resp.result = LynxErrno::ClienServerDataNotMatch;
+		std::string sendStr = resp.convertDataToJson();
+		NetworkSystem::getSingleton().sender( connId,IN_TOWER_CHOICE_RESP,sendStr);
 		return;
 	}
 
 	//checkIsOver
-	if(ClimbTowerManager::getSingleton().checkIsOver(connId,req.tID))
+	UInt32 ret = ClimbTowerManager::getSingleton().checkIsOver(connId);
+	if(ret == LynxErrno::TimeOut)//体力不够发isover =1 hp为零发isover=0
 	{
 		resp.isOver = 1;
-		std::string jsonStr = resp.convertDataToJson();
-		NetworkSystem::getSingleton().sender(connId,IN_TOWER_CHOICE_RESP,jsonStr);
+		ClimbTowerManager::getSingleton().sendChoiseResp(connId, resp);
+		return;
+	}
+	if(ret == LynxErrno::Lose)
+	{
+		ClimbTowerManager::getSingleton().sendChoiseResp(connId, resp);
 		return;
 	}
 
 
 	Player *player = LogicSystem::getSingleton().getPlayerByConnId(connId);	
+	if (player == NULL)
+	{
+		LOG_WARN("player not found!!");
+		return;
+	}
 	EventList *eventList = mTowerEvents.findRealValue(player->getPlayerGuid());
 
 	//防止出现崩溃
 	UInt32 maxhigh =  ClimbTowerManager::getSingleton().getTowerHighest(req.tID);
 	if (eventList == NULL)
 	{
+		resp.result = LynxErrno::ClienServerDataNotMatch;
+		std::string sendStr = resp.convertDataToJson();
+		NetworkSystem::getSingleton().sender( connId,IN_TOWER_CHOICE_RESP,sendStr);
 		return;
 	}
-	if (maxhigh == 0 && req.tID > maxhigh && req.tID < eventList->towerData.m_HighID)
+	if (maxhigh == 0 || req.tID > maxhigh || req.tID != eventList->towerData.m_HighID)
 	{
+		LOG_WARN("not the same tower high !!");
+		resp.result = LynxErrno::ClienServerDataNotMatch;
+		std::string sendStr = resp.convertDataToJson();
+		NetworkSystem::getSingleton().sender( connId,IN_TOWER_CHOICE_RESP,sendStr);
 		return;
 	}
 
-	ClimbTowerManager::getSingleton().changSP(player->getPlayerGuid(),0);
 
-	UInt32 road = 1;
-	eventList->roadType --;
-	if (eventList->roadType <= 1)
-	{
-		eventList->roadType = 1;
-	}
-	else
-	{
-		road = 2;
-	}
-
-	resp.result =  ClimbTowerManager::getSingleton().addEventValues(player->getPlayerGuid(), req,resp,road);
+	
+	resp.result =  ClimbTowerManager::getSingleton().addEventValues(player->getPlayerGuid(), req,resp);
 	playerTowerData = player->getPlayerTowerData();
 	eventList = mTowerEvents.findRealValue(player->getPlayerGuid());
 
@@ -264,24 +337,33 @@ void ClimbTowerManager::onInTowerChoiseReq(const  ConnId& connId,InTowerChoiseRe
 	}
 	else if (resp.result != LynxErrno::None && resp.result != LynxErrno::IsBuying)
 	{
+		if (resp.result == LynxErrno::TimeOut)
+		{
+			resp.isOver = 1;
+		}
+		resp.result = LynxErrno::None;
 		ClimbTowerManager::getSingleton().sendChoiseResp(connId, resp);
 		return;
 	}
-
-
-	eventList->towerData.m_HighID ++;
-	if (eventList->towerData.m_HighID >= maxhigh)
+	else if (eventList->towerHight > maxhigh +1)
 	{
-		resp.isOver = 1;
-		eventList->towerData.m_HighID = maxhigh;
+		//LOG_INFO(" over maxhigh+1 eventList->towerHight = %d",eventList->towerHight);
+		resp.result = LynxErrno::ClienServerDataNotMatch;
+		std::string sendStr = resp.convertDataToJson();
+		NetworkSystem::getSingleton().sender( connId,IN_TOWER_CHOICE_RESP,sendStr);
+		return;
 	}
-	
 
 	//add to player	
 	if (req.type == 7 &&req.wID == 0)
 	{
 		UInt32 getIt = 0;
 		TowerEvent towerEvent;
+		UInt32 road = DefaultRoad;
+		if ((eventList->towerData.m_HighID - eventList->roadType) < 4 )
+		{
+			road = CrossRoad;
+		}
 		for (List<TowerEvent>::Iter * iter = eventList->events.begin(); iter!=NULL;iter = eventList->events.next(iter))
 		{		
 			if (iter->mValue.tID == req.tID && iter->mValue.mID == road )//road 必须是之前的road
@@ -293,169 +375,201 @@ void ClimbTowerManager::onInTowerChoiseReq(const  ConnId& connId,InTowerChoiseRe
 		}
 		if (getIt == 0)
 		{
+			resp.result = LynxErrno::ClienServerDataNotMatch;
+			std::string sendStr = resp.convertDataToJson();
+			NetworkSystem::getSingleton().sender( connId,IN_TOWER_CHOICE_RESP,sendStr);
 			return;
 		}
 
-		for (UInt32 i = 0;i<towerEvent.typeValue;i++)
+		UInt32 jumpCount = 0;		
+		jumpCount = towerEvent.typeValue ;
+		if(eventList->towerHight + towerEvent.typeValue +1 >maxhigh+1)
 		{
-			TowerTemplate* towerTemplate = gTowersTable->get(req.tID+i);
+			jumpCount = maxhigh + 1 - eventList->towerHight - 1;//越几层
+		}
+
+		for (UInt32 i = 0;i<=jumpCount;i++)//原来1层，加跳跃的几层
+		{
+			TowerTemplate* towerTemplate = gTowersTable->get(eventList->towerData.m_HighID);
 			if (towerTemplate != NULL)			
 			{
-				UInt32 addScore = towerTemplate->awardOther; 
-				ClimbTowerManager::getSingleton().getBuffValue(player->getPlayerGuid(),TOWER_ADD_SCORE,addScore);
-				eventList->towerData.m_Score += addScore;  
-
-				if (playerTowerData.m_HighID < (req.tID+i))
+				ClimbTowerManager::getSingleton().changeScore(player->getPlayerGuid(),towerTemplate->awardOther,true);//前面有判断了
+				
+				if (playerTowerData.m_HighID < eventList->towerHight && eventList->towerHight <= maxhigh)
 				{
 					List<Goods> goodsList;
-					if ((req.tID+i) >= maxhigh)//todo =?
+					if (eventList->towerHight >= maxhigh)//先加了
 					{
 						playerTowerData.m_HighID = maxhigh + 1000 - maxhigh%1000;
 					}
 					else
 					{
-						playerTowerData.m_HighID = req.tID+i;
+						playerTowerData.m_HighID = eventList->towerHight;
 					}
 					GiftManager::getSingleton().getContentByID(towerTemplate->firstAwardID,goodsList);
-					GiftManager::getSingleton().addToPlayer(player->getPlayerGuid(),1,goodsList);
-					itemList += goodsList;
+					GiftManager::getSingleton().addToPlayer(player->getPlayerGuid(),1,goodsList,MiniLog108);
+					eventList->itemList += goodsList;
 					player->setPlayerTowerData(playerTowerData);
 					player->getPersistManager().setDirtyBit(TOWERDATABIT);
+
+					if (playerTowerData.m_HighID == 4000)
+					{
+						LogicSystem::getSingleton().sendSystemMsg(8, player->getPlayerName(), 0);
+						player->getAchieveManager().updateAchieveData(WXCHALLENGESUC, 3);
+					}
+					else if (playerTowerData.m_HighID == 3000)
+					{
+						player->getAchieveManager().updateAchieveData(WXCHALLENGESUC, 2);
+					}
+					else if (playerTowerData.m_HighID == 2000)
+					{
+						player->getAchieveManager().updateAchieveData(WXCHALLENGESUC, 1);
+					}
 				}
-			}			
+				
+
+			}	
+			eventList->towerData.m_HighID ++;
+			eventList->towerHight ++;
+
+			if (eventList->towerData.m_HighID > maxhigh)
+			{
+				eventList->towerData.m_HighID = maxhigh;
+			}
 		}
 	}
 	else
 	{
-		TowerTemplate* towerTemplate = gTowersTable->get(req.tID);
-		if (towerTemplate != NULL)
+		if(eventList->towerHight <= maxhigh )
 		{
-			UInt32 addScore = towerTemplate->awardOther; 
-			ClimbTowerManager::getSingleton().getBuffValue(player->getPlayerGuid(),TOWER_ADD_SCORE,addScore);
-			eventList->towerData.m_Score += addScore;  
-
-			if (playerTowerData.m_HighID < (req.tID+1))
+			TowerTemplate* towerTemplate = gTowersTable->get(eventList->towerData.m_HighID);
+			if (towerTemplate != NULL)			
 			{
-				if ((req.tID+1) > maxhigh)
+				ClimbTowerManager::getSingleton().changeScore(player->getPlayerGuid(),towerTemplate->awardOther,true);//前面有判断了
+
+				if (playerTowerData.m_HighID < eventList->towerHight && eventList->towerHight <= maxhigh)
 				{
-					playerTowerData.m_HighID = maxhigh + 1000 - maxhigh%1000;
-				}
-				else
-				{
-					playerTowerData.m_HighID = req.tID+1;
+					List<Goods> goodsList;
+					if (eventList->towerHight >= maxhigh)//先加了
+					{
+						playerTowerData.m_HighID = maxhigh + 1000 - maxhigh%1000;
+					}
+					else
+					{
+						playerTowerData.m_HighID = eventList->towerHight;
+					}
+					GiftManager::getSingleton().getContentByID(towerTemplate->firstAwardID,goodsList);
+					GiftManager::getSingleton().addToPlayer(player->getPlayerGuid(),1,goodsList,MiniLog108);
+					eventList->itemList += goodsList;
+					player->setPlayerTowerData(playerTowerData);
+					player->getPersistManager().setDirtyBit(TOWERDATABIT);
+
+					if (playerTowerData.m_HighID == 4000)
+					{
+						LogicSystem::getSingleton().sendSystemMsg(8, player->getPlayerName(), 0);
+						player->getAchieveManager().updateAchieveData(WXCHALLENGESUC, 3);
+					}
+					else if (playerTowerData.m_HighID == 3000)
+					{
+						player->getAchieveManager().updateAchieveData(WXCHALLENGESUC, 2);
+					}
+					else if (playerTowerData.m_HighID == 2000)
+					{
+						player->getAchieveManager().updateAchieveData(WXCHALLENGESUC, 1);
+					}
 				}
 
-				GiftManager::getSingleton().getContentByID(towerTemplate->firstAwardID,itemList);
-				GiftManager::getSingleton().addToPlayer(player->getPlayerGuid(),1,itemList);
-				player->setPlayerTowerData(playerTowerData);
-				player->getPersistManager().setDirtyBit(TOWERDATABIT);
+
+			}	
+			eventList->towerData.m_HighID ++;//这个值下面还要用所以不能超过最大值
+			eventList->towerHight ++;//这个要发送给客户端因此要发到maxhigh+1
+
+			if (eventList->towerData.m_HighID > maxhigh)
+			{
+				eventList->towerData.m_HighID = maxhigh;
 			}
-		}		
+		}
 	}
-	ClimbTowerManager::getSingleton().changSP(player->getPlayerGuid(),0);//刷新2次开始前，结束后
 
-	//checkIsOver
-	if (maxhigh <= req.tID)
-	{
-		resp.isOver = 1;
-		eventList->towerData.m_HighID = maxhigh;
-	}
 	ClimbTowerManager::getSingleton().sendChoiseResp(connId, resp);
-
-
 }
 
 void ClimbTowerManager::sendChoiseResp(const  ConnId& connId,InTowerChoiseResp resp)
 {
-	PlayerTowerData towerData;
 	Player *player = LogicSystem::getSingleton().getPlayerByConnId(connId);	
 	if (player == NULL)
 	{
 		return;
 	}
 	EventList *eventList = mTowerEvents.findRealValue(player->getPlayerGuid());
-	if(ClimbTowerManager::getSingleton().checkIsOver(connId,eventList->towerData.m_HighID))
+	if (eventList == NULL)
+	{
+		LOG_WARN("eventList not found!!");
+		return;
+	}
+	//checkIsOver
+	if(ClimbTowerManager::getSingleton().checkIsOver(connId)==LynxErrno::TimeOut)//体力不够发isover =1 hp为零发isover=0
 	{
 		resp.isOver = 1;
 	}
-	double tmpSP = 0;
-	towerData = eventList->towerData;
-	resp.tID = towerData.m_HighID;
-	resp.Ap = towerData.m_AP;
-	resp.Hp = towerData.m_HP;
-	tmpSP = (double)towerData.m_SP - (TimeUtil::getTimeSec() - eventList->startTime);
-	if (tmpSP < 0)
-	{
-		tmpSP = 0;
-	}
-	resp.Sp = tmpSP;
-	resp.score = towerData.m_Score;
-	resp.isOver = 0;
-	if (resp.Sp == 0)
-	{
-		resp.isOver = 1;
-	}
+
+	resp.Hp = eventList->towerData.m_HP;
+	resp.Sp = eventList->towerData.m_SP;
+	resp.tID = eventList->towerHight;
+	resp.Ap = eventList->towerData.m_AP;
+	resp.score = eventList->towerData.m_Score;
+	
 	getTowerBuff(player->getPlayerGuid(),resp.buffID1,resp.time1,resp.buffID2,resp.time2);
+	int tmpAP = resp.Ap;
+	getBuffValue(player->getPlayerGuid(),TOWER_ADD_AP,tmpAP);//可能会有增加攻击力buff
+	resp.Ap = tmpAP;
+
+
+	resp.time1 = player->getPlayerTowerData().m_HP;
+	
 	
 	std::string jsonStr = resp.convertDataToJson();
 	NetworkSystem::getSingleton().sender(connId,IN_TOWER_CHOICE_RESP,jsonStr);
+	//LOG_INFO("IN_TOWER_CHOICE_RESP = %s",jsonStr.c_str());
 
 }
 
 
-UInt32 ClimbTowerManager::checkIsOver(const  ConnId& connId,UInt32 tID)
+UInt32 ClimbTowerManager::checkIsOver(const  ConnId& connId)
 {
-	TowerFloorEndResp resp;
 
 	Player *player = LogicSystem::getSingleton().getPlayerByConnId(connId);	
+	if (player == NULL)
+	{
+		LOG_WARN("player not found!!");
+		return LynxErrno::NotFound;
+	}
 
 	EventList *eventList = mTowerEvents.findRealValue(player->getPlayerGuid());
 	if (eventList == NULL)
 	{
-		return 0;
+		return LynxErrno::NotFound;
 	}
 
 	//判断胜负
-	UInt32 nowTime = TimeUtil::getTimeSec();
 
-	TowerTemplate* towerTemplate = gTowersTable->get(tID);
-	if (towerTemplate == NULL)
+	UInt32 ret = changSP(player->getPlayerGuid(),0);
+	if(ret != LynxErrno::None)
 	{
-		return 0;
+		return LynxErrno::TimeOut;
 	}
 
-	TowerTypeTemplate* towerTypeTemplate = gTowerTypeTable->get(towerTemplate->chapterId);
-	if (towerTypeTemplate == NULL)
-	{
-		return 0;
-	}
+	 ret = changHP(player->getPlayerGuid(),0,false);
 
-	if ((nowTime - eventList->startTime) >= towerTypeTemplate->strength)
-	{
-		// 		TowerEndReq req2;
-		// 		ClimbTowerManager::getSingleton().onTowerEndReq(connId ,req2);
-		return 1;
-	}
-
-	resp.result = ClimbTowerManager::getSingleton().changHP(player->getPlayerGuid(),0,false);
-
-	if (resp.result != LynxErrno::None)
+	if (ret != LynxErrno::None)
 	{		
-		return 1;
+		return LynxErrno::Lose;
 	}
 
-	// 	UInt32 maxhigh =  ClimbTowerManager::getSingleton().getTowerHighest(eventList->towerData.m_HighID);
-	// 
-	// 	if (eventList->towerData.m_HighID > maxhigh)
-	// 	{
-	// 		eventList->towerData.m_HighID = maxhigh;
-	// 		TowerEndReq req3;
-	// 		// 		req3.id = eventList->towerData.m_HighID;
-	// 		req3.reqType = 2;
-	// 		ClimbTowerManager::getSingleton().onTowerEndReq(connId ,req3 );
-	// 		return 1;
-	// 	}
-	return 0;
+	
+	
+	
+	return LynxErrno::None;
 }
 
 
@@ -530,13 +644,22 @@ void ClimbTowerManager::getNextEvents(Guid playerID,UInt32 towerHight,List<Tower
 	UInt32 score = 0;
 	UInt32 times = 0;	  
 	UInt32 maxhigh = 0;
+	UInt32 minhigh = 0;
 	UInt32 endHight =0;
 	TowerEventTemplate* towerEventTemplate;
 	List<Goods> goods;	
-	EventList *eventList = mTowerEvents.findRealValue(playerID);
 
+	EventList *eventList = mTowerEvents.findRealValue(playerID);
+	if (eventList == NULL)
+	{
+		LOG_WARN("eventList not found!!");
+		return;
+	}
+
+		
 
 	maxhigh =  getTowerHighest(towerHight);
+	minhigh =  maxhigh - maxhigh%100 + 1;
 
 	if (num >= 1000)
 	{
@@ -555,6 +678,7 @@ void ClimbTowerManager::getNextEvents(Guid playerID,UInt32 towerHight,List<Tower
 	for(UInt32 i = towerHight;i<= endHight;i++)
 	{
 
+		
 		TowerEvent towerEvent;
 		getPlayerEvent( playerID,towerEvent, towerHight,road);
 
@@ -576,30 +700,26 @@ void ClimbTowerManager::getNextEvents(Guid playerID,UInt32 towerHight,List<Tower
 		{
 			towerEvent.eID = rollEvent(towerHight);
 			towerEventTemplate = gTowerEventTable->get(towerEvent.eID);
+
+
+
 			if (towerEventTemplate == NULL)
 			{			
 				break;
 			}
 			if (towerEventTemplate->type == 7)
 			{
-				if (eventList->latestJumpFloor != 0 && (eventList->latestJumpFloor < 10))
+				if (towerHight < (minhigh + 10) )
 				{
-					continue;					
+					continue;
 				}
-				else
-				{
-					break;
-				}
+				
 			}
 			if (towerEventTemplate->type == 9)
 			{
-				if (eventList->latestCrossRoadFloor != 0 && (eventList->latestCrossRoadFloor < 10))
+				if (towerHight < (minhigh + 10)|| (towerHight > maxhigh - 3)||((towerHight - eventList->latestCrossRoadFloor) <= 3))
 				{
-					continue;				
-				}
-				else
-				{
-					break;
+					continue;
 				}
 			}
 			break;
@@ -610,6 +730,14 @@ void ClimbTowerManager::getNextEvents(Guid playerID,UInt32 towerHight,List<Tower
 			continue;
 		}
 
+		if (towerEventTemplate->type == 7)
+		{
+			eventList->latestJumpFloor = towerHight;
+		}
+		if (towerEventTemplate->type == 9)
+		{
+			eventList->latestCrossRoadFloor = towerHight;			
+		}
 		towerEvent.tID = towerHight;
 		towerEvent.mID = road;
 
@@ -643,7 +771,7 @@ UInt32 ClimbTowerManager::rollEvent(UInt32 towerHight)
 	allRate = towerTemplate->eventrate1 + towerTemplate->eventrate2 +towerTemplate->eventrate3 + towerTemplate->eventrate4 + towerTemplate->eventrate5;
 	if (allRate == 0)
 	{
-		return 1;
+		return 0;//除0
 	}
 	randomNum = rand() % allRate;
 	for (UInt32 i =1;i<11;i++)
@@ -712,6 +840,7 @@ void ClimbTowerManager::spiltEvent(TowerEvent &towerEvent)
 			if (rates > randomNum)
 			{
 				oID = atoi(strVector2[0].c_str());
+				break;
 			}
 		}
 	}
@@ -731,7 +860,17 @@ void ClimbTowerManager::dealEventfollowEvent(Guid playerID,TowerEvent &towerEven
 	UInt32 high = 0;
 	PlayerTowerData towerData;
 	Player *player = LogicSystem::getSingleton().getPlayerByGuid(playerID);	
+	if (player == NULL)
+	{
+		LOG_WARN("player not found!!");
+		return;
+	}
 	EventList *eventList = mTowerEvents.findRealValue(player->getPlayerGuid());
+	if (eventList == NULL)
+	{
+		LOG_WARN("player not found!!");
+		return;
+	}
 	towerData = player->getPlayerTowerData();
 	high = towerEvent.tID;
 	if (high == 0)
@@ -750,6 +889,12 @@ void ClimbTowerManager::dealEventfollowEvent(Guid playerID,TowerEvent &towerEven
 	if (eventType == 1)
 	{
 		TowerMonsterTemplate* towerMonsterTemplate = gTowerMonsterTable->get(towerEvent.typeValue);
+		if (towerMonsterTemplate == NULL)
+		{
+			LOG_WARN("towerMonsterTemplate not found!!");
+			return;
+		}
+
 		towerEvent.Ap = towerMonsterTemplate->attackpower;
 		towerEvent.Hp = towerMonsterTemplate->HP;
 		towerEvent.score = towerMonsterTemplate->score;
@@ -763,7 +908,7 @@ void ClimbTowerManager::dealEventfollowEvent(Guid playerID,TowerEvent &towerEven
 	{
 
 		TowerBoxTemplate * towerBoxTemplate = gTowerBoxTable->get(towerEvent.typeValue);
-		if (towerEventTemplate == NULL)
+		if (towerBoxTemplate == NULL)
 		{
 			return;
 		}
@@ -776,15 +921,12 @@ void ClimbTowerManager::dealEventfollowEvent(Guid playerID,TowerEvent &towerEven
 	}
 	else if (eventType == 4)
 	{
-// 		setTowerBuff(playerID,towerEvent.typeValue);
 	}
 	else if (eventType == 5 )
 	{
-		towerEvent.Hp = towerData.m_HP * towerEvent.typeValue/10000;	  
 	}
 	else if (eventType == 6 )
 	{
-		towerEvent.typeValue = towerData.m_SP * towerEvent.typeValue/10000;	   
 	}
 	else if (eventType == 8 )
 	{
@@ -796,11 +938,10 @@ void ClimbTowerManager::dealEventfollowEvent(Guid playerID,TowerEvent &towerEven
 	}
 	else if (eventType == 11 )
 	{
-		towerEvent.typeValue = towerData.m_SP * towerEvent.typeValue/10000;	  
 	}
 	else if (eventType == 12 )
 	{
-		towerEvent.Hp = towerData.m_HP * towerEvent.typeValue/10000;	  
+// 		towerEvent.Hp = towerData.m_HP * towerEvent.typeValue/10000;	  
 	}
 	else if (eventType == 7 )
 	{
@@ -816,8 +957,7 @@ void ClimbTowerManager::dealEventfollowEvent(Guid playerID,TowerEvent &towerEven
 	}
 	else if (eventType == 9 )
 	{	 
-		ClimbTowerManager::getSingleton().getNextEvents(playerID,high,towerEvent.crossEvents,CrossRoad,EventNum);
-		UInt32 tmp = 0;//for test
+		ClimbTowerManager::getSingleton().getNextEvents(playerID,high+1,towerEvent.crossEvents,CrossRoad,EventNum);
 	}
 	else if (eventType == 13)
 	{
@@ -829,17 +969,22 @@ void ClimbTowerManager::dealEventfollowEvent(Guid playerID,TowerEvent &towerEven
 		dealEventfollowEvent(playerID,towerEvent100,events);
 
 		towerEvent.isRandom = 1;
+		towerEvent.type = towerEvent100.type;
 		towerEvent.eID = towerEvent100.eID;
 		towerEvent.typeValue = towerEvent100.typeValue;
-		towerEvent.typeValue = towerEvent100.typeValue;
+		towerEvent.Ap = towerEvent100.Ap;
+		towerEvent.Hp = towerEvent100.Hp;
+		towerEvent.score = towerEvent100.score;
+		towerEvent.scoreCost = towerEvent100.scoreCost;
+		towerEvent.goods = towerEvent100.goods;
+		towerEvent.crossEvents = towerEvent100.crossEvents;
+
 
 		TowerEventTemplate* towerEventTemplate = gTowerEventTable->get(towerEvent100.eID);
 		if (towerEventTemplate != NULL)
 		{
 			towerEvent.type = towerEventTemplate->type ;
 		}
-
-		// 		events.insertTail(towerEvent100);
 	}
 	setPlayerEvent( playerID, towerEvent);
 
@@ -908,60 +1053,98 @@ void ClimbTowerManager::subPlayerEvent(Guid playerID,UInt32 towerHight)
 
 UInt32 ClimbTowerManager::getBattleReport(Guid playerID,List<BattleReport> &battleReportList,TowerEvent &towerEvent)
 {
-	int val = 0;
+	int ap = 0;	
+	int addAp = 0;
 	UInt32 flag = 0;
+	UInt32 spReduce = 0;
+	string str;
+	string playerName;
+	string fileName = "towerNoReport.log";
+	char dest[1024] = {0};
+
+	changSP(playerID,0);//要放最前面
+
 
 	EventList *eventList = mTowerEvents.findRealValue(playerID);
+	if(eventList == NULL)
+	{
+		str = "eventList not found!!!";
+		LoggerSystem::getSingleton().writeLog(fileName.c_str(),playerID,"",str);
+		return LynxErrno::NotFound;
+	}
 
 	int enemyBlood =  towerEvent.Hp;
 	int ownBlood = eventList->towerData.m_HP;
+	int sp = eventList->towerData.m_SP;
+	ap = eventList->towerData.m_AP;
+
+	if (enemyBlood == 0)
+	{
+		str = "already lose !!!";
+		LoggerSystem::getSingleton().writeLog(fileName.c_str(),playerID,"",str);
+		return LynxErrno::Lose;
+	}
 
 	TowerTemplate*	towerTemplate = gTowersTable->get(eventList->towerData.m_HighID);
 	if (towerTemplate == NULL)
 	{
+		sprintf(dest,"towerTemplate not found  !!! m_HighID = %d !!! ",eventList->towerData.m_HighID);
+		str = (string)dest;
+		LoggerSystem::getSingleton().writeLog(fileName.c_str(),playerID,"",str);
 		return LynxErrno::NotFound;
 	}
 
 	TowerTypeTemplate *towerTypeTemplate = gTowerTypeTable->get(towerTemplate->chapterId);
-
-	UInt32 recover = towerTypeTemplate->hprecover;
-
-// 	if (((towerEvent.Hp * towerEvent.Ap) % eventList->towerData.m_AP) >0 && ((towerEvent.Hp * towerEvent.Ap) % eventList->towerData.m_AP) < eventList->towerData.m_AP/2)
-// 	{
-// 		val = (towerEvent.Hp  / eventList->towerData.m_AP +1)*towerEvent.Ap;				
-// 	}
-// 	else
-// 	{
-// 		val = (towerEvent.Hp  / eventList->towerData.m_AP)*towerEvent.Ap;
-// 	}
-
-
-
-	changSP(playerID,0);
-	for (UInt32 i = 0;i < 1000;i++)
+	if (towerTypeTemplate == NULL)
 	{
-		val += towerEvent.Ap;
-		ownBlood = ownBlood - towerEvent.Ap + recover;
-		enemyBlood = enemyBlood - towerEvent.Ap;
+		sprintf(dest,"towerTypeTemplate not found  !!! chapterId = %d !!! ",towerTemplate->chapterId);
+		str = (string)dest;
+		LoggerSystem::getSingleton().writeLog(fileName.c_str(),playerID,"",str);
+		return 0;
+	}
+	getBuffValue(playerID,TOWER_ADD_AP,ap);		
+	if (getBuffValue(playerID,TOWER_SUB_SP,ap)==false )//体力不减
+	{
+		spReduce = 1;
+	}
+
+	
+	for (UInt32 i = 0;i < 200;i++)
+	{
+		changHP(playerID,(0 - towerEvent.Ap),false);
+		if (spReduce == 0)
+		{
+			sp --;
+		}
+		eventList = mTowerEvents.findRealValue(playerID);
+		ownBlood = eventList->towerData.m_HP;
+		enemyBlood = enemyBlood - ap;
 		if (ownBlood <= 0)
 		{
+			if (enemyBlood <= 0)//同归于尽就给10血
+			{
+				enemyBlood = 10;
+			}
 			towerEvent.Hp = enemyBlood;
-			flag = 2;			
+			flag = 2;
+			ownBlood = 0;
 		}
-		if (enemyBlood <= 0)
+		if (enemyBlood <= 0&&flag == 0)
 		{
 			flag = 1;
+			enemyBlood = 0;
 		}
-		int tmpSp = eventList->towerData.m_SP  - i;	
-		if (tmpSp <= 0)
+		if (sp <= 0&&flag == 0)
 		{
 			flag = 3;
 		}
+		towerEvent.Hp = enemyBlood;
 		BattleReport battleReport;
 		battleReport.ownBlood = ownBlood;
 		battleReport.enemyBlood = enemyBlood;
 		battleReport.flag = flag;
 		battleReportList.insertTail(battleReport);
+		
 
 
 		if (flag != 0)
@@ -969,12 +1152,17 @@ UInt32 ClimbTowerManager::getBattleReport(Guid playerID,List<BattleReport> &batt
 			break;
 		}
 	}
-	changHP(playerID,val,false);
+	if (battleReportList.size() == 0)
+	{
+		str = "battleReportList size = 0!!!!";
+		LoggerSystem::getSingleton().writeLog(fileName.c_str(),playerID,"",str);
+	}
+	//LOG_INFO("battleReportList size = %d",battleReportList.size());
 	return flag;
 }
 // 1遇敌 2神秘驿站 3遭遇宝箱 4随机buff 5回复生命 6回复体力
 // 7跃层 8获得积分 9分岔路 10减少积分 11减少体力 12减少hp 13随机事件
-UInt32 ClimbTowerManager::addEventValues(Guid playerID,InTowerChoiseReq & req,InTowerChoiseResp &resp,UInt32 road)
+UInt32 ClimbTowerManager::addEventValues(Guid playerID,InTowerChoiseReq & req,InTowerChoiseResp &resp)
 {
 	
 	UInt32 getIt =0;
@@ -986,10 +1174,25 @@ UInt32 ClimbTowerManager::addEventValues(Guid playerID,InTowerChoiseReq & req,In
 	TowerEvent *editTowerEvent;
 	PlayerTowerData towerData;
 	Player *player = LogicSystem::getSingleton().getPlayerByGuid(playerID);	
+	if (player == NULL)
+	{
+		LOG_WARN("player not found!!");
+		return LynxErrno::NotFound;
+	}
 	towerData = player->getPlayerTowerData();
 	EventList *eventList = mTowerEvents.findRealValue(playerID);
 
+	if (eventList == NULL)
+	{
+		LOG_WARN("eventList not found!!");
+		return LynxErrno::NotFound;
+	}
 
+	UInt32 road = DefaultRoad;
+	if ((eventList->towerData.m_HighID - eventList->roadType) < 4 )
+	{
+		road = CrossRoad;
+	}
 	for (List<TowerEvent>::Iter * iter = eventList->events.begin(); iter!=NULL;iter = eventList->events.next(iter))
 	{		
 		if (iter->mValue.tID == req.tID && iter->mValue.mID == road )
@@ -1018,26 +1221,12 @@ UInt32 ClimbTowerManager::addEventValues(Guid playerID,InTowerChoiseReq & req,In
 	if (eventType == 1)
 	{
 		if (req.wID == 1)
-		{
-			// 			int val = 0;
-			// 			if (((towerEvent.Hp * towerEvent.Ap) % eventList->towerData.m_AP) >0 && ((towerEvent.Hp * towerEvent.Ap) % eventList->towerData.m_AP) < eventList->towerData.m_AP/2)
-			// 			{
-			// 				val = (towerEvent.Hp  / eventList->towerData.m_AP +1)*towerEvent.Ap;				
-			// 			}
-			// 			else
-			// 			{
-			// 				val = (towerEvent.Hp  / eventList->towerData.m_AP)*towerEvent.Ap;
-			// 			}
-			// 
-			// 			changHP(playerID,val,false);
-
-
+		{			
 			flag = getBattleReport(playerID,resp.battleReport,*editTowerEvent);
 			if (flag == 1)
 			{
-				UInt32 addScore = towerEvent.score; 
-				ClimbTowerManager::getSingleton().getBuffValue(player->getPlayerGuid(),TOWER_ADD_SCORE,addScore);
-				eventList->towerData.m_Score += addScore;  
+				int var = towerEvent.score;
+				ClimbTowerManager::getSingleton().changeScore(player->getPlayerGuid(),var,true);				
 			}
 			else if (flag == 2)
 			{
@@ -1045,7 +1234,7 @@ UInt32 ClimbTowerManager::addEventValues(Guid playerID,InTowerChoiseReq & req,In
 			}
 			else if (flag == 3)
 			{
-				return LynxErrno::TimeOut;
+				return LynxErrno::Lose;
 			}
 		}
 		else
@@ -1054,8 +1243,11 @@ UInt32 ClimbTowerManager::addEventValues(Guid playerID,InTowerChoiseReq & req,In
 			{
 				return LynxErrno::scoreNotEnough;
 			}
-			eventList->towerData.m_Score -= towerEvent.scoreCost;
+			int var = 0 - towerEvent.scoreCost;
+			ClimbTowerManager::getSingleton().changeScore(player->getPlayerGuid(),var,true);		
+
 		}
+		return LynxErrno::None;
 
 	}
 	else if (eventType == 2)
@@ -1069,6 +1261,11 @@ UInt32 ClimbTowerManager::addEventValues(Guid playerID,InTowerChoiseReq & req,In
 			return LynxErrno::None;
 		}
 		ShopsTemplate* shopsTemplate = gShopsTable->get(towerEvent.typeValue);
+		if (shopsTemplate == NULL)
+		{
+			LOG_WARN("shopsTemplate not found!!");
+			return LynxErrno::NotFound;
+		}
 		for(List<Sell>::Iter * it = shopsTemplate->sellList.begin();it != NULL;it = shopsTemplate->sellList.next(it))
 		{
 			which ++;
@@ -1089,7 +1286,8 @@ UInt32 ClimbTowerManager::addEventValues(Guid playerID,InTowerChoiseReq & req,In
 				{
 					return LynxErrno::scoreNotEnough;
 				}
-				eventList->towerData.m_Score -= atoi(strVector[2].c_str());
+				int var = 0 - atoi(strVector[2].c_str());
+				ClimbTowerManager::getSingleton().changeScore(player->getPlayerGuid(),var,true);	
 
 				goods.resourcestype = it->mValue.restype;
 				goods.subtype = it->mValue.subtype;
@@ -1101,7 +1299,6 @@ UInt32 ClimbTowerManager::addEventValues(Guid playerID,InTowerChoiseReq & req,In
 
 				dealTowerGoods(playerID,goodsList);
 
-
 				ShopItem  shopItem;
 				shopItem.high = towerEvent.tID;
 				shopItem.shopID = towerEvent.typeValue;
@@ -1111,114 +1308,132 @@ UInt32 ClimbTowerManager::addEventValues(Guid playerID,InTowerChoiseReq & req,In
 				break;
 			}
 		}
-
-		if (req.wID != 0)
-		{
-			return LynxErrno::IsBuying;
-		}
-		else
-		{				
-			return LynxErrno::None;
-		}
-
-
+		return LynxErrno::IsBuying;	
 	}
 	else if (eventType == 3)
 	{
 		if (req.wID == 1)//打开箱子//修改过
 		{
-			// 			int val = 0;
-			// 			if (((towerEvent.Hp * towerEvent.Ap) % eventList->towerData.m_AP) >0 && ((towerEvent.Hp * towerEvent.Ap) % eventList->towerData.m_AP) < eventList->towerData.m_AP/2)
-			// 			{
-			// 				val = (towerEvent.Hp  / eventList->towerData.m_AP +1)*towerEvent.Ap;				
-			// 			}
-			// 			else
-			// 			{
-			// 				val = (towerEvent.Hp  / eventList->towerData.m_AP)*towerEvent.Ap;
-			// 			}
-			// 			changHP(playerID,val,false);
-			flag = getBattleReport(playerID,resp.battleReport,*editTowerEvent);
-			if (flag == 1)
+			int var = 0 - editTowerEvent->scoreCost;
+			editTowerEvent->scoreCost = 0;
+			if (changeScore(player->getPlayerGuid(),var,false) != LynxErrno::None)
 			{
-				UInt32 addScore = towerEvent.score; 
-				ClimbTowerManager::getSingleton().getBuffValue(player->getPlayerGuid(),TOWER_ADD_SCORE,addScore);
-				eventList->towerData.m_Score += addScore;  
-				dealTowerGoods(playerID,towerEvent.goods);
+				return LynxErrno::scoreNotEnough;
 			}
-			else if (flag == 2)
+			if (editTowerEvent->Hp > 0)
 			{
-				return LynxErrno::Lose;
+				flag = getBattleReport(playerID,resp.battleReport,*editTowerEvent);
+				if (flag == 1)
+				{	
+					dealTowerGoods(playerID,editTowerEvent->goods);
+					resp.goods = editTowerEvent->goods;
+				}
+				else if (flag == 2)
+				{
+					return LynxErrno::Lose;
+				}
+				else if (flag == 3)
+				{
+					return LynxErrno::Lose;
+				}
 			}
-			else if (flag == 3)
+			else
 			{
-				return LynxErrno::TimeOut;
+				dealTowerGoods(playerID,editTowerEvent->goods);
+				resp.goods = editTowerEvent->goods;
 			}
 		}
 		else
 		{
-			
 
 		}
+		return LynxErrno::None;
 	}
 	else if (eventType == 4)//BUFF
 	{
 		setTowerBuff(playerID,towerEvent.typeValue);
+		return LynxErrno::None;
 	}
 	else if (eventType == 5 )
 	{		
-		int val = towerData.m_HP * towerEvent.typeValue/10000;
-		changHP(playerID,val,false);
+		int val = 0;
+		double tmpValue = 0;
+		tmpValue = (double)towerEvent.typeValue/10000;
+		tmpValue =(double) towerData.m_HP *tmpValue;
+		val = (int)tmpValue;
+
+
+		return changHP(playerID,val,false);
 	}
 	else if (eventType == 6 )
-	{		
-		changSP(playerID,towerEvent.typeValue);
+	{	
+		//LOG_INFO("changSP 6 towerEvent.typeValue = %d",towerEvent.typeValue);
+		int val = 0;
+		double tmpValue = 0;
+		tmpValue = (double)towerEvent.typeValue/10000;
+		tmpValue =(double) towerData.m_SP *tmpValue;
+		val = (int)tmpValue;
+
+		return changSP(playerID,val);
+
 	}
 	else if (eventType == 8 )
-	{
-		addTowerData(playerID,towerEvent.goods,TOWER_ADD_SCORE,towerEvent.typeValue);
+	{	
+		return addTowerData(playerID,towerEvent.goods,TOWER_ADD_SCORE,towerEvent.typeValue);
 	}
 	else if (eventType == 10 )
 	{
-		changSP(playerID,towerEvent.typeValue);
+		int var = 0 - towerEvent.typeValue;
+		return addTowerData(playerID,towerEvent.goods,TOWER_ADD_SCORE,var);
 	}
 	else if (eventType == 11 )
 	{
-		addTowerData(playerID,towerEvent.goods,TOWER_SUB_SP,towerEvent.typeValue);		
+		int val = 0;
+		double tmpValue = 0;
+		tmpValue = (double)editTowerEvent->typeValue/10000;
+		tmpValue =(double)towerData.m_SP *tmpValue;
+		val = 0 -  (int)tmpValue;
+
+		//LOG_INFO("changSP 11 val = %d",val);
+		return addTowerData(playerID,towerEvent.goods,TOWER_SUB_SP,val);		
 	}
 	else if (eventType == 12 )
 	{
-		int val = 0 -(towerData.m_HP * (int)towerEvent.typeValue/10000);
-		changHP(playerID,val,false);
+		int val = 0;
+		double tmpValue = 0;
+		tmpValue = (double)editTowerEvent->typeValue/10000;
+		tmpValue =(double)towerData.m_HP *tmpValue;
+		val = 0 -  (int)tmpValue;
+	
+		editTowerEvent->typeValue  = 0;
+		return addTowerData(playerID,towerEvent.goods,TOWER_SUB_HP,val);
 	}
 	else if (eventType == 7 )
 	{
 		if (req.wID == 0)
 		{
 			UInt32 maxhigh =  getTowerHighest(eventList->towerData.m_HighID);
-			eventList->towerData.m_HighID += towerEvent.typeValue;
-			eventList->towerData.m_HighID --;//跃层要少加一层，后面跟着的代码判断成功会加一层
 			if (eventList->towerData.m_HighID >maxhigh)
 			{
 				eventList->towerData.m_HighID  = maxhigh;
 			}
-			//todo
-			//给东西
 		}
 		else
 		{
 
 		}
+		return LynxErrno::None;
 	}
 	else if (eventType == 9 )
 	{	
 		if (req.wID == 1)
 		{
-			eventList->roadType = 1;
 		}
 		else
 		{
-			eventList->roadType = 4;
+			eventList->roadType = eventList->towerData.m_HighID;
 		}		
+		return LynxErrno::None;
 	}
 
 	return LynxErrno::None;
@@ -1227,19 +1442,24 @@ UInt32 ClimbTowerManager::addEventValues(Guid playerID,InTowerChoiseReq & req,In
 void ClimbTowerManager::dealTowerGoods(Guid playerID,List<Goods> goodsList)
 {
 	UInt32 getIt = 0;
+	List<Goods> itemList;
 	Player* player = LogicSystem::getSingleton().getPlayerByGuid(playerID);
+	if (player == NULL)
+	{
+		LOG_WARN("player not found!!");
+		return;
+	}
 	EventList *eventList = mTowerEvents.findRealValue(playerID);
 
 	for( List<Goods>::Iter * iter = goodsList.begin();iter!= NULL;iter = goodsList.next(iter))
 	{
+		getIt = 0;
 		if (iter->mValue.resourcestype == AWARD_BASE )
 		{
-			if (iter->mValue.subtype == AWARD_BASE_SCORE )
+			if (iter->mValue.subtype == AWARD_BASE_RANKEDSCORE )
 			{
 				getIt = 1;
-				UInt32 addScore = iter->mValue.num; 
-				ClimbTowerManager::getSingleton().getBuffValue(player->getPlayerGuid(),TOWER_ADD_SCORE,addScore);
-				eventList->towerData.m_Score += addScore;  
+				changeScore(player->getPlayerGuid(),iter->mValue.num,true);
 			}
 		}
 		else if (iter->mValue.resourcestype == AWARD_TOWERBUFF )
@@ -1264,31 +1484,40 @@ void ClimbTowerManager::dealTowerGoods(Guid playerID,List<Goods> goodsList)
 			else if (towerAttrTemplate->attr == AWARD_TOWERATTR_HP )
 			{
 				getIt = 1;
-				//加当前血量，和玩家总属性血量
+				//不加当前血量加玩家总属性血量
 				changHP(playerID,iter->mValue.num,true);
 			}
 		}
 		if (getIt == 0)		
-		{			
-			GiftManager::getSingleton().addToPlayer(player->getPlayerGuid(),REFLASH_FOOD,goodsList);
+		{		
+			itemList.insertTail(iter->mValue);			
 		}
 	}
+	if (itemList.size() != 0)
+	{
+		GiftManager::getSingleton().addToPlayer(player->getPlayerGuid(),REFLASH_FOOD,itemList,MiniLog108);
+	}
+	eventList->itemList += itemList;
 }
 
 //dataType 1 hp 2 ap 3 sp 4 score  
 //bufftype 1攻击力加成（百分比）2	无敌	3	体力不减	4	积分获取翻倍	
-bool ClimbTowerManager::getBuffValue(Guid playerID,UInt32 dataType,int num)
+bool ClimbTowerManager::getBuffValue(Guid playerID,UInt32 dataType,int &num)
 {
-
-	TowerEvent towerEvent;
-	UInt32 getIt =0;
-	EventList *eventList;
+	UInt32 getIt =0;	
 	UInt32 buffID1 = 0;
 	UInt32 time1 = 0;
 	UInt32 buffID2 = 0;
 	UInt32 time2 = 0;
+	EventList *eventList;
+	TowerEvent towerEvent;
 
 	Player* player = LogicSystem::getSingleton().getPlayerByGuid(playerID);
+	if (player == NULL)
+	{
+		LOG_WARN("player not found!!");
+		return false;
+	}
 
 	getTowerBuff(playerID,buffID1,time1,buffID2,time2);
 	eventList = mTowerEvents.findRealValue(playerID);
@@ -1300,9 +1529,23 @@ bool ClimbTowerManager::getBuffValue(Guid playerID,UInt32 dataType,int num)
 		{
 			continue;
 		}
+		if (towerBuffTemplate->attr == 1)
+		{
+			if (dataType == TOWER_ADD_AP)
+			{
+				int val = 0;
+				double tmpValue = 0;
+				tmpValue = (double)towerBuffTemplate->num/10000;
+				tmpValue =(double)eventList->towerData.m_AP *tmpValue;
+				num = eventList->towerData.m_AP +  (int)tmpValue;
+
+				return false;
+			}
+
+		}
 		if (towerBuffTemplate->attr == 2)
 		{
-			if (dataType == TOWER_SUB_AP)
+			if (dataType == TOWER_SUB_HP)
 			{
 				return false;
 			}
@@ -1310,7 +1553,7 @@ bool ClimbTowerManager::getBuffValue(Guid playerID,UInt32 dataType,int num)
 		}
 		if (towerBuffTemplate->attr == 3)
 		{
-			if (dataType == TOWER_SUB_HP)
+			if (dataType == TOWER_SUB_SP)
 			{
 				return false;
 			}
@@ -1320,23 +1563,28 @@ bool ClimbTowerManager::getBuffValue(Guid playerID,UInt32 dataType,int num)
 		{
 			if (dataType == TOWER_ADD_SCORE)
 			{
-				num = num * towerBuffTemplate->num/1000 ;
+				if (num > 0)//负的不增加
+				{
+					int val = 0;
+					double tmpValue = 0;
+					tmpValue = (double)towerBuffTemplate->num/10000;
+					tmpValue  = (double)num *tmpValue; 
+					num = (int)tmpValue;
+					
+				}				
 				return true;				
 			}
-
 		}
-
 	}
 	
 	return true;
-
 }
 
 
 //dataType 1 hp 2 ap 3 sp 4 score  
 //bufftype 1攻击力加成（百分比）2	无敌	3	体力不减	4	积分获取翻倍	
 
-bool ClimbTowerManager::addTowerData(Guid playerID,List<Goods> goods,UInt32 dataType,int num)
+UInt32 ClimbTowerManager::addTowerData(Guid playerID,List<Goods> itemList,UInt32 dataType,int num)
 {
 
 	TowerEvent towerEvent;
@@ -1348,11 +1596,16 @@ bool ClimbTowerManager::addTowerData(Guid playerID,List<Goods> goods,UInt32 data
 	UInt32 time2 = 0;
 
 	Player* player = LogicSystem::getSingleton().getPlayerByGuid(playerID);
+	if (player == NULL)
+	{
+		LOG_WARN("player not found!!");
+		return LynxErrno::NotFound;
+	}
 
 	getTowerBuff(playerID,buffID1,time1,buffID2,time2);
 	eventList = mTowerEvents.findRealValue(playerID);
 
-	for (List<TowerBuff>::Iter * it1 = eventList->towerBuff.begin();it1 != NULL;it1 = eventList->towerBuff.next(it1))
+	for (List<TowerBuff>::Iter * it1 = eventList->towerBuff.begin();it1 != NULL;it1 = eventList->towerBuff.next(it1))//有buff存在不减
 	{
 		TowerBuffTemplate * towerBuffTemplate = gTowerBuffTable->get(it1->mValue.buffId);
 		if (towerBuffTemplate == NULL)
@@ -1361,53 +1614,56 @@ bool ClimbTowerManager::addTowerData(Guid playerID,List<Goods> goods,UInt32 data
 		}
 		if (towerBuffTemplate->attr == 2)
 		{
-			if (dataType == TOWER_SUB_AP)
+			if (dataType == TOWER_SUB_HP )
 			{
-				return false;
+				return LynxErrno::None;
 			}
 
 		}
 		if (towerBuffTemplate->attr == 3)
 		{
-			if (dataType == TOWER_SUB_HP)
+			if (dataType == TOWER_SUB_SP)
 			{
-				return false;
+				return LynxErrno::None;
 			}
 
 		}
-		if (towerBuffTemplate->attr == 4)
-		{
-			if (dataType == TOWER_ADD_SCORE)
-			{
-				num += num * towerBuffTemplate->num/1000 ;
-				return true;				
-			}
-
-		}
-
+		
 	}
-	if (dataType == TOWER_SUB_AP)
-	{
-		PlayerTowerData towerData;
-		towerData = player->getPlayerTowerData();
-		towerData.m_AP += num;
-		player->setPlayerTowerData(towerData);
-		player->getPersistManager().setDirtyBit(TOWERDATABIT);
+	UInt32 ret = 0 ;
+	if (dataType == TOWER_ADD_AP)//有购买也有buff buff是直接getbuff 事件加攻击力
+	{		
+ 		changAP(playerID,num,true);
 	}
 	if (dataType == TOWER_SUB_HP)
 	{
-		changHP(player->getPlayerGuid(),num,false);
+		ret = changHP(player->getPlayerGuid(),num,false);
+		if (ret != LynxErrno::None)
+		{
+			return ret;
+		}
 	}
 	if (dataType == TOWER_ADD_SCORE)
 	{
-		UInt32 addScore = num; 
-		ClimbTowerManager::getSingleton().getBuffValue(player->getPlayerGuid(),TOWER_ADD_SCORE,addScore);
-		eventList->towerData.m_Score += addScore;  
-	
-		return true;				
+		changeScore(player->getPlayerGuid(),num,true);
 	}
-	GiftManager::getSingleton().addToPlayer(playerID,REFLASH_AWARD,goods);
-	return true;
+	if (dataType == TOWER_SUB_SP)
+	{
+		//LOG_INFO("changSP addTowerData num= %d",num);
+		ret = changSP(player->getPlayerGuid(),num);
+		if (ret != LynxErrno::None)
+		{
+			return ret;
+		}
+		
+	}
+	if (itemList.size() != 0)
+	{
+		GiftManager::getSingleton().addToPlayer(playerID,REFLASH_AWARD,itemList,MiniLog108);
+		eventList->itemList+=itemList;
+	}
+	
+	return LynxErrno::None;
 
 }
 
@@ -1518,82 +1774,79 @@ UInt32 ClimbTowerManager::getTowerHighest(UInt32 towerHigh)
 void ClimbTowerManager::setTowerBuff(Guid playerID,UInt32 id)
 {
 
-	UInt32 isBuff = 1;
 	UInt32 isExit = 0;
 	UInt32 count = 0;
-	UInt32 getIt = 0;
 	UInt32 buffID1 = 0;
 	UInt32 time1 = 0;
 	UInt32 buffID2 = 0;
 	UInt32 time2 = 0;
-	int num = 0;	
-	PlayerTowerData towerData;
 
 	getTowerBuff(playerID,buffID1,time1,buffID2,time2);//刷新buff
 	UInt32 nowTime = TimeUtil::getTimeSec();
 	TowerBuffTemplate * towerBuffTemplate = gTowerBuffTable->get(id);
+	if (towerBuffTemplate == NULL)
+	{
+		LOG_WARN("towerBuffTemplate not found!!");
+		return;
+	}
 
 	Player *player = LogicSystem::getSingleton().getPlayerByGuid(playerID);
-
-	towerData = player->getPlayerTowerData();
+	if (player == NULL)
+	{
+		LOG_WARN("player not found!!");
+		return;
+	}
 
 	EventList *eventList = mTowerEvents.findRealValue(player->getPlayerGuid());
-	if(towerBuffTemplate->attr == 1)//攻击力加成
-	{
-		num = towerData.m_AP * towerBuffTemplate->num/10000;
-		changAP(playerID,num,false);
-	}
-	if(towerBuffTemplate->attr == 3)//体力停止
+
+	if(towerBuffTemplate->attr == 3)
 	{
 		changSP(playerID,0);
 	}
 
 	for (List<TowerBuff>::Iter * it1 = eventList->towerBuff.begin();it1 != NULL;it1 = eventList->towerBuff.next(it1))
 	{
-		count ++;
+		count++;
 		TowerBuffTemplate * towerBuffTemplate1 = gTowerBuffTable->get(it1->mValue.buffId);
+		if (towerBuffTemplate1 == NULL)
+		{
+			LOG_WARN("towerBuffTemplate1 not found!!");
+			return;
+		}
 		if (towerBuffTemplate1->attr == towerBuffTemplate->attr)
 		{
 			isExit = 1;
 
 			it1->mValue.buffId = id;
-			it1->mValue.buffStartTime = eventList->towerHight;
+			it1->mValue.buffStartTime = eventList->towerData.m_HighID;
+			eventList->towerBuff.erase(it1);
+
+			TowerBuff towerBuff;
+			towerBuff.buffId = id;
+			towerBuff.buffStartTime = eventList->towerData.m_HighID;
+			eventList->towerBuff.insertTail(towerBuff);
+			break;
+		}			
+	}
+	if(eventList->towerBuff.size() >= 2&&isExit == 0)
+	{
+		for (List<TowerBuff>::Iter * it1 = eventList->towerBuff.begin();it1 != NULL;it1 = eventList->towerBuff.next(it1))
+		{	
+			eventList->towerBuff.erase(it1);
 			break;
 		}
-
-		if (count >= 2)//只有2个buff 替换
-		{
-			if (isExit == 0)//删除第一个，加到后面
-			{
-				isExit = 1;
-				for (List<TowerBuff>::Iter * it1 = eventList->towerBuff.begin();it1 != NULL;it1 = eventList->towerBuff.next(it1))
-				{
-					eventList->towerBuff.erase(it1);					
-					break;
-				}
-
-				TowerBuff towerBuff;
-				towerBuff.buffId = id;
-				towerBuff.buffStartTime = eventList->towerHight;
-				
-				eventList->towerBuff.insertTail(towerBuff);
-			}
-		}
-		
 	}
+
+	
 	if(isExit == 0)
 	{
+		
 		isExit = 1;
 		TowerBuff towerBuff;
 		towerBuff.buffId = id;
-		towerBuff.buffStartTime = eventList->towerHight;
-		
+		towerBuff.buffStartTime = eventList->towerData.m_HighID;		
 		eventList->towerBuff.insertTail(towerBuff);
 	}
-
-
-// 	TowerBuffReq req1;	
-// 	ClimbTowerManager::getSingleton().onTowerBuffReq(player->getConnId(),req1);			
 
 }
 //1攻击力2无敌3体力不减4积分翻倍
@@ -1604,71 +1857,48 @@ void ClimbTowerManager::getTowerBuff(Guid playerID,UInt32 &id1,UInt32 &time1,UIn
 	PlayerTowerData towerData;
 	TowerBuffResp resp;
 	Player *player = LogicSystem::getSingleton().getPlayerByGuid(playerID);	
+	if (player == NULL)
+	{
+		LOG_WARN("player not found!!");
+		return;
+	}
 	towerData = player->getPlayerTowerData();
 	EventList *eventList = mTowerEvents.findRealValue(playerID);
 
-
 	UInt32 nowTime = TimeUtil::getTimeSec();
 	UInt32 towerHigh = eventList->towerData.m_HighID;
-
-	
 
 	for (List<TowerBuff>::Iter * it = eventList->towerBuff.begin();it != NULL;it = eventList->towerBuff.next(it))
 	{
 		count++;
 		TowerBuffTemplate * towerBuffTemplate = gTowerBuffTable->get(it->mValue.buffId);
-
-		if (towerBuffTemplate->attr == 3)
+		if (towerBuffTemplate == NULL)
 		{
-			if (count == 1)
+			LOG_WARN("towerBuffTemplate not found!!");
+			return;
+		}
+		if (count == 1)
+		{
+			resp.buffID1 = towerBuffTemplate->id;
+			resp.time1 = towerBuffTemplate->keepfloor - ( towerHigh - it->mValue.buffStartTime) + 1;
+			if (resp.time1 <= 0)
 			{
-				resp.buffID1 = towerBuffTemplate->id;
-				resp.time1 = towerBuffTemplate->keepfloor - ( towerHigh - it->mValue.buffStartTime);
-				if (resp.time1 <= 0)
-				{
-					eventList->towerBuff.erase(it);
-					resp.buffID1 = 0;
-					resp.time1 = 0;
-				}
-			}
-			else if (count == 2)
-			{
-				resp.buffID2 = towerBuffTemplate->id;
-				resp.time2 = towerBuffTemplate->keepfloor - ( towerHigh - it->mValue.buffStartTime);
-				if (resp.time1 <= 0)
-				{
-					eventList->towerBuff.erase(it);
-					resp.buffID2 = 0;
-					resp.time2 = 0;
-				}
+				eventList->towerBuff.erase(it);
+				resp.buffID1 = 0;
+				resp.time1 = 0;
 			}
 		}
-		else
+		else if (count == 2)
 		{
-			if (count == 1)
+			resp.buffID2 = towerBuffTemplate->id;
+			resp.time2 = towerBuffTemplate->keepfloor - ( towerHigh - it->mValue.buffStartTime) + 1;
+			if (resp.time2 <= 0)
 			{
-				resp.buffID1 = towerBuffTemplate->id;
-				resp.time1 = towerBuffTemplate->keepfloor - ( towerHigh - it->mValue.buffStartTime);
-				if (resp.time1 <= 0)
-				{
-					eventList->towerBuff.erase(it);
-					resp.buffID1 = 0;
-					resp.time1 = 0;
-				}
+				eventList->towerBuff.erase(it);
+				resp.buffID2 = 0;
+				resp.time2 = 0;
 			}
-			else if (count == 2)
-			{
-				resp.buffID2 = towerBuffTemplate->id;
-				resp.time2 = towerBuffTemplate->keepfloor - ( towerHigh - it->mValue.buffStartTime);
-				if (resp.time1 <= 0)
-				{
-					eventList->towerBuff.erase(it);
-					resp.buffID2 = 0;
-					resp.time2 = 0;
-				}
-			}
-
-		}
+		}		
 	}
 	id1 = resp.buffID1;
 	time1 = resp.time1;
@@ -1683,6 +1913,7 @@ void ClimbTowerManager::onTowerEndReq(const  ConnId& connId,TowerEndReq & req)
 {
 
 	req.convertJsonToData(req.strReceive);
+	LOG_WARN("towerTypeTemplate receive!!");
 	Player *player = LogicSystem::getSingleton().getPlayerByConnId(connId);	
 	if (player == NULL)
 	{
@@ -1717,13 +1948,18 @@ void ClimbTowerManager::towerEnd(Player *player,UInt32 reqType)
 	{
 		resp.result = LynxErrno::NotFound;
 		std::string jsonStr = resp.convertDataToJson();
-		NetworkSystem::getSingleton().sender(player->getConnId(),TOWER_END_RESP,jsonStr);
+		if (reqType != 1000)
+		{
+			NetworkSystem::getSingleton().sender(player->getConnId(),TOWER_END_RESP,jsonStr);
+		}
+		LOG_WARN("towerTypeTemplate not found 1!!");
 		return;
 	}
 
 	TowerTemplate*	towerTemplate =gTowersTable->get(eventList->towerData.m_HighID);
 	if (towerTemplate == NULL)
 	{
+		LOG_WARN("towerTypeTemplate not found 4!!");
 		return;
 	}
 
@@ -1732,6 +1968,11 @@ void ClimbTowerManager::towerEnd(Player *player,UInt32 reqType)
 	UInt32 towerTypeID = towerTemplate->chapterId;
 
 	TowerTypeTemplate *towerTypeTemplate = gTowerTypeTable->get(towerTypeID);
+	if (towerTypeTemplate == NULL)
+	{
+		LOG_WARN("towerTypeTemplate not found!!");
+		return;
+	}
 
 	UInt32 maxhigh =  ClimbTowerManager::getSingleton().getTowerHighest(eventList->towerData.m_HighID); 
 
@@ -1741,8 +1982,12 @@ void ClimbTowerManager::towerEnd(Player *player,UInt32 reqType)
 		player->setPlayerTowerData(towerData);
 		player->getPersistManager().setDirtyBit(TOWERDATABIT);
 	}
+	int val = 0;
+	double tmpValue = 0;
+	tmpValue = (double)towerTypeTemplate->scorerate/10000;
+	tmpValue =(double)eventList->towerData.m_Score *tmpValue;
+	towerData.m_Score = (int)tmpValue;
 
-	towerData.m_Score = eventList->towerData.m_Score * 0.01;
 
 	resp.score = eventList->towerData.m_Score;
 
@@ -1750,100 +1995,65 @@ void ClimbTowerManager::towerEnd(Player *player,UInt32 reqType)
 
 	rouletteTimes = eventList->towerData.m_Score /towerTypeTemplate->roulette;
 
-
-
-	for (UInt32 i =0;i<rouletteTimes;i++)
+	if (rouletteTimes > towerTypeTemplate->roulettemaxtimes)
 	{
-		if(i%towerTypeTemplate->roulettemaxtimes ==0)
-		{
-			contentID = towerTypeTemplate->rouletteid1;
-
-		}
-		if(i%towerTypeTemplate->roulettemaxtimes ==1)
-		{
-			contentID = towerTypeTemplate->rouletteid2;
-
-		}
-		if(i%towerTypeTemplate->roulettemaxtimes ==2)
-		{
-			contentID = towerTypeTemplate->rouletteid3;
-
-		}
-		if(i%towerTypeTemplate->roulettemaxtimes ==3)
-		{
-			contentID = towerTypeTemplate->rouletteid4;
-
-		}
-		if(i%towerTypeTemplate->roulettemaxtimes ==4)
-		{
-			contentID = towerTypeTemplate->rouletteid5;
-
-		}
-		GiftManager::getSingleton().getContentByID(contentID,itemList);
+		rouletteTimes = towerTypeTemplate->roulettemaxtimes;
 	}
-
-	GiftManager::getSingleton().addToPlayer(player->getPlayerGuid(),REFLASH_AWARD,itemList);//其他的已经加到身上了
-	for(List<Goods>::Iter * it = itemList.begin();it != NULL;it =itemList.next(it))
+	if (towerTypeTemplate->roulette == 0)
 	{
-		Vector<String> strVector;
-		lynxStrSplit(towerTypeTemplate->awardshow, ";", strVector, true);
-		UInt32 tmp = strVector.size();
-		for (UInt32 i = 0;i<strVector.size();i++)
-		{
-			Vector<String> strVector1;
-			lynxStrSplit(strVector[i], "_", strVector1, true);
-			if (strVector1.size() < 2)
-			{
-				continue;
-			}
-			if (atoi(strVector1[0].c_str()) == it->mValue.resourcestype &&atoi(strVector1[1].c_str()) == it->mValue.subtype&&atoi(strVector1[2].c_str()) == it->mValue.num)
-			{
-				resp.awardIndexList.insertTail(i);
-				break;
-			}
-		}
+		LOG_WARN("towerTypeTemplate not found 3!!");
+		return; 
 	}
-	resp.awardContentList = itemList;
-	itemList += eventList->goods;
+	
+	eventList->towerData.m_Score = eventList->towerData.m_Score - rouletteTimes * towerTypeTemplate->roulette;
+
+	getAwardRoulettes(towerTypeTemplate->rouletteid,rouletteTimes,itemList,resp.awardShow);
+
+	resp.awardContentList = itemList;//先赋值给轮盘在给玩家加金币
 	goods.resourcestype = AWARD_BASE;//不能放到awardContentList
 	goods.subtype = AWARD_BASE_COIN;
-	goods.num = (eventList->towerData.m_Score % towerTypeTemplate->roulette) * towerTypeTemplate->scorerate;
+	goods.num = eventList->towerData.m_Score * towerTypeTemplate->exchange;
 	itemList.insertTail(goods);
 
-	GiftManager::getSingleton().combineSame(itemList);
-	resp.ends = itemList;
+	List<Goods>tmpItemList = itemList;
+	Json::Value stages;
+	GiftManager::getSingleton().saveEndsAttr(player->getPlayerGuid(),itemList,resp.allAttr,stages,MiniLog106);
+
+	tmpItemList += eventList->itemList;//已经加到玩家身上的物品返回给客户端
+	GiftManager::getSingleton().combineSame(tmpItemList);
+	resp.ends = tmpItemList;
 
 	Award award;
-	award.award = itemList;
+	award.award = tmpItemList;
 	resp.awards.insertTail(award);
 
 	GiftManager::getSingleton().PlayerItemChangeResult(player->getPlayerGuid(),0,resp.ends);
-
 	player->getPersistManager().setDirtyBit(TOWERDATABIT);
 
-
 	resp.reqType = reqType;
-
 	resp.nextScore = towerData.m_Score;
-	resp.leftscore = eventList->towerData.m_Score % towerTypeTemplate->roulette;
-	
+	resp.leftscore = eventList->towerData.m_Score;	
 	resp.highID = towerData.m_HighID;
-	resp.currentHighID = eventList->towerData.m_HighID;
+	resp.currentHighID = eventList->towerHight;
 	resp.coin = player->getPlayerCoin();
 
-	player->getAchieveManager().updateAchieveData(WXCHALLENGESUC, towerTemplate->chapterId);
-
 	std::string jsonStr = resp.convertDataToJson();
-	NetworkSystem::getSingleton().sender(player->getConnId(),TOWER_END_RESP,jsonStr);
-
+	if (reqType != 1000)
+	{
+		NetworkSystem::getSingleton().sender(player->getConnId(),TOWER_END_RESP,jsonStr);
+		//LOG_INFO("TOWER_END_RESP = %s",jsonStr.c_str());
+	}
+	
 	ClimbTowerManager::getSingleton().removeEvent(player->getPlayerGuid());
-
 	player->setPlayerTowerData(towerData);
 	player->getPersistManager().setDirtyBit(TOWERDATABIT);
 
-
 	//无限挑战日常任务打点 wwc
 	player->getAchieveManager().updateDailyTaskData(DLYDOWXCHALLENGE, 1 );
+
+
+	LogicSystem::getSingleton().updateSevenDayTask(player->getPlayerGuid(),SDT19,1);
+
 
 }
 
@@ -1853,6 +2063,11 @@ UInt32  ClimbTowerManager::changAP(Guid playerID,int num,bool bFlag = false)
 	PlayerTowerData towerData;
 
 	Player *player = LogicSystem::getSingleton().getPlayerByGuid(playerID);	
+	if (player == NULL)
+	{
+		LOG_WARN("player not found!!");
+		return 1;
+	}
 
 	EventList *eventList = mTowerEvents.findRealValue(playerID);
 	if (eventList == NULL)
@@ -1868,13 +2083,6 @@ UInt32  ClimbTowerManager::changAP(Guid playerID,int num,bool bFlag = false)
 	}
 
 	towerData = player->getPlayerTowerData();
-
-
-	UInt32 towerTypeID = towerTemplate->chapterId;
-
-	TowerTypeTemplate *towerTypeTemplate = gTowerTypeTable->get(towerTypeID);
-
-	UInt32 recover = towerTypeTemplate->hprecover;
 
 	//顺序要正确
 	eventList->towerData.m_AP += num;
@@ -1886,25 +2094,6 @@ UInt32  ClimbTowerManager::changAP(Guid playerID,int num,bool bFlag = false)
 		player->getPersistManager().setDirtyBit(TOWERDATABIT);
 	}
 
-// 	if (eventList->HPStartTime > 0)
-// 	{
-// 		eventList->towerData.m_HP += recover * (nowTime - eventList->HPStartTime);
-// 		eventList->HPStartTime = nowTime;
-// 	}
-// 	if (eventList->towerData.m_HP >towerData.m_HP)
-// 	{
-// 		eventList->towerData.m_HP = towerData.m_HP;
-// 		eventList->HPStartTime = 0;
-// 	}
-// 	if (eventList->towerData.m_HP < towerData.m_HP)
-// 	{
-// 		eventList->HPStartTime = nowTime;
-// 	}
-// 	if (eventList->towerData.m_HP <= 0)
-// 	{
-// 		eventList->HPStartTime = 0;
-// 		return LynxErrno::IsDad;
-// 	}
 	return LynxErrno::None;
 
 }
@@ -1915,6 +2104,11 @@ UInt32  ClimbTowerManager::changHP(Guid playerID,int num,bool bFlag = false)
 	PlayerTowerData towerData;
 
 	Player *player = LogicSystem::getSingleton().getPlayerByGuid(playerID);	
+	if (player == NULL)
+	{
+		LOG_WARN("player not found!!");
+		return 1;
+	}
 
 	EventList *eventList = mTowerEvents.findRealValue(playerID);
 	if (eventList == NULL)
@@ -1935,35 +2129,59 @@ UInt32  ClimbTowerManager::changHP(Guid playerID,int num,bool bFlag = false)
 	UInt32 towerTypeID = towerTemplate->chapterId;
 
 	TowerTypeTemplate *towerTypeTemplate = gTowerTypeTable->get(towerTypeID);
-
-	UInt32 recover = towerTypeTemplate->hprecover;
-
-	//顺序要正确
-	eventList->towerData.m_HP += num;
-	//总hp增加
-	if (bFlag == true)
+	if (towerTypeTemplate == NULL)
 	{
-		towerData.m_HP += num;
-		player->setPlayerTowerData(towerData);
-		player->getPersistManager().setDirtyBit(TOWERDATABIT);
+		LOG_WARN("towerTypeTemplate not found!!");
+		return 1;
 	}
 
+
+	if (num > 0)
+	{
+		if (bFlag == true)//只加上限不加当前血量
+		{
+			towerData.m_HP += num;
+			player->setPlayerTowerData(towerData);
+			player->getPersistManager().setDirtyBit(TOWERDATABIT);
+		}
+		else
+		{
+			eventList->towerData.m_HP += num;
+		}
+	}
+	else
+	{
+		int tmp = 0;
+		if (ClimbTowerManager::getSingleton().getBuffValue(playerID,TOWER_SUB_HP,tmp) == false)//不减
+		{			
+		}
+		else
+		{		
+			eventList->towerData.m_HP += num;				
+		}
+	}
+
+
+	
 	if (eventList->HPStartTime > 0)
 	{
-		eventList->towerData.m_HP += recover * (nowTime - eventList->HPStartTime);
 		eventList->HPStartTime = nowTime;
 	}
-	if (eventList->towerData.m_HP >towerData.m_HP)
+	if (eventList->towerData.m_HP >=towerData.m_HP)
 	{
 		eventList->towerData.m_HP = towerData.m_HP;
 		eventList->HPStartTime = 0;
 	}
+
 	if (eventList->towerData.m_HP < towerData.m_HP)
 	{
 		eventList->HPStartTime = nowTime;
 	}
+
+
 	if (eventList->towerData.m_HP <= 0)
 	{
+		eventList->towerData.m_HP = 0;
 		eventList->HPStartTime = 0;
 		return LynxErrno::IsDad;
 	}
@@ -1999,26 +2217,39 @@ UInt32  ClimbTowerManager::changSP(Guid playerID,int num)
 	UInt32 reduce = towerTypeTemplate->strengthreduce;
 
 	//顺序要正确
-	eventList->towerData.m_SP += num;
-
-
-	if (ClimbTowerManager::getSingleton().getBuffValue(playerID,TOWER_SUB_SP,0) == true)//体力不减
+	if (num > 0)
 	{
-		eventList->towerData.m_SP -= reduce * (nowTime - eventList->HPStartTime);
+		eventList->towerData.m_SP += num;
+	}
+	int tmp = 0;
+	if (ClimbTowerManager::getSingleton().getBuffValue(playerID,TOWER_SUB_SP,tmp) == true)//体力不减
+	{
+		if (num < 0)
+		{
+			eventList->towerData.m_SP += num;
+		}
+		if (eventList->SPStartTime > 0)
+		{
+			eventList->towerData.m_SP -= reduce * (nowTime - eventList->SPStartTime);
+			eventList->SPStartTime = nowTime;
+		}
 	}	
+	eventList->SPStartTime = nowTime;//重置
 
-	if (eventList->towerData.m_SP >towerTypeTemplate->strength)
-	{
-		eventList->towerData.m_SP = towerTypeTemplate->strength;
-	}
-	if (eventList->towerData.m_SP < towerTypeTemplate->strength)
-	{
-	}
 	if (eventList->towerData.m_SP <= 0)
 	{
+		eventList->towerData.m_SP = 0;
 		return LynxErrno::StrengthNotEnough;
 		//send over
 	}
+
+	int maxStrength = towerTypeTemplate->strength;
+	if (eventList->towerData.m_SP >= maxStrength)//int 不能与uint比较
+	{
+		eventList->towerData.m_SP = maxStrength;
+	}
+
+	
 	
 	return LynxErrno::None;
 }
@@ -2042,56 +2273,74 @@ UInt32 ClimbTowerManager::checkCanRelive(Guid playerID)
 	UInt32 cost = 0;
 	Goods goods;
 	PlayerTowerData towerData;
+	TowerTemplate* towerTemplate;
+	TowerTypeTemplate* towerTypeTemplate;
 	List<Goods> itemList;
 	Player *player = LogicSystem::getSingleton().getPlayerByGuid(playerID);	
-	EventList *eventList = mTowerEvents.findRealValue(playerID);
-	PlayerDailyResetData playerDailyResetData =player->getPlayerDailyResetData();
+	if (player == NULL)
 	{
-		SpecialReliveTemplate specialReliveTemplate;
-		specialReliveTemplate = GlobalVarManager::getSingleton().getSpecialRelive();
-
-		// 		if (specialReliveTemplate.dayfreetimes > playerDailyResetData.m_NormalTimes )
-		// 		{
-		// 			playerDailyResetData.m_NormalTimes ++;
-		// 		}
-		// 		else
-		// 		{			
-		for(List<UInt32>::Iter* it = specialReliveTemplate.costs.begin();it != NULL;it = specialReliveTemplate.costs.next(it))
-		{				
-			if (i == eventList->reliveTimes)
-			{
-				cost = it->mValue;
-				break;
-			}
-			i++;
-		}
-		if (i >= specialReliveTemplate.costs.size())
-		{
-			return LynxErrno::ReliveTimesUsedUp;
-		}
-
-		if (player->getPlayerGold() >= cost)
-		{
-			eventList->reliveTimes ++;
-
-			goods.resourcestype =AWARD_BASE;
-			goods.subtype = AWARD_BASE_GOLD;
-			goods.num = 0 - cost;
-			itemList.insertTail(goods);
-			GiftManager::getSingleton().addToPlayer(player->getPlayerGuid(),REFLASH_AWARD,itemList);
-			eventList->goods.insertTail(goods);
-		}
-		else
-		{
-			return LynxErrno::RmbNotEnough;				
-		}
+		LOG_WARN("player not found!!");
+		return LynxErrno::NotFound;
 	}
-	// 	}
+	changSP(player->getPlayerGuid(),0);
+	EventList *eventList = mTowerEvents.findRealValue(playerID);
+
+	GlobalValue globalValue = GlobalValueManager::getSingleton().getGlobalValue();
+
+	for(List<UInt32>::Iter* it = globalValue.uSRLcosts.begin();it != NULL;it = globalValue.uSRLcosts.next(it))
+	{				
+		if (i == eventList->reliveTimes)
+		{
+			cost = it->mValue;
+			break;
+		}
+		i++;
+	}
+	if (i >= globalValue.uSRLcosts.size())
+	{
+		return LynxErrno::ReliveTimesUsedUp;
+	}
+
+	if (player->getPlayerGold() >= cost)
+	{
+		eventList->reliveTimes ++;
+
+		goods.resourcestype =AWARD_BASE;
+		goods.subtype = AWARD_BASE_GOLD;
+		goods.num = 0 - cost;
+		itemList.insertTail(goods);
+		GiftManager::getSingleton().addToPlayer(player->getPlayerGuid(),REFLASH_AWARD,itemList,MiniLog109);
+// 		eventList->itemList.insertTail(goods);
+	}
+	else
+	{
+		return LynxErrno::RmbNotEnough;				
+	}
+
 
 
 	towerData = player->getPlayerTowerData();
 	eventList->towerData.m_HP = towerData.m_HP;
-	player->getPersistManager().setDirtyBit(BASEDATABIT);	
+
+	towerTemplate = gTowersTable->get(eventList->towerData.m_HighID);
+	if (towerTemplate == NULL)
+	{
+		return LynxErrno::NotFound;
+	}
+	towerTypeTemplate = gTowerTypeTable->get(towerTemplate->chapterId);
+	if (towerTypeTemplate == NULL)
+	{
+		LOG_WARN("towerTypeTemplate not found!!");
+		return LynxErrno::NotFound;
+	}
+	int val = 0;
+	double tmpValue = 0;
+	tmpValue = (double)towerTypeTemplate->strengthrecover/10000;
+	tmpValue =(double)towerData.m_SP *tmpValue;
+	val = (int)tmpValue;
+
+	changSP(player->getPlayerGuid(),val);
+
 	return LynxErrno::None;
 }
 
@@ -2102,8 +2351,22 @@ void ClimbTowerManager::onTowerReliveReq(const  ConnId& connId,TowerReliveReq & 
 	TowerReliveResp resp;
 
 	Player *player = LogicSystem::getSingleton().getPlayerByConnId(connId);	
-	EventList *eventList = mTowerEvents.findRealValue(player->getPlayerGuid());
+	if (player == NULL)
+	{
+		LOG_WARN("player not found!!");
+		return;
+	}
+	
 	resp.result = ClimbTowerManager::getSingleton().checkCanRelive(player->getPlayerGuid());
+	EventList *eventList = mTowerEvents.findRealValue(player->getPlayerGuid());//要放在checkCanRelive后面
+	if (eventList == NULL)
+	{
+		LOG_WARN("eventList not found!!");
+		resp.result = LynxErrno::ClienServerDataNotMatch;
+		std::string sendStr = resp.convertDataToJson();
+		NetworkSystem::getSingleton().sender( connId,TOWER_RELIVE_RESP,sendStr);
+		return;
+	}
 
 	if (resp.result != LynxErrno::None)
 	{
@@ -2112,10 +2375,10 @@ void ClimbTowerManager::onTowerReliveReq(const  ConnId& connId,TowerReliveReq & 
 		return;
 	}
 	resp.reliveTimes = eventList->reliveTimes;
-	resp.buyTimes = eventList->reliveTimes;//todo 一天递增
+	resp.buyTimes = eventList->reliveTimes;//
 	resp.gold = player->getPlayerGold();
 	resp.Hp = eventList->towerData.m_HP;
-	resp.Sp = eventList->towerData.m_SP;
+	resp.Sp = eventList->towerData.m_SP;//已结更新过sp了
 
 	jsonStr = resp.convertDataToJson();
 	NetworkSystem::getSingleton().sender( connId,TOWER_RELIVE_RESP,jsonStr);
@@ -2123,15 +2386,10 @@ void ClimbTowerManager::onTowerReliveReq(const  ConnId& connId,TowerReliveReq & 
 	UInt32 getIt =0;
 	UInt32 eventType = 0;
 	TowerEvent towerEvent;
-	UInt32 road = 1;
-	eventList->roadType --;
-	if (eventList->roadType <= 1)
+	UInt32 road = DefaultRoad;
+	if ((eventList->towerData.m_HighID - eventList->roadType) < 4 )
 	{
-		eventList->roadType = 1;
-	}
-	else
-	{
-		road = 2;
+		road = CrossRoad;
 	}
 
 	for (List<TowerEvent>::Iter * iter = eventList->events.begin(); iter!=NULL;iter = eventList->events.next(iter))
@@ -2147,6 +2405,7 @@ void ClimbTowerManager::onTowerReliveReq(const  ConnId& connId,TowerReliveReq & 
 
 	if (getIt == 0)
 	{
+		LOG_ERROR("onInTowerChoiseResp towerEventTemplate not found m_HighID = %d road = %d",eventList->towerData.m_HighID,road);
 		return;
 	}
 
@@ -2169,15 +2428,31 @@ void ClimbTowerManager::onTowerMopUpReq(const  ConnId& connId,TowerMopUpReq & ms
 {
 
 	UInt32 awardID = 0;
+	Goods goods;
 	List<Goods> itemList;
+	List<Goods> tmpItemList;
 	TowerMopUpResp resp;
+
+
 	msg.convertJsonToData(msg.strReceive);
 	UInt32 stageID = msg.type*1000 + 1;
 	TowerTemplate*towerTemplate = gTowersTable->get(stageID);
 	if (towerTemplate == NULL)
 	{
+		resp.result = LynxErrno::ClienServerDataNotMatch;
+		std::string sendStr = resp.convertDataToJson();
+		NetworkSystem::getSingleton().sender( connId,TOWER_MOPUP_RESP,sendStr);
 		return;
 	}
+	TowerTypeTemplate *towerTypeTemplate = gTowerTypeTable->get(towerTemplate->chapterId);
+	if (towerTypeTemplate == NULL)
+	{
+		resp.result = LynxErrno::ClienServerDataNotMatch;
+		std::string sendStr = resp.convertDataToJson();
+		NetworkSystem::getSingleton().sender( connId,TOWER_MOPUP_RESP,sendStr);
+		return;
+	}
+
 	UInt32 maxhigh =  ClimbTowerManager::getSingleton().getTowerHighest(stageID); 
 
 	Player *player = LogicSystem::getSingleton().getPlayerByConnId(connId);
@@ -2185,12 +2460,19 @@ void ClimbTowerManager::onTowerMopUpReq(const  ConnId& connId,TowerMopUpReq & ms
 	{
 		return;
 	}
+
+	player->ResetFireConfirmData();	
+
 	//条件判断
 	PlayerTowerData towerData = player->getPlayerTowerData();
 	UInt32 chapterID = towerData.m_HighID;
 	if (maxhigh > towerData.m_HighID)
 	{
 		resp.result = LynxErrno::NotOpen;
+	}
+	if (player->getPlayerGold() < towerTypeTemplate->mopupcost)
+	{
+		resp.result = LynxErrno::RmbNotEnough;
 	}
 
 
@@ -2209,7 +2491,12 @@ void ClimbTowerManager::onTowerMopUpReq(const  ConnId& connId,TowerMopUpReq & ms
 
 		awardID = ClimbTowerManager::getSingleton().getMopUpAwardID(msg.type);
 
-		GiftManager::getSingleton().getContentByID(awardID,itemList);
+		GiftManager::getSingleton().getAwardByID(awardID,0,tmpItemList);
+
+		for(List<Goods>::Iter *it = tmpItemList.begin();it!= NULL;it = tmpItemList.next(it))
+		{
+			GiftManager::getSingleton().getContentByID(it->mValue.subtype,itemList);
+		}	
 
 		GiftManager::getSingleton().combineSame(itemList);
 
@@ -2217,9 +2504,15 @@ void ClimbTowerManager::onTowerMopUpReq(const  ConnId& connId,TowerMopUpReq & ms
 		award.award = itemList;
 		resp.awards.insertTail(award);
 
-		GiftManager::getSingleton().addToPlayer(player->getPlayerGuid(),REFLASH_AWARD,itemList);
+		goods.resourcestype = AWARD_BASE;
+		goods.subtype = AWARD_BASE_GOLD;
+		goods.num = 0 - towerTypeTemplate->mopupcost;
+		itemList.insertTail(goods);
 
-		GiftManager::getSingleton().PlayerItemChangeResult(player->getPlayerGuid(),0,itemList);
+
+		Json::Value stages;
+		GiftManager::getSingleton().saveEndsAttr(player->getPlayerGuid(),itemList,resp.allAttr,stages,MiniLog107);
+
 
 		resp.ends = itemList;
 
@@ -2244,7 +2537,7 @@ UInt32 ClimbTowerManager::getMopUpAwardID(UInt32 type)
 	}
 
 
-	UInt32 allRate =  towerTypeTemplate->mopupawardrate1 + towerTypeTemplate->rouletteid2 + towerTypeTemplate->rouletteid3 + towerTypeTemplate->rouletteid4;
+	UInt32 allRate =  towerTypeTemplate->mopupawardrate1 + towerTypeTemplate->mopupawardrate2 + towerTypeTemplate->mopupawardrate3 + towerTypeTemplate->mopupawardrate4;
 
 	if (allRate == 0)
 	{
@@ -2256,11 +2549,11 @@ UInt32 ClimbTowerManager::getMopUpAwardID(UInt32 type)
 	{
 		return towerTypeTemplate->mopupaward1;
 	}
-	else if (randNum < towerTypeTemplate->mopupawardrate1+ towerTypeTemplate->rouletteid2)
+	else if (randNum < towerTypeTemplate->mopupawardrate1+ towerTypeTemplate->mopupawardrate2)
 	{
 		return towerTypeTemplate->mopupaward2;
 	}
-	else if (randNum < towerTypeTemplate->mopupawardrate1+ towerTypeTemplate->rouletteid2 + towerTypeTemplate->rouletteid3)
+	else if (randNum < towerTypeTemplate->mopupawardrate1+ towerTypeTemplate->mopupawardrate2 + towerTypeTemplate->mopupawardrate3 )
 	{
 		return towerTypeTemplate->mopupaward3;
 	}
@@ -2292,17 +2585,8 @@ void ClimbTowerManager::updateClimTower(UInt32 isShutDown)
 		{
 			continue;
 		}
-		if ((nowTime - iter->mValue.startTime) > towerTypeTemplate->strength*2 ||isShutDown == 1)
+		if (/*(nowTime - iter->mValue.startTime) > towerTypeTemplate->strength*2 ||*/isShutDown == 1)//有不减体力buff所以不能有这个
 		{
-
-// 			Player *player = LogicSystem::getSingleton().getPlayerByGuid(iter->mKey);
-// 			if (player == NULL)
-// 			{
-// 				continue;
-// 			}
-// 
-// 			ClimbTowerManager::getSingleton().towerEnd(player,2);
-
 			Map<Guid,EventList> towerEvents = mTowerEvents;
 
 			for (Map<Guid,EventList>::Iter *iter1 = towerEvents.begin();iter1!=NULL;iter1 = towerEvents.next(iter1))
@@ -2326,7 +2610,7 @@ void ClimbTowerManager::updateClimTower(UInt32 isShutDown)
 						continue;
 					}
 
-					ClimbTowerManager::getSingleton().towerEnd(player,2);
+					ClimbTowerManager::getSingleton().towerEnd(player,1000);
 				}
 			}
 			break;
@@ -2335,40 +2619,246 @@ void ClimbTowerManager::updateClimTower(UInt32 isShutDown)
 	return;
 }
 
-UInt32 ClimbTowerManager::changeScore(Guid playerID,int num)
+//flag = false 减积分如果积分小于0则不减返回错误值
+UInt32 ClimbTowerManager::changeScore(Guid playerID,int num,bool bFlag)
 {
 	UInt32 nowTime = TimeUtil::getTimeSec();
 	PlayerTowerData towerData;
 
 	Player *player = LogicSystem::getSingleton().getPlayerByGuid(playerID);	
 
+	if (player == NULL)
+	{
+		LOG_WARN("player not found!!");
+		return 1;
+	}
 	EventList *eventList = mTowerEvents.findRealValue(playerID);
 	if (eventList == NULL)
 	{
 		return 1;
 	}
 
-	TowerTemplate*	towerTemplate = gTowersTable->get(eventList->towerData.m_HighID);
-
-	if (towerTemplate == NULL)
-	{
-		return 1;
-	}
-
-	towerData = player->getPlayerTowerData();
-
-
-	UInt32 towerTypeID = towerTemplate->chapterId;
-
-	TowerTypeTemplate *towerTypeTemplate = gTowerTypeTable->get(towerTypeID);
-
-
-	UInt32 addScore = num; 
-	ClimbTowerManager::getSingleton().getBuffValue(player->getPlayerGuid(),TOWER_ADD_SCORE,addScore);
-	eventList->towerData.m_Score += addScore;  
+	int val = num;//有可能num传入的是UInt
+	int score = eventList->towerData.m_Score;
+	ClimbTowerManager::getSingleton().getBuffValue(player->getPlayerGuid(),TOWER_ADD_SCORE,val);
+	score += val;  
 
 	
+	if (bFlag == false)//减积分如果积分小于0则不减返回错误值,购买花积分
+	{
+		if (score < 0)
+		{
+			return LynxErrno::scoreNotEnough;
+		}			
+	}
+
+
+	if (score < 0)//积分不能减成负数，最小为0.
+	{
+		eventList->towerData.m_Score = 0;
+	}
+	else
+	{
+		eventList->towerData.m_Score = score;
+	}
 	return LynxErrno::None;
+}
+
+
+void ClimbTowerManager::getAwardRoulettes(UInt32 itemID,UInt32 times,List<Goods> &itemList,List<Goods> &itemShowList)
+{
+	Goods goods;
+	List<Goods> tmpList;	
+
+	getAwardRouletteByID(itemID,0,tmpList);
+
+	for (List<Goods>::Iter *iter = tmpList.begin();iter!=NULL;iter = tmpList.next(iter))
+	{//应该是只能roll出来一个
+		goods = iter->mValue;
+		break;
+	}
+
+	getRouletteContentByID(goods.subtype,times,itemList,itemShowList);
+	if (times != itemList.size())
+	{
+		LOG_WARN("getAwardRoulettes itemList num error");
+	}
+
+	if (itemShowList.size() != 8)
+	{
+		LOG_WARN("getAwardRoulettes itemShowList num error");
+	}
 
 }
 
+
+
+void ClimbTowerManager::getAwardRouletteByID(UInt32 itemID,UInt32 num,List<Goods> &ItemList)
+{
+	UInt32 allWeight1 = 0;
+	UInt32 weight1 = 0;
+	UInt32 weight2 = 0;		
+	UInt32 randomNum;
+	UInt32 finished = 0;
+	UInt32 count =0;
+	List<AwardItem> AwardItems;
+
+	for (List<AwardTemplate>::Iter *iter = ROULETTE_TABLE().mList.begin();iter!= NULL;iter = ROULETTE_TABLE().mList.next(iter))
+	{
+		if (iter->mValue.id == itemID)
+		{
+			AwardItems = iter->mValue.AwardItems;
+			break;			
+		}
+	}
+
+	for(List<AwardItem>::Iter *it = AwardItems.begin();it!=NULL;it = AwardItems.next(it))
+	{
+		if (it->mValue.bigtype == 1)
+		{
+			allWeight1 += it->mValue.weight;
+		}
+
+	}
+	if(allWeight1 != 0)
+	{		
+		randomNum = rand()% allWeight1;
+	}
+
+	for(List<AwardItem>::Iter *it = AwardItems.begin();it!=NULL;it = AwardItems.next(it))
+	{
+		count++;
+		Goods goods;
+		if (it->mValue.bigtype == 1 && finished ==0)
+		{
+			weight1 += it->mValue.weight;
+			if (randomNum < weight1)
+			{
+				goods.subtype = it->mValue.awardcontent;
+				goods.resourcestype = 2;
+				goods.num = 1;
+				ItemList.insertTail(goods);
+				finished =1;
+			}
+		}
+		if (it->mValue.bigtype == 2)
+		{
+
+			weight2 = it->mValue.weight;
+			if (rand()% 10000 < weight2)
+			{
+				goods.subtype = it->mValue.awardcontent;
+				goods.resourcestype = 2;
+				goods.num = 1;
+				ItemList.insertTail(goods);
+			}
+		}
+		if (it->mValue.bigtype == 3)
+		{
+			goods.subtype = it->mValue.awardcontent;
+			goods.resourcestype = 2;
+			goods.num = 1;
+			ItemList.insertTail(goods);
+		}
+
+		if (it->mValue.bigtype == 4)
+		{
+			if (count <= num)
+			{
+				goods.subtype = it->mValue.awardcontent;
+				goods.resourcestype = 2;
+				goods.num = 1;
+				ItemList.insertTail(goods);
+			}
+		}
+	}
+}
+
+
+
+
+void ClimbTowerManager::getRouletteContentByID(UInt32 itemID,UInt32 times,List<Goods> &itemList,List<Goods> &itemShowList)
+{
+	
+	UInt32 allWeight1 = 0;
+	UInt32 weight1 = 0;
+	UInt32 weight2 = 0;
+	UInt32 randomNum =0;
+	UInt32 finished = 0;
+	Goods goods;
+	List<Content> contentList;
+
+
+	for (List<AwardContentTemplate>::Iter *iter = ROULETTECONTENT_TABLE().mContentList.begin();iter!= NULL;iter = ROULETTECONTENT_TABLE().mContentList.next(iter))
+	{
+		if (iter->mValue.id == itemID)
+		{
+			contentList = iter->mValue.ContentList;
+			break;			
+		}
+	}
+
+	for(List<Content>::Iter *it = contentList.begin();it!=NULL;it = contentList.next(it))
+	{
+		if (it->mValue.contenttype == 1)
+		{
+			allWeight1 += it->mValue.weight;
+		}
+		goods.resourcestype = it->mValue.resourcestype;
+		goods.subtype = it->mValue.subtype;
+		goods.num = it->mValue.num;
+		itemShowList.insertTail(goods);
+	}
+
+	for (UInt32 i = 0;i<times;i++)
+	{
+		finished = 0;
+		if (allWeight1 != 0)
+		{
+			randomNum = rand()% allWeight1;
+		}
+		
+		for(List<Content>::Iter *it = contentList.begin();it!=NULL;it = contentList.next(it))
+		{		
+			if (it->mValue.contenttype == 1)
+			{
+				weight1 += it->mValue.weight;
+				if (allWeight1 == 0)
+				{
+					break;
+				}
+				if (randomNum < weight1 && finished == 0)
+				{
+					goods.subtype = it->mValue.subtype;
+					goods.resourcestype = it->mValue.resourcestype;				
+					goods.num = it->mValue.num;
+					itemList.insertTail(goods);
+					finished = 1;
+				}
+			}
+			if (it->mValue.contenttype == 2)
+			{
+
+
+				weight2 = it->mValue.weight;
+				if ((rand()%10000) < weight2)
+				{
+					goods.subtype = it->mValue.subtype;
+					goods.resourcestype = it->mValue.resourcestype;		
+					goods.num = it->mValue.num;
+					itemList.insertTail(goods);
+				}
+			}
+			if (it->mValue.contenttype == 3)
+			{
+				goods.subtype = it->mValue.subtype;
+				goods.resourcestype = it->mValue.resourcestype;		
+				goods.num = it->mValue.num;
+				itemList.insertTail(goods);
+
+			}
+		}
+	}
+
+	
+}

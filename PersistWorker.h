@@ -26,6 +26,7 @@ namespace Lynx
 		UInt32 value;
 		UInt32 gotIt;
 	};
+
 	class PersistWorker : public ThreadWorker,public Singleton<PersistWorker>
 	{
 	public:
@@ -38,6 +39,8 @@ namespace Lynx
 		UInt16 loadStageRangking();
 
 		UInt16 loadServerData();
+		
+		UInt16 loadServerDailyData();		
 
 		UInt16 loadResetStages();
 
@@ -133,6 +136,13 @@ namespace Lynx
 
 		bool updateBuyEnergy(const UInt64 &playerUid,  const DailyTaskData& dailydata);
 
+		bool updateFoodCook(const UInt64 &playerUid,  const DailyTaskData& dailydata);
+
+		bool updateConsortSign(const UInt64 &playerUid,  const DailyTaskData& dailydata);
+
+
+		//////////////////////////////////////////////////////////以下为成就
+
 		bool updateAssistUnlockDb(const UInt64 &playerUid,  const AchieveData& achdata);
 
 		bool updateOwnGreenAssisDb(const UInt64 &playerUid,  const AchieveData& achdata);
@@ -184,6 +194,20 @@ namespace Lynx
 
 		void onPersistUpdateActiveTimeDb(PersistDailyLastTimeUpdateMsg &msg);
 
+		//更新新手引导步骤
+		void onPersistUpdateNewGuid(PersistGuidStepUpdateMsg & msg);
+
+		//存储新手引导发放物品标记
+		void onPersistUpdateGuidFlag(PersistGuidFlagUpdateMsg & msg);
+
+		//更新禁止登录时间
+		void onPersistUpdateForbidLoginTime(PersistForbidLoginTimeUpdate & msg);
+
+
+		//更新禁言
+		void onPersistUpdateForbidChat(PersistForbidChatUpdate & msg);
+
+
 		//创建玩家请求
         void onPersistCreatePlayerReq(PersistCreatePlayerReq& msg);
 
@@ -215,7 +239,57 @@ namespace Lynx
 
 		void onPersistServantTreasureUpdateReq(PersistUpdateServantTreasureNotify & msg);
 
+		//GM重置系列操作
+		void onPersistGMResetTongbaoReq(PersistGMResetTongbao & msg);
+
+		void onPersistGMResetMengchuReq(PersistGMResetMengchu & msg);
+
+		void onPersistGMResetYushiGFReq(PersistGMResetYushiGF & msg);
+
+		void onPersistGMResetJishiABReq(PersistGMResetJiShiAB & msg);
+
+        void onPersistGMResetBashanSLReq(PersistGMResetBashanSL & msg);		
 		
+			 void onPersistGMResetWuxianTZReq(PersistGMResetWXTZ & msg);	
+			 
+			 void onPersistGMResetCourage(PersistGMCourage & msg);
+
+			 void onPersistGMResetPaiWei(PersistGMPaiWei& msg);
+
+			 void onPersistGMResetPaiWeiBuy(PersistGMPaiWeiBuy& msg);
+
+			 void onPersistGMReset12HaoJiao(PersistGM12HaoJiao & msg);
+
+			 void onPersistGMResetFoodCook(PersistGMCookFood & msg);
+
+			  void onPersistGMResetServantCall1(PersistGMServantOnce & msg);
+
+			    void onPersistGMResetServantCall10(PersistGMServantTen & msg);
+			  
+			  void onPersistGMResetDailyTask(PersistGMResetDailyTask & msg);
+
+			  void onPersistGMMonthSign(PersistGMResetMonthSign & msg );
+
+			  void onPersistGMSevenDay(PersistGMResetSevenday & msg );
+			  
+			  
+				  void onPersistGMSevenTrain(PersistGMResetSeventrain & msg );
+
+				  void onPersistGMResetGrowFound(PersistGMResetGrowfound & msg);
+
+				  void onPersistGMResetFenshi(PersistGMResetFenshi &msg);
+
+				 void onPersistGMResetOnlineAward(PersistGMResetOnlineAward &msg);
+
+				  void onPersistGMResetBaiCaiShen(PersistGMResetBaiCaiShen &msg);
+
+				 void onPersistGMResetStrengthBuy(PersistGMResetBuyStrength & msg);
+
+				  void onPersistGMResetLianPu(PersistGMResetLianPu & msg);
+
+				    void onPersistGMResetTB(PersistGMResetTB & msg);
+
+					
 
 		void initHeroEquipLock(Vector<HeroEquipData> &heroEquipVec, UInt64 modelId);
 
@@ -246,6 +320,10 @@ namespace Lynx
 		bool dealServantBattleSaveDb(UInt64 playerUid);
 
 		bool dealChatSaveDb(UInt64 playerUid);
+
+		bool dealRankGameSaveDb(UInt64 playerUid);
+
+		bool dealBuyCoinSaveDb(UInt64 playerUid);
 
 		void insertItemToDb(List<ItemData>::Iter* iter, bool &exeFailed,UInt64 playerUid);
 
@@ -327,6 +405,8 @@ namespace Lynx
 
 		UInt16 loadDailyActiveData(PlayerData& playerData, UInt64 playerUid);
 
+		UInt16 loadConsortData(PlayerData& playerData, UInt64 playerUid);
+
 		//加载计数器
 		UInt16 loadCounter(PlayerData& playerData,UInt64 playerUid);
 
@@ -338,6 +418,8 @@ namespace Lynx
 
 		//回馈计数器
 		UInt16 loadFoods(PlayerData& playerData,UInt64 playerGuid);
+
+		UInt16 loadFriendBeApplyData(PlayerData& playerData,UInt64 playerGuid);
 
 		UInt16 loadLottery(PlayerData& playerData,UInt64 playerGuid);
 
@@ -388,6 +470,18 @@ namespace Lynx
 
 		UInt16 loadPersonalRangking(PlayerData &playerData,UInt64 playerUid);
 
+		UInt16 getRankGameData(PlayerRankGameData &rankGame,UInt64 playerUid);
+
+		UInt16 loadRankGameData(PlayerData &playerData,UInt64 playerUid);
+
+		UInt16 loadOnlineDayData(PlayerData &playerData,UInt64 playerUid);
+
+
+		UInt16 loadBuyCoinData(PlayerData &playerData,UInt64 playerUid);
+		
+
+		UInt16 loadRankGameReport(PlayerData &playerData,UInt64 playerUid);
+
 		UInt16 loadTowerData(PlayerData &playerData,UInt64 playerUid);
 
 		UInt16 loadInlineActivityList(PlayerData &playerData,UInt64 playerUid);
@@ -410,6 +504,8 @@ namespace Lynx
 
 		void onPersistServerDataReq( PersistServerDataReq &msg);
 
+		void onPersistServerDailyDataReq( PersistServerDailyDataReq &msg);
+
 		void onPersistRobotDataReq( PersistRobotDataReq &msg);
 
 		void onPersistInlineActivityPower( PersistInlineActivityReq &msg);
@@ -422,11 +518,111 @@ namespace Lynx
 
 		void onPersistLeaveTime(PersistUpdateLeaveTime &msg);
 
+		void onPersistAllLeaveTime(PersistResetAllLeaveTime &msg);
+
+		void onRankGameScoreSave(PersistRankGameScoreSave &msg);
+
+		void onPersistUpdateFriendBeApplyOffLineDataToDb(PersistUpdateFriendBeApplyOffLineDataToDb &msg);
+
+
+		void onRankGameReportSave(PersistRankGameReportSave &msg);
+
+
+		void onPersistOnlineDaySave(PersistOnlineDaySave & msg);
+
+		void onPersistBaseDateSave(PersistBaseDateSave & msg);
+		
+
+
 		void onPersistFriendUpdate(PersistUpdateFriendNotify & msg);
 
 		void onLoadPlayerOnlineByLv(PerisistUpdateOnlineLvRank & msg);
 
 		void onLoadPlayerPowerRank(PersistGetPowerRank & msg);
+
+		void onLoadPlayerScoreRank( PersistGetScoreRank & msg);
+
+
+		void onLoadPlayerConsortInfo(PersistPlayerConsortUpdate &msg);
+
+		void onSavePlayerConsort(PersistPlayerConsortSave &msg);
+
+		void onSaveConsort(PersistConsortSave & msg);
+
+		void onCreateConsort(PersistConsortCreate & msg);
+
+		void onConsortApplyInsert(PersistConsortApplyInsert & msg);
+
+		void onConsortApplyDel(PersistConsortApplyDel & msg);
+
+		void onConsortApplyClear(PersistConsortApplyClear & msg);
+
+		void onConsortApplyAllClear(PersistConsortApplyAllClear & msg);
+
+		void onConsortDel(PersistConsortDel & msg);
+
+		void onConsortLogInsert(PersistConsortLogInsert & msg);
+
+		void onConsortSignReset(PersistConsortSignReset & msg);
+
+		void onConsortSignUpdate(PersistConsortSignUpdate & msg);
+
+		void onConsortActiveUpdate(PersistConsortActiveUpdate & msg);
+
+		void onConsortLoyalUpdate(PersistConsortLoyalUpdate & msg);
+		
+		void onKitQueTimesUpdate(PersistConsortKitQueUpdate & msg);
+
+		void onBusinessTimeReset(PersistBusinessCatTimeReset & msg);
+
+		void onEyeTimesUpdate(PersistEyeTimesUpdate & msg);
+
+		void onTicketTimeReset(PersistTicketTimeReset & msg);
+
+		void onTicketFriendUpdate(PersistTicketFriendUpdate & msg);
+
+		void onTicketQualityUpdate(PersistTicketQualityUpdate & msg);
+
+		void onTicketFriendInit(PersistTicketFriendInit & msg);
+
+		void onTicketAllDel(PersistTicketAllDel & msg);
+
+		void onTicketDataUpdate(PersistTicketDataUpdate & msg);
+
+void onTicketSupportUpdate(PersistTicketSupport & msg);
+
+
+void onTicketAwardAdd(PersistTicketAwardAdd & msg);
+
+void onTicketTimesUpdate(PersistTicketTimesUpdate & msg);
+
+void onTicketAwardDel(PersistTicketAwardDel & msg);
+
+void onTicketTimesReset(PersistTicketTimesReset & msg);
+
+void onLoyalTimesReset(PersistLoyalTimesReset & msg);
+
+void onKitchenTimesReset(PersistKitchenTimesReset & msg);
+	
+void onEyeTimesReset(PersistEyeTimesReset & msg);
+
+void onEloquenceUpdate(PersistEloquenceTimesUpdate & msg);
+
+void onEloquenceReset(PersistEloquenceTimesReset & msg);
+
+void onWoodTimesReset(PersistWoodTimesReset & msg);
+
+void onWoodTotalUpdate(PersistWoodTotalUpdate & msg);
+
+void onWoodTotalReset(PersistWoodTotalReset & msg);
+
+void onWoodSelfUpdate(PersistWoodSelfUpdate & msg);
+
+
+		
+void onTicketAwardUpdate(PersistTicketAwardUpdate & msg);
+
+		void onBusinessTimesUpdate(PersistBusinessCatUpdate & msg);
 
 		void updateAchOfflineFriendCnt(OffLineFriendUpdateMsg& msg);
 
@@ -441,6 +637,8 @@ namespace Lynx
 		bool updateStageDataToDb(UInt64 playerUid);
 
 		bool updateFoodDataToDb(UInt64 playerUid);
+
+		bool updateFriendBeApplyDataToDb(UInt64 playerUid);
 
 		bool updateLotteryDataToDb(UInt64 playerUid);
 

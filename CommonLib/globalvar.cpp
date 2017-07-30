@@ -994,6 +994,11 @@ UInt32 GlobalVarManager::initterritorylucky()
 			iii++;
 			territoryLuckyTemplate.buytimess.insertTail(lynxAtoi<UInt32>(it->mValue.sValue.c_str()));
 		}
+		if (it->mValue.sKey == "rmbrefresh")
+		{
+			territoryLuckyTemplate.rmbrefresh = lynxAtoi<UInt32>(it->mValue.sValue.c_str());
+		}
+
 
 	}
 	return 1;

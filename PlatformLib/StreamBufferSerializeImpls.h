@@ -574,9 +574,13 @@ namespace Lynx
                 //长度对255取余数，如果余数为零，那么将长度（用于异或字符）设置为1
 				Int32 strLenth = obj.size();
 				
-				if(strLenth >= 255)
+				if(strLenth > 255)
 				{
 					strLenth = SERVER_CLIENT_XOR_CODE;
+				}
+				else if(strLenth == 255)
+				{
+					strLenth = 1;
 				}
 
 				for (Int32 i = 0; i < (Int32)obj.size(); i++)
@@ -621,11 +625,15 @@ namespace Lynx
 				//长度对255取余数，如果余数为零，那么将长度（用于异或字符）设置为1
 				Int32 strLenth = size;
 				
-				if(strLenth >= 255)
+				if(strLenth > 255)
 				{
 					strLenth = SERVER_CLIENT_XOR_CODE;
 				}
-	
+				else if(strLenth == 255)
+				{
+					strLenth = 1;
+				}
+
 				ElemType c;
                 for (UInt32 i = 0; i < size; i++)
                 {

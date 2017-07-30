@@ -9,6 +9,7 @@ namespace Lynx
 	{
 		static void onSkillLevelUpReq(const ConnId&, CGSkillLevelUpReq&);
 		static void onSkillPositionSetReq(const ConnId&, CGSkillEquipSetReq&);
+		static void onSkillLvUpOnceReq(const ConnId&, CGSkillLvUpOnceReq&);
 	};
 } // namespace Lynx
 

@@ -75,7 +75,7 @@ void LoggerSystem::writeLog(String fileName,Guid playerID,string playerName,stri
 
 	sprintf(buf, "%4i:%2.2i:%2.2i %2.2i:%2.2i:%2.2i playerID:%llu,playerName:%s, %s \n", 
 		tim.tm_year + 1900, tim.tm_mon + 1, tim.tm_mday, tim.tm_hour,
-		tim.tm_min, tim.tm_sec,playerID, playerName.c_str(),str);
+		tim.tm_min, tim.tm_sec,playerID, playerName.c_str(),str.c_str());
 
 	writeFile(fileName,buf);
 }
@@ -90,7 +90,7 @@ void LoggerSystem::stringNameLog(string fileName,Guid playerID,string playerName
 
 	sprintf(buf, "%4i:%2.2i:%2.2i %2.2i:%2.2i:%2.2i playerID:%llu,playerName:%s, %s \n", 
 		tim.tm_year + 1900, tim.tm_mon + 1, tim.tm_mday, tim.tm_hour,
-		tim.tm_min, tim.tm_sec,playerID, playerName.c_str(),str);
+		tim.tm_min, tim.tm_sec,playerID, playerName.c_str(),str.c_str());
 	sprintf(dest,"%s",fileName.c_str());
 
 

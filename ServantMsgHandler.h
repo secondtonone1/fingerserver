@@ -19,6 +19,8 @@ namespace Lynx
 		static void onServantBattleSet(const ConnId& connId, CGServantBattleSetReq & msg);
 		static void onAssistBattleOneset(const ConnId& connId,   CGAssistBattleOnSetReq & msg);
 		static void onServantSwitch(const ConnId & connId, CGServantSwitchReq & msg);
+		static void onServantEquipOnce(const ConnId & connId, CGServantEquipOnceReq & msg);
+		static void onServantInfoLock(const ConnId & connId, CGServantInfoLockReq & msg);
 		
 	};
 } // namespace Lynx

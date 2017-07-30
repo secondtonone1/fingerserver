@@ -3,7 +3,6 @@
 
 
 #include "MainThread.h"
-#include "FireConfirm/InlineActivity.h"
 
 
 namespace Lynx
@@ -88,15 +87,30 @@ namespace Lynx
 
 		bool dealAchMingLingCall(UInt64 eventType, UInt64 achId, AchieveData * pAchData);
 
-		void getContant(const List<AllItemEle> &contantList);
+		bool dealAchRhymeSkillUse(UInt64 eventType, UInt64 achId, AchieveData * pAchData);
 
-		void sendResp2Client(UInt64 oldAchId, UInt64 newAchId,  UInt64 event, UInt32 arg, UInt32 flag,
+		bool dealAchRhymeSpeed(UInt64 eventType, UInt64 achId, AchieveData * pAchData);
+
+		bool dealAchServantBattleCall(UInt64 eventType, UInt64 achId, AchieveData * pAchData);
+
+
+		void getContant(const List<AllItemEle> &contantList, List<ReturnItemEle> &rtItemList,UInt32 systemID);
+
+		/*void sendResp2Client(UInt64 oldAchId, UInt64 newAchId,  UInt64 event, UInt32 arg, UInt32 flag,
 			const List<AllItemEle> &contantList);
 
 		void sendDlyResp2Client(UInt64 dlyId , UInt64 event, UInt32 arg, UInt32 flag,
-			const List<AllItemEle> &contantList);
+			const List<AllItemEle> &contantList);*/
 
-		void sendDlyActiveResp(UInt32 index, const List<AllItemEle> &contantList);
+		void sendResp2Client(UInt64 oldAchId, UInt64 newAchId,  UInt64 event, UInt32 arg, UInt32 flag,
+			const List<ReturnItemEle> &contantList);
+
+		void sendDlyResp2Client(UInt64 dlyId , UInt64 event, UInt32 arg, UInt32 flag,
+			const List<ReturnItemEle> &contantList);
+
+		//void sendDlyActiveResp(UInt32 index, const List<AllItemEle> &contantList);
+
+		void sendDlyActiveResp(UInt32 index, const List<ReturnItemEle> &contantList);
 
 	private:
 		List<AchieveData>  * m_pAchieveList;

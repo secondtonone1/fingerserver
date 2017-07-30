@@ -63,16 +63,30 @@ namespace Lynx
 	};
 
 
+
+	struct SevenDayTrainningTemplate 
+	{
+		UInt32 id;
+		UInt32 link;
+		UInt32 needevent;
+		UInt32 needarg;
+		String award;
+
+		LYNX_S11N_5(SevenDayTrainningTemplate, UInt32,id,UInt32, link,UInt32, needevent,UInt32, needarg,String, award)
+	};
+
+	typedef Map<UInt32, SevenDayTrainningTemplate> SevenDayTrainningTempMap;
+
 	struct SevenDayTrainningTable
 	{
-		DailyTaskTempMap mMap;
+		SevenDayTrainningTempMap mMap;
 
 
-		LYNX_S11N_1(SevenDayTrainningTable, DailyTaskTempMap, mMap);
+		LYNX_S11N_1(SevenDayTrainningTable, SevenDayTrainningTempMap, mMap);
 
-		DailyTaskTemplate* get(UInt64 id)
+		SevenDayTrainningTemplate* get(UInt32 id)
 		{
-			DailyTaskTempMap::Iter* iter = mMap.find(id);
+			SevenDayTrainningTempMap::Iter* iter = mMap.find(id);
 			if (iter == mMap.end())
 			{
 				return NULL;
@@ -80,10 +94,6 @@ namespace Lynx
 			return &iter->mValue;
 		}
 
-		DailyTaskTempMap  * getDailyTaskMap()
-		{
-			return &mMap;
-		}
 
 
 		void clear()

@@ -216,6 +216,10 @@
 				>
 			</File>
 			<File
+				RelativePath="..\..\CommonLib\ConsortData.h"
+				>
+			</File>
+			<File
 				RelativePath="..\..\CommonLib\Data.h"
 				>
 			</File>
@@ -356,11 +360,59 @@
 				>
 			</File>
 			<File
+				RelativePath="..\..\CommonLib\BusinessCatTable.cpp"
+				>
+			</File>
+			<File
+				RelativePath="..\..\CommonLib\BusinessCatTable.h"
+				>
+			</File>
+			<File
+				RelativePath="..\..\CommonLib\CatTaskTable.cpp"
+				>
+			</File>
+			<File
+				RelativePath="..\..\CommonLib\CatTaskTable.h"
+				>
+			</File>
+			<File
 				RelativePath="..\..\CommonLib\ChapterTable.cpp"
 				>
 			</File>
 			<File
 				RelativePath="..\..\CommonLib\ChapterTable.h"
+				>
+			</File>
+			<File
+				RelativePath="..\..\CommonLib\ConsortLvTable.cpp"
+				>
+			</File>
+			<File
+				RelativePath="..\..\CommonLib\ConsortLvTable.h"
+				>
+			</File>
+			<File
+				RelativePath="..\..\CommonLib\ConsortMsgTable.cpp"
+				>
+			</File>
+			<File
+				RelativePath="..\..\CommonLib\ConsortMsgTable.h"
+				>
+			</File>
+			<File
+				RelativePath="..\..\CommonLib\ConsortSignTable.cpp"
+				>
+			</File>
+			<File
+				RelativePath="..\..\CommonLib\ConsortSignTable.h"
+				>
+			</File>
+			<File
+				RelativePath="..\..\CommonLib\ConsortWoodTable.cpp"
+				>
+			</File>
+			<File
+				RelativePath="..\..\CommonLib\ConsortWoodTable.h"
 				>
 			</File>
 			<File
@@ -425,6 +477,14 @@
 			</File>
 			<File
 				RelativePath="..\..\CommonLib\EventTable.h"
+				>
+			</File>
+			<File
+				RelativePath="..\..\CommonLib\Eyequestiongroup.cpp"
+				>
+			</File>
+			<File
+				RelativePath="..\..\CommonLib\Eyequestiongroup.h"
 				>
 			</File>
 			<File
@@ -529,6 +589,14 @@
 			</File>
 			<File
 				RelativePath="..\..\CommonLib\ItemTable.h"
+				>
+			</File>
+			<File
+				RelativePath="..\..\CommonLib\KitchenQuestionTable.cpp"
+				>
+			</File>
+			<File
+				RelativePath="..\..\CommonLib\KitchenQuestionTable.h"
 				>
 			</File>
 			<File
@@ -700,6 +768,14 @@
 				>
 			</File>
 			<File
+				RelativePath="..\..\CommonLib\SkillConvertTable.cpp"
+				>
+			</File>
+			<File
+				RelativePath="..\..\CommonLib\SkillConvertTable.h"
+				>
+			</File>
+			<File
 				RelativePath="..\..\CommonLib\SkillLevelTable.cpp"
 				>
 			</File>
@@ -721,6 +797,14 @@
 			</File>
 			<File
 				RelativePath="..\..\CommonLib\Table.h"
+				>
+			</File>
+			<File
+				RelativePath="..\..\CommonLib\TicketFriendTable.cpp"
+				>
+			</File>
+			<File
+				RelativePath="..\..\CommonLib\TicketFriendTable.h"
 				>
 			</File>
 		</Filter>
@@ -780,6 +864,10 @@
 				>
 			</File>
 			<File
+				RelativePath="..\..\CommonLib\ConsortPacket.h"
+				>
+			</File>
+			<File
 				RelativePath="..\..\CommonLib\DetailInfoPacket.h"
 				>
 			</File>
@@ -833,6 +921,14 @@
 			</File>
 			<File
 				RelativePath="..\..\CommonLib\PlayerPacket.h"
+				>
+			</File>
+			<File
+				RelativePath="..\..\CommonLib\PVPPacket.cpp"
+				>
+			</File>
+			<File
+				RelativePath="..\..\CommonLib\PVPPacket.h"
 				>
 			</File>
 			<File
@@ -941,6 +1037,14 @@
 			>
 		</File>
 		<File
+			RelativePath="..\..\CommonLib\MonsterAward.cpp"
+			>
+		</File>
+		<File
+			RelativePath="..\..\CommonLib\MonsterAward.h"
+			>
+		</File>
+		<File
 			RelativePath="..\..\CommonLib\MysteryShopTable.cpp"
 			>
 		</File>
@@ -954,6 +1058,14 @@
 		</File>
 		<File
 			RelativePath="..\..\CommonLib\PowerValueTable.h"
+			>
+		</File>
+		<File
+			RelativePath="..\..\CommonLib\RankGameTable.cpp"
+			>
+		</File>
+		<File
+			RelativePath="..\..\CommonLib\RankGameTable.h"
 			>
 		</File>
 		<File
@@ -978,6 +1090,14 @@
 		</File>
 		<File
 			RelativePath="..\..\CommonLib\ShopTable.h"
+			>
+		</File>
+		<File
+			RelativePath="..\..\CommonLib\SystemInfoTable.cpp"
+			>
+		</File>
+		<File
+			RelativePath="..\..\CommonLib\SystemInfoTable.h"
 			>
 		</File>
 		<File

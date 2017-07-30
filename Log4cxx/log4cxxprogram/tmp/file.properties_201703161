@@ -1,0 +1,49 @@
+
+## Login log configuration file.
+## DO NOT MODIFY this file directly except you know what you are doing.
+## Edit login-log4cxx.properties.opt instead.
+
+log4j.rootLogger=INFO,login
+
+##
+## Login TechReport log
+##
+log4j.logger.Login.TechReport=INFO, login_techreport
+log4j.additivity.Login.TechReport=false
+
+##
+## Console output appender
+##
+log4j.appender.console=org.apache.log4j.ConsoleAppender
+log4j.appender.console.threshold=WARN
+log4j.appender.console.layout=org.apache.log4j.SimpleLayout
+
+##
+## Daily rolling appender
+##
+log4j.appender.rf=org.apache.log4j.DailyRollingFileAppender
+log4j.appender.rf.file=Log/log'-'yyyy-MM-dd'.log
+log4j.appender.rf.append=true
+log4j.appender.rf.maxFileSize=1KB
+log4j.appender.rf.datePattern='-'yyyy-MM-dd'.log'
+log4j.appender.rf.layout=org.apache.log4j.PatternLayout
+log4j.appender.rf.layout.conversionPattern=[%d] %-5p %c - %m%n
+
+##
+## login_techreport appender
+##
+log4j.appender.login_techreport=org.apache.log4j.DailyRollingFileAppender
+log4j.appender.login_techreport.file=Log/Login_TechReport.log
+log4j.appender.login_techreport.append=true
+log4j.appender.login_techreport.datePattern='-'yyyy-MM-dd'.log'
+log4j.appender.login_techreport.layout=org.apache.log4j.SimpleLayout
+
+
+log4j.appender.login=org.apache.log4j.RollingFileAppender
+log4j.appender.login.file=Log/Login.log
+log4j.appender.login.append=true
+log4j.appender.login.maxFileSize=1MB
+log4j.appender.login.maxBackupIndex=83
+log4j.appender.login.datePattern='-'yyyy-MM-dd'.log'
+log4j.appender.login.layout=org.apache.log4j.PatternLayout
+log4j.appender.login.layout.conversionPattern=[%d] %-5p %c - %m%n

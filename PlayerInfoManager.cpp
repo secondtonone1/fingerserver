@@ -1,5 +1,8 @@
 #include "PlayerInfoManager.h"
 #include "Player.h"
+#include "LogicSystem.h"
+#include "PersistSystem.h"
+
 using namespace Lynx;
 
 PlayerInfoManager::PlayerInfoManager()
@@ -77,6 +80,8 @@ void PlayerInfoManager::DetailInfoInitial(Player* player)
 
 	m_PlayerDetailInfo.m_nDailyMultipleCopyCount =  &player->mPlayerData.mDailyRestData.m_nDailyMultipleCopyCount;
 	m_PlayerDetailInfo.m_nTwelvePalaceUnlockCount =  &player->mPlayerData.mDailyRestData.m_nTwelvePalaceUnlockCount;
+	m_PlayerDetailInfo.m_nTwelvePalaceBuyTimes =  &player->mPlayerData.mDailyRestData.m_nTwelvePalaceBuyTimes;
+	m_PlayerDetailInfo.m_nFishEatTimes =  &player->mPlayerData.mDailyRestData.m_nFishEatTimes;
 
 }
 
@@ -157,6 +162,13 @@ std::string PlayerInfoManager::convertDetailInfoToJson(void)
 
 	detailInfoJson.twelvePalaceUnlockCount = *(m_PlayerDetailInfo.m_nTwelvePalaceUnlockCount);
 
+	detailInfoJson.twelvePalaceBuyTimes = *(m_PlayerDetailInfo.m_nTwelvePalaceBuyTimes);
+
+	detailInfoJson.fishEatTimes =  *(m_PlayerDetailInfo.m_nFishEatTimes);
+
+	detailInfoJson.guidStr = m_pBaseData->m_strGuid;
+
+
 	std::string jsonStr = detailInfoJson.convertDataToJson();
 	
 	return jsonStr;
@@ -178,12 +190,12 @@ UInt64 PlayerInfoManager::getPlayerGold(void)
 	return m_pBaseData->m_nGold;
 }
 
-void  PlayerInfoManager::setPlayerGold(UInt64 gold)
-{
-	m_pBaseData->m_nGold = gold;
-	//设置标志位，方便存盘操作
-	m_pPlayer->getPersistManager().setDirtyBit(BASEDATABIT);
-}
+// void  PlayerInfoManager::setPlayerGold(UInt64 gold)
+// {
+// 	m_pBaseData->m_nGold = gold;
+// 	//设置标志位，方便存盘操作
+// 	m_pPlayer->getPersistManager().setDirtyBit(BASEDATABIT);
+// }
 
 PlayerBaseData* PlayerInfoManager::getPlayerBaseData(void)
 {
@@ -193,8 +205,19 @@ PlayerBaseData* PlayerInfoManager::getPlayerBaseData(void)
 
 std::string PlayerInfoManager::rename(std::string newname)
 {
+	if(! (m_pBaseData->m_strOldName.empty()) )
+	{
+		return "";
+	}
 	m_pBaseData->m_strOldName = m_pBaseData->m_strPlayerName;
 	m_pBaseData->m_strPlayerName = newname;
+	LogicSystem::getSingleton().updateBaseInfo(*m_pBaseData);
+
+	PersistNotifyWorkerSaveDbReq saveDbReq;
+	saveDbReq.mPlayerUid = m_pBaseData->m_nPlayerID;
+	saveDbReq.mDirtyBit = saveDbReq.mDirtyBit |BASEDATABIT;
+	PersistSystem::getSingleton().postThreadMsg(saveDbReq,saveDbReq.mPlayerUid);
+
 	m_pPlayer->getPersistManager().setDirtyBit(BASEDATABIT);
 
 	return m_pBaseData->m_strOldName;

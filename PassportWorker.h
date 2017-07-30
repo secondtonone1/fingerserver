@@ -30,6 +30,8 @@ namespace Lynx
 
 		 void onPassportCodeReq(PassportCodeReq& msg);
 
+		  void onGetServerIDReq(PassportServerIDReq& msg);
+
 	private:
 		ThreadMsgHandler mThreadMsgHandler;
         DBInterface mDBInterface;

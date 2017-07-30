@@ -24,10 +24,12 @@ namespace Lynx
 		String mLuckyStr;
 		List<UInt64> luckyList;
 		UInt32 mServantSwitch;
+		UInt32 mSex;
 
-		LYNX_S11N_15(ServantTemplate, UInt64, mId,UInt64, mMonsterid,UInt32, mQuality, UInt64, mSkillID1,UInt64, mSkillID2,
+		LYNX_S11N_16(ServantTemplate, UInt64, mId,UInt64, mMonsterid,UInt32, mQuality, UInt64, mSkillID1,UInt64, mSkillID2,
 			                         UInt32, mRate,UInt32, mCurStar, UInt32, mCurFloor, UInt32, mMaxStar, UInt32, mMaxFloor, 
-									 UInt32, mPieceType, UInt32, mPieceCount,String, mLuckyStr, List<UInt64>, luckyList,UInt32, mServantSwitch);
+									 UInt32, mPieceType, UInt32, mPieceCount,String, mLuckyStr, List<UInt64>, luckyList,UInt32, mServantSwitch,
+									 UInt32 , mSex);
 
 	};
 

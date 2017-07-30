@@ -14,7 +14,7 @@ namespace Lynx
 			dailyChaiCount(0),dailyMiCount(0),dailyYouCount(0),dailyYanCount(0),
 			twelvepalaceEnterCount(0),twelvepalaceData(""),couragetrialDailyPoint(0),
 			courageData(""),activepoint(0),dailyMultipleCopyCount(0),
-			twelvePalaceUnlockCount(0),twelvePalaceResetFlag(0),climbTowerTimes(0),towerBuyTimes(0),twelvePalaceBuyTimes(0),
+			twelvePalaceUnlockCount(0),twelvePalaceBuyTimes(0),twelvePalaceResetFlag(0),climbTowerTimes(0),towerBuyTimes(0),
 			oldName(""){};
 
 		UInt64 playerUID;
@@ -79,15 +79,17 @@ namespace Lynx
 
 		UInt32 twelvePalaceUnlockCount;
 
+		UInt32 twelvePalaceBuyTimes;
+
 		UInt32 twelvePalaceResetFlag;
 
 		UInt32 climbTowerTimes;
 
 		UInt32 towerBuyTimes;
-
-		UInt32 twelvePalaceBuyTimes;
-
-
+		UInt32 fishEatTimes;
+		
+		std::string guidStr;
+		
 		std::string convertDataToJson()
 		{
 			Json::Value root;      //临时对象，供如下代码使用
@@ -105,6 +107,7 @@ namespace Lynx
 			root["power"] = Json::Value(power);
 			root["strength"] = Json::Value(strength);
 			root["oldname"] = Json::Value(oldName);
+			root["guidstr"] = Json::Value(guidStr);
 				
 			for(List<UInt32>::Iter * iter = listSweepCount.begin(); iter != NULL; iter = listSweepCount.next(iter))
 			{
@@ -148,6 +151,7 @@ namespace Lynx
 
 			root["twelvePalaceBuyTimes"] = Json::Value(twelvePalaceBuyTimes);
 
+			root["fishEatTimes"] = Json::Value(fishEatTimes);
 
 			Json::FastWriter writer;  
 			std::string strWrite = writer.write(root);

@@ -7,10 +7,10 @@ namespace Lynx
 {
 	enum 
 	{
-        RECONNECT_REQ                  = sLoginMsgBase + 4,
-        RECONNECT_SUCCESS_RESP         = sLoginMsgBase + 5,
-        RECONNECT_FAIL_RESP            = sLoginMsgBase + 6,
-        CREATE_PLAYER_NAME_NOTIFY      = sLoginMsgBase + 7,
+        RECONNECT_REQ                  = sLoginMsgBase + 14,
+        RECONNECT_SUCCESS_RESP         = sLoginMsgBase + 15,
+        RECONNECT_FAIL_RESP            = sLoginMsgBase + 16,
+        CREATE_PLAYER_NAME_NOTIFY      = sLoginMsgBase + 17,
         CREATE_PLAYER_NAME_REQ         = sLoginMsgBase + 8,
         CREATE_PLAYER_NAME_RESP        = sLoginMsgBase + 9,
 		LOGIN_REQ_TEST				   = sLoginMsgBase + 10

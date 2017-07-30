@@ -62,6 +62,7 @@ namespace Lynx
 		//检测map中的dirty状态，然后通知worker进行存盘操作
 		void checkDirtyToSave();
 
+
 	private:
 		void dispatchThreadMsg(ThreadMsg& msg);
 
@@ -78,6 +79,8 @@ namespace Lynx
 		void onPersistLoadOfflineDataResp(PersistLoadOfflineDataResp& msg);
 
 		void onPersistLoadPlayerByAccountResp(PersistLoadPlayerByAccountResp &msg);
+
+		void onPersistInsertRobotResp(PersistInsertRobotResp & msg);
 
 	private:
 		ThreadMsgHandler mThreadMsgHandler;

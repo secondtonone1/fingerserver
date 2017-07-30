@@ -139,6 +139,7 @@ GemData* GemManager::addGems(UInt64 gemID, UInt32 count)
 {
 	//更新成就
 	NewGemTemplate * newGemTemp = NEWGEM_TABLE().get(gemID);
+	assert(newGemTemp);
 	m_pPlayer->getAchieveManager().updateAchieveData(MAXGEMLV,newGemTemp->mLevel);
 	
 	Map<UInt64, GemData*>::Iter * gemDataMapIter = m_gemDataMap.find(gemID);
@@ -441,6 +442,10 @@ void GemManager::combineOneTypeGems(UInt64 gemItemID, UInt32 count)
 		//更新宝石等级成就
 		NewGemTemplate * newGemTemp = NEWGEM_TABLE().get(gemItemID);
 		m_pPlayer->getAchieveManager().updateAchieveData(MAXGEMLV,newGemTemp->mLevel);
+
+		//更新七日训
+		LogicSystem::getSingleton().updateSevenDayTask(m_pPlayer->getPlayerGuid(),SDT03,1);
+
 		//发送成功的数据包给客户端
 		sendRespToClient(newGemList,LynxErrno::None);
 		return ;
@@ -876,6 +881,7 @@ void GemManager::gemCombineOnce(UInt32 equipPos)
 
 
 	root["equipPos"] = equipPos;
+	root["enhancetype"] = 1;
 
 	Json::StyledWriter writer;
 
@@ -884,6 +890,8 @@ void GemManager::gemCombineOnce(UInt32 equipPos)
 	NetworkSystem::getSingleton().sendMsg(combineOnceResp,connId);
 
 
+	//更新七日训
+	LogicSystem::getSingleton().updateSevenDayTask(m_pPlayer->getPlayerGuid(),SDT03,1);
 
 
 }

@@ -1,4 +1,4 @@
 id,name,condition1,condition2,limit1,couragemonster1,limit2,couragemonster2,limit3,couragemonster3,limit4,couragemonster4,limit5,couragemonster5,limit6,couragemonster6,limit7,couragemonster7,limit8,couragemonster8,limit9,couragemonster9,limit10,couragemonster10
-5,初入猫土,20,0,6,5001,21,5002,31,5003,,,,,,,,,,,,,,
-6,声名鹊起,35,10,6,6001,21,6002,31,6003,51,6004,,,,,,,,,,,,
-7,群魔乱舞,45,20,6,7001,21,7002,31,7003,51,7004,71,7005,,,,,,,,,,
+5,初入猫土,20,0,3,5001,5,5002,9,5003,11,5004,15,5005,17,5006,999,5007,,,,,,
+6,名声鹊起,35,10,3,6001,5,6002,9,6003,11,6004,15,6005,17,6006,999,6007,,,,,,
+7,群猫乱舞,45,20,3,7001,5,7002,9,7003,11,7004,15,7005,17,7006,999,7007,,,,,,

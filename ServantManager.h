@@ -19,6 +19,8 @@ namespace Lynx
 
 		void servantSwitch(UInt64 servantId, UInt32 count);
 
+		void servantSwitch(UInt64 servantId);
+
 		ServantData* addServant(UInt64 servantId);
 
 		ServantData * getServantById(UInt64 servantId);
@@ -80,8 +82,13 @@ namespace Lynx
 		bool costServantSwitch(UInt32 count);
 
 		ServantTreasure* combineTreasure(UInt64 treasureId, UInt32 count);
+
+		//自动合成目标宝物，只合成一个
+		bool  autoCombineTreasure(UInt64 treasureId, List<UInt64 >& changeList);
 		
 		bool treasureEquip(UInt64 servantId, const Vector<UInt64>& equipVec);
+
+		bool treasureEquipOnce(UInt64 servantId);
 
 		//助阵位手动开启
 		bool assistbattleOpen(UInt32 battleIndex);
@@ -108,8 +115,8 @@ namespace Lynx
 
 
 
-		//add by cheng
-		bool addServants(UInt32 subTypeID,UInt32 count,Goods &goods);
+ 
+		bool addServants(UInt32 subTypeID,UInt32 count);
 
 		bool isServantExist(UInt32 subTypeID);
 
@@ -117,7 +124,7 @@ namespace Lynx
 
 		bool getServantDataJson(UInt32 subTypeID,Json::Value &jsonValue);
 
-
+		void infolock(UInt64 servantid, UInt32 index);
 
 
 
@@ -161,6 +168,7 @@ namespace Lynx
 		Map<UInt64 ,ServantData*> m_mapIdServant;
 		Map<UInt64, ServantTreasure *> m_mapIdTreasure;
 		UInt64 m_nPlayerUid;
+		//总大小为13，第一个元素为vec总大小
 		Vector<UInt32> m_bitVec;
 		Vector<UInt64> m_luckVec;
 		//rateVec中的是百分比，比如15，表示15%

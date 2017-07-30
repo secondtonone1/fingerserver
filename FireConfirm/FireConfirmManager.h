@@ -8,7 +8,10 @@
 #include "../CommonLib/StagePacket.h"
 
 
+
 #define OUT_OF_RANGE 1.2 //与最高值误差系数
+
+
 
 namespace Lynx
 {
@@ -16,6 +19,23 @@ namespace Lynx
 	class Player;
 	class PlayerFireConfirmData;
 
+	struct IndexList
+	{
+		UInt32 subIndex;
+		List<float> valueList;
+		LYNX_S11N_2(IndexList,  UInt32, subIndex,List<float>, valueList);
+	};
+
+	struct FireConfirm
+	{
+		UInt32 index;
+		UInt32 count;
+		KeyValue keyValue;
+		List<IndexList> groupList;
+		LYNX_S11N_4(FireConfirm,  UInt32, index,UInt32, count,KeyValue, keyValue,List<IndexList>, groupList);
+	};
+
+	
 
 	struct CGConfirmDataReq
 	{
@@ -67,12 +87,18 @@ namespace Lynx
 
 		UInt32 chapterID;
 		UInt32 result;
+		List<UInt32> confirmIDs;
 
 		std::string convertDataToJson()
 		{
 			Json::Value root;     	
 			root["chapterID"] = Json::Value(chapterID);
 			root["result"] = Json::Value(result);
+			for(List<UInt32>::Iter * iter =  confirmIDs.begin();iter !=NULL;iter = confirmIDs.next(iter))
+			{
+				root["confirmIDs"].append(iter->mValue);
+
+			}
 			Json::FastWriter writer;  
 			std::string strWrite = writer.write(root);
 			return strWrite;
@@ -116,7 +142,7 @@ namespace Lynx
 	struct AwardMonsterDamage
 	{
 		UInt32 ID;	//怪的ID
-		UInt32 damageType;//受伤害状态
+		UInt32 damageType;//受伤害状态1 打死 2 打几下
 		UInt32 times;//次数
 
 	};
@@ -128,27 +154,9 @@ namespace Lynx
 		UInt32 result;
 		UInt32 star;//普通关卡为星数，多人副本为完成时间
 		List<AwardMonsterDamage> awardMonsterList;
+		List<FireConfirm> fireConfirmData;
 		std::string jsonStr;
-		void convertJsonToData(std::string jsonStr)
-		{
-			Json::Reader reader;    
-			Json::Value root;    
-			if (reader.parse(jsonStr, root))  // reader将Json字符串解析到root，root将包含Json里所有子元素      
-			{
-				chapterID = root["chapterID"].asUInt();
-				result = root["result"].asUInt();
-				star = root["star"].asUInt();
-
-				AwardMonsterDamage awardMonsterDamage;
-				for(int i =0; i <root["confirmDataList"].size();i++)
-				{
-					awardMonsterDamage.ID  = root["awardMonsterList"][i]["ID"].asUInt();
-					awardMonsterDamage.damageType  = root["awardMonsterList"][i]["damageType"].asUInt();
-					awardMonsterDamage.times  = root["awardMonsterList"][i]["times"].asUInt();
-					awardMonsterList.insertTail(awardMonsterDamage);
-				}
-			}
-		}
+		
 		LYNX_MESSAGE_1(CHAPTER_END_REQ, CGChapterEnd,std::string, jsonStr);
 	};
 	
@@ -161,12 +169,13 @@ namespace Lynx
 		UInt32 star;//普通关卡为星数，多人副本为完成时间
 		UInt32 recordBreaking;//1 破纪录 0 未破
 		Json::Value allAttr;//发送物品属性
+		Json::Value stages;//
 		List<Award> firstAwards;
 		List<Award> awards;
 		List<Goods> cost;
 		List<Card> cards;
 		List<Goods> intruderAwardList;
-		List<Goods> monsterDropList;
+		List<Award> monsterDropList;
 		List<Goods> fixedList;
 		List<Goods> ends;
 		
@@ -221,16 +230,23 @@ namespace Lynx
 					son["card"].append(leaf);
 				}
 				root["cards"].append(son);
-			}		
+			}	
 
-			for(List<Goods>::Iter * iter = monsterDropList.begin(); iter != NULL; iter = monsterDropList.next(iter))
+			for(List<Award>::Iter * it = monsterDropList.begin(); it != NULL; it = monsterDropList.next(it))			
 			{
-				Json::Value son;	
-				son.append(iter->mValue.resourcestype);
-				son.append(iter->mValue.subtype);
-				son.append(iter->mValue.num);
+				Json::Value son;
+				for(List<Goods>::Iter * iter = it->mValue.award.begin(); iter != NULL; iter = it->mValue.award.next(iter))
+				{
+					Json::Value leaf;
+					leaf.append(iter->mValue.resourcestype);
+					leaf.append(iter->mValue.subtype);
+					leaf.append(iter->mValue.num);
+
+					son["award"].append(leaf);
+				}
 				root["monsterDropList"].append(son);
 			}
+
 			for(List<Goods>::Iter * iter = intruderAwardList.begin(); iter != NULL; iter = intruderAwardList.next(iter))
 			{
 				Json::Value son;	
@@ -268,6 +284,7 @@ namespace Lynx
 				root["ends"].append(son);
 			}
 			root["allAttr"] = Json::Value(allAttr);
+ 			root["stages"] = Json::Value(stages);
 
 			Json::FastWriter writer;  
 			std::string strWrite = writer.write(root);
@@ -339,6 +356,7 @@ namespace Lynx
 		UInt32 flag;
 		UInt32 chapterID;
 		UInt32 result; 
+		Json::Value allAttr;
 		List<Goods> award;
 		List<Goods> cost;
 		List<Goods> ends;
@@ -349,6 +367,7 @@ namespace Lynx
 			root["chapterID"] = Json::Value(chapterID);
 			root["flag"] = Json::Value(flag);
 			root["result"] = Json::Value(result);
+			
 			for(List<Goods>::Iter * iter = award.begin(); iter != NULL; iter = award.next(iter))
 			{
 				Json::Value son;
@@ -366,14 +385,8 @@ namespace Lynx
 				son.append(iter->mValue.num);
 				root["cost"].append(son);
 			}
-			for(List<Goods>::Iter * iter = ends.begin(); iter != NULL; iter = ends.next(iter))
-			{
-				Json::Value son;
-				son.append(iter->mValue.resourcestype);
-				son.append(iter->mValue.subtype);
-				son.append(iter->mValue.num);
-				root["ends"].append(son);
-			}
+
+			root["allAttr"] = Json::Value(allAttr);
 
 			Json::FastWriter writer;  
 			std::string strWrite = writer.write(root);
@@ -411,7 +424,7 @@ namespace Lynx
 		std::string convertDataToJson()
 		{
 			Json::Value root;     	
-			root["flag "] = Json::Value(flag );
+			root["flag"] = Json::Value(flag);
 			root["result"] = Json::Value(result);
 			root["reliveTimes"] = Json::Value(reliveTimes);
 			root["yuanbaoCost"] = Json::Value(yuanbaoCost);
@@ -429,6 +442,7 @@ namespace Lynx
 		CGFoods(): reqType(0),num(0){}
 		UInt32 reqType;//1获取信息，2烹饪，3购买 4 开箱子获得 5 使用食物1 6 使用食物2 7使用食物3
 		UInt32 num;//个数
+		UInt32 subType;
 		
 		std::string jsonStr;
 		void convertJsonToData(std::string jsonStr)
@@ -446,26 +460,48 @@ namespace Lynx
 
 	struct FoodsResp
 	{
-		FoodsResp(): flag(0),needTime(0),viableAmount(0),viableNum(0),restbuyNumber(0),vipFoodLeftNumber(0),gold(0){}
+		FoodsResp(): reqType(0),flag(0),needTime(0),viableAmount(0),viableNum(0),restbuyNumber(0),vipFoodLeftNumber(0),gold(0){}
+		UInt32 reqType;
 		UInt32 flag;
 		UInt32 needTime;//等待时间
 		UInt32 viableAmount;//总次数
 		UInt32 viableNum ;//可使用次数	
 		UInt32 gold ;//元宝数
 		List<UInt32> foodList ;//食物数量
-		UInt32 restbuyNumber ;//vip剩余购买次数
+
+		List<UInt32> foodRecoverList ;//自动恢复食物数量
+		List<UInt32> foodbuyList ;//购买食物数量
+		UInt32 buyCost ;//购买花费
+		UInt32 onceBuyFoodNum ;//一次购买获得食物数量
+		UInt32 recoverNum ;//食物恢复并未兑换数量
+
+		UInt32 restbuyNumber ;//vip购买次数
 		UInt32 vipFoodLeftNumber;//vip购买食物剩余个数
 		std::string convertDataToJson()
 		{
 			Json::Value root;     
+			root["reqType"] = Json::Value(reqType);
 			root["flag"] = Json::Value(flag);
 			root["needTime"] = Json::Value(needTime);
 			root["viableAmount"] = Json::Value(viableAmount);
 			root["viableNum"] = Json::Value(viableNum);
 			root["gold"] = Json::Value(gold);
+
+			root["buyCost"] = Json::Value(buyCost);
+			root["onceBuyFoodNum"] = Json::Value(onceBuyFoodNum);
+			root["recoverNum"] = Json::Value(recoverNum);
 			for (List<UInt32>::Iter *iter = foodList.begin();iter != NULL; iter = foodList.next(iter))
 			{
 				root["foodList"].append(iter->mValue);
+			}
+
+			for (List<UInt32>::Iter *iter = foodRecoverList.begin();iter != NULL; iter = foodRecoverList.next(iter))
+			{
+				root["foodRecoverList"].append(iter->mValue);
+			}
+			for (List<UInt32>::Iter *iter = foodbuyList.begin();iter != NULL; iter = foodbuyList.next(iter))
+			{
+				root["foodbuyList"].append(iter->mValue);
 			}
 			root["restbuyNumber"] = Json::Value(restbuyNumber);
 			root["vipFoodLeftNumber"] = Json::Value(vipFoodLeftNumber);
@@ -497,7 +533,7 @@ namespace Lynx
 	};
 	struct StrengthResp
 	{
-		StrengthResp(): flag(0),reqType(0),needTime(0),viableAmount(0),restbuyNumber(0),vipStrengthLeftNumber(0),gold(0){}
+		StrengthResp(): flag(0),reqType(0),needTime(0),viableAmount(0),restbuyNumber(0),gold(0){}
 		UInt32 flag;//和result有区别，1是成功
 		UInt32 reqType;//1获取信息，3购买 
 		UInt32 needTime;//等待时间
@@ -505,7 +541,7 @@ namespace Lynx
 		UInt32 gold ;//剩余元宝数
 		UInt32 strength;//体力
 		UInt32 restbuyNumber ;//vip购买次数
-		UInt32 vipStrengthLeftNumber;//可以购买总次数，登录的时候发一次，其他时间客户要自己加
+// 		UInt32 vipStrengthLeftNumber;//可以购买总次数，登录的时候发一次，其他时间客户要自己加
 
 		std::string convertDataToJson()
 		{
@@ -518,7 +554,7 @@ namespace Lynx
 			root["strength"] = Json::Value(strength);
 			
 			root["restbuyNumber"] = Json::Value(restbuyNumber);
-			root["vipStrengthLeftNumber"] = Json::Value(vipStrengthLeftNumber);
+// 			root["vipStrengthLeftNumber"] = Json::Value(vipStrengthLeftNumber);
 			Json::FastWriter writer;  
 			std::string strWrite = writer.write(root);
 			return strWrite;
@@ -556,15 +592,17 @@ namespace Lynx
 		UInt32 mopUpType;
 		UInt32 result;
 		UInt32 leftTimes;//剩余次数	
-		UInt32 mopupTimes;
+		UInt32 mopupTimes;		
+		Json::Value stages;
 		Json::Value allAttr;//发送物品属性
-		List<UInt32> foodList ;//食物数量
+		List<UInt32> foodRecoverList ;//食物数量
+		List<UInt32> foodbuyList ;//食物数量
 
 		List<Goods> fixedList;
 		List<Award> awards;
 		List<Goods> cost;
 		List<Card> cards;
-		List<Goods> monsterDropList;
+		List<Award> monsterDropList;
 		List<Award> firstAwards;
 		List<Goods> ends;
 
@@ -621,15 +659,20 @@ namespace Lynx
 				root["cards"].append(son);
 			}		
 
-			for(List<Goods>::Iter * iter = monsterDropList.begin(); iter != NULL; iter = monsterDropList.next(iter))
+			for(List<Award>::Iter * it = monsterDropList.begin(); it != NULL; it = monsterDropList.next(it))			
 			{
-				Json::Value son;	
-				son.append(iter->mValue.resourcestype);
-				son.append(iter->mValue.subtype);
-				son.append(iter->mValue.num);
+				Json::Value son;
+				for(List<Goods>::Iter * iter = it->mValue.award.begin(); iter != NULL; iter = it->mValue.award.next(iter))
+				{
+					Json::Value leaf;
+					leaf.append(iter->mValue.resourcestype);
+					leaf.append(iter->mValue.subtype);
+					leaf.append(iter->mValue.num);
+
+					son["award"].append(leaf);
+				}
 				root["monsterDropList"].append(son);
 			}
-
 			for(List<Goods>::Iter * iter = fixedList.begin(); iter != NULL; iter = fixedList.next(iter))
 			{
 				Json::Value son;	
@@ -649,9 +692,13 @@ namespace Lynx
 			}
 
 
-			for (List<UInt32>::Iter *iter = foodList.begin();iter != NULL; iter = foodList.next(iter))
+			for (List<UInt32>::Iter *iter = foodRecoverList.begin();iter != NULL; iter = foodRecoverList.next(iter))
 			{
-				root["foodList"].append(iter->mValue);
+				root["foodRecoverList"].append(iter->mValue);
+			}
+			for (List<UInt32>::Iter *iter = foodbuyList.begin();iter != NULL; iter = foodbuyList.next(iter))
+			{
+				root["foodbuyList"].append(iter->mValue);
 			}
 
 			
@@ -666,6 +713,7 @@ namespace Lynx
 			}
 
 			root["allAttr"] = Json::Value(allAttr);
+			root["stages"] = Json::Value(stages);
 
 			Json::FastWriter writer;  
 			std::string strWrite = writer.write(root);
@@ -711,6 +759,7 @@ namespace Lynx
 
 		UInt32 id;//类型
 		UInt32 difficulty;//难度
+		List<FireConfirm> fireConfirmData;
 		
 		std::string jsonStr;
 		void convertJsonToData(std::string jsonStr)
@@ -721,6 +770,27 @@ namespace Lynx
 			{
 				id  = root["id"].asUInt();	
 				difficulty  = root["difficulty"].asUInt();
+				for(int i =0; i <root["fireConfirmData"].size();i++)
+				{
+					FireConfirm fireConfirm;
+					fireConfirm.index  = root["fireConfirmData"][i]["index"].asUInt();
+					fireConfirm.count  = root["fireConfirmData"][i]["count"].asUInt();
+					fireConfirm.keyValue.key  = root["fireConfirmData"][i]["keyValue"]["key"].asUInt();
+					fireConfirm.keyValue.value  = root["fireConfirmData"][i]["keyValue"]["value"].asUInt();
+
+					for(int ii =0; ii <root["fireConfirmData"][i]["groupList"].size();ii++)
+					{
+						IndexList indexList;
+						List<UInt32> valueList;
+						indexList.subIndex = root["fireConfirmData"][i]["groupList"][ii]["subIndex"].asUInt();
+						for(int iii =0; iii <root["fireConfirmData"][i]["groupList"][ii]["valueList"].size();iii++)
+						{							
+							valueList.insertTail(root["fireConfirmData"][i]["groupList"][ii]["valueList"][iii].asUInt());
+						}
+						fireConfirm.groupList.insertTail(indexList);
+					}
+					fireConfirmData.insertTail(fireConfirm);
+				}
 			}			
 		}
 		LYNX_MESSAGE_1(WELFALE_MARKET_BEGIN_REQ, CGWelfareBegin,std::string, jsonStr);
@@ -778,12 +848,13 @@ namespace Lynx
 		UInt32 miCount;
 		UInt32 youCount;
 		UInt32 yanCount;
+		Json::Value allAttr;
 
 
 		List<Award> awards;
 		List<Goods> cost;
 		List<Card> cards;
-		List<Goods> monsterDropList;
+		List<Award> monsterDropList;
 		List<Goods> fixedList;
 		List<Goods> ends;
 
@@ -802,7 +873,7 @@ namespace Lynx
 			root["youCount"] = Json::Value(youCount);
 			root["yanCount"] = Json::Value(yanCount);
 
-			Json::Value son; 
+// 			Json::Value son; 
 			for(List<Award>::Iter * it = awards.begin(); it != NULL; it = awards.next(it))			
 			{
 				Json::Value son;
@@ -832,12 +903,19 @@ namespace Lynx
 				root["cards"].append(son);
 			}		
 
-			for(List<Goods>::Iter * iter = monsterDropList.begin(); iter != NULL; iter = monsterDropList.next(iter))
+
+			for(List<Award>::Iter * it = monsterDropList.begin(); it != NULL; it = monsterDropList.next(it))			
 			{
-				Json::Value son;	
-				son.append(iter->mValue.resourcestype);
-				son.append(iter->mValue.subtype);
-				son.append(iter->mValue.num);
+				Json::Value son;
+				for(List<Goods>::Iter * iter = it->mValue.award.begin(); iter != NULL; iter = it->mValue.award.next(iter))
+				{
+					Json::Value leaf;
+					leaf.append(iter->mValue.resourcestype);
+					leaf.append(iter->mValue.subtype);
+					leaf.append(iter->mValue.num);
+
+					son["award"].append(leaf);
+				}
 				root["monsterDropList"].append(son);
 			}
 
@@ -864,14 +942,16 @@ namespace Lynx
 				root["fixedList"].append(son);
 			}
 
-			for(List<Goods>::Iter * iter = ends.begin(); iter != NULL; iter = ends.next(iter))
-			{
-				Json::Value son;	
-				son.append(iter->mValue.resourcestype);
-				son.append(iter->mValue.subtype);
-				son.append(iter->mValue.num);
-				root["ends"].append(son);
-			}
+// 			for(List<Goods>::Iter * iter = ends.begin(); iter != NULL; iter = ends.next(iter))
+// 			{
+// 				Json::Value son;	
+// 				son.append(iter->mValue.resourcestype);
+// 				son.append(iter->mValue.subtype);
+// 				son.append(iter->mValue.num);
+// 				root["ends"].append(son);
+// 			}
+			root["allAttr"] = Json::Value(allAttr);
+
 			Json::FastWriter writer;  
 			std::string strWrite = writer.write(root);
 			return strWrite;
@@ -894,7 +974,7 @@ namespace Lynx
 
 		void UpdataConfirmLevel(ConnId connId,bool flag);
 
-		void SendFireConfirmCondition(const ConnId& connId);
+		List<UInt32>& getFireConfirmCondition(const ConnId& connId);
 
 		UInt32 CheckCopyFinishTime(Player* player);
 
@@ -908,6 +988,9 @@ namespace Lynx
 
 		void updateFireConfirmData(const ConnId& connId);
 
+		UInt32 checkIsCheat(Guid playerID, List<FireConfirm> &fireConfirmData,UInt32 reqResult);
+
+		UInt32 checkBaseAttr(Guid playerID,UInt32 subIndex, KeyValue kevalue, List<FireConfirm> &fireConfirmDatas);
 		
 		static void onStartCopy(const  ConnId& ,CGChapterStart & );		//挑战关卡
 
@@ -931,11 +1014,17 @@ namespace Lynx
 
 		void getChapterCounter(const  ConnId& connId);//获取关卡次数
 
-		void saveAndGetResult(const  ConnId& connId,ChapterEndResp &resp,UInt32 fanPaiType);
+		void saveAndGetResult(const  ConnId& connId,ChapterEndResp &resp,UInt32 fanPaiType,UInt32 systemID);
 
 		static void onFoodsReq(const  ConnId&  ,CGFoods & );
 
+		void typeFoodSubNum(UInt64 playerID, PlayerFoodsData &foodsData,UInt32 num,UInt32 type);
+			
+		UInt32 typeFoodLeftNum(PlayerFoodsData &foodsData,UInt32 num,UInt32 type );
+
 		void getfoods(UInt32 num,List<UInt32> &foods);//获取随机值
+
+		void  foodsInit(UInt64 playerID);
 
 		static void onStrengthReq(const  ConnId&  ,CGStrength & );
 
@@ -983,20 +1072,42 @@ namespace Lynx
 	enum ConfirmCondition
 	{
 		//移动速度、攻击速度、技能CD、技能伤害、暴击率、暴击伤害最大值、技能范围、位置点、HP、MP、SP、buff、副本结束时间
-		CONFIRM_SPEED							=0,
+		
+		
 		CONFIRM_ATTACK_RATE						=1,
-		CONFIRM_SKILL_CD						=2,
-		CONFIRM_SKILL_DAMAGE					=3,
-		CONFIRM_CRITICAL_STRIKE_RATE			=4, //暴击率
-		CONFIRM_CRITICAL_STRIKE_MAX_DAMAGE		=5,//暴击伤害最大值
-		CONFIRM_SKILL_RANGE						=6,
-		CONFIRM_POS								=7,//位置点
-		CONFIRM_HP								=8,
-		CONFIRM_MP								=9,
-		CONFIRM_SP								=10,
-		CONFIRM_BUFFER							=11,
+		CONFIRM_SKILL_DAMAGE					=2,
+		CONFIRM_CRITICAL_STRIKE_RATE			=3, //暴击率	
+		CONFIRM_POS									=4,//位置点
+		CONFIRM_HP									=5,
+		CONFIRM_MP									=6,
+		CONFIRM_SP									=7,
+		CONFIRM_BUFFER							=8,
+		CONFIRM_SPEED								=9,
+		CONFIRM_MAX_AP							=10,
+		CONFIRM_MAX_DF							=11,
+		CONFIRM_MAX_MAGIC_AP				=12,
+		CONFIRM_MAX_MAGIC_DF				=13,
+	
 
-		CONFIRM_MAX								=12,
+		CONFIRM_MAX								=14,
+
+		//用不到的-----
+		CONFIRM_SKILL_CD						=21,
+		CONFIRM_CRITICAL_STRIKE_MAX_DAMAGE		=22,//暴击伤害最大值
+		CONFIRM_SKILL_RANGE						=23,
+		//用不到的-----
+
+
+		CONFIRM_INVINCIBLE						=50,//无敌
+		CONFIRM_SPBUFF							=51,//霸体buff
+		CONFIRM_INFINITEHIT						=52,//连击
+		CONFIRM_VERTIGO							=53,//眩晕
+		CONFIRM_DECELERATION					=54,//减速
+
+		CONFIRM_USERHYMESKILL				=100,//释放韵功次数 必须每次给客户端
+		CONFIRM_USERHYMESPEED			=101,//释放韵力激发次数
+		CONFIRM_CALLSERVANTCNT			=102,//战斗中召唤佣兵次数
+		CONFIRM_FINISHTIME						=103,//战斗需要时间
 	};
 
 	

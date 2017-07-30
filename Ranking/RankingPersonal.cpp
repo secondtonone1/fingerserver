@@ -157,7 +157,6 @@ Record RankingPersonalManager::getRecord(UInt32 type,UInt32 rank)
 {
 
 	Record record;
-	MapRecord mapRecords;
 
 	for(TypeRecords::Iter *iter = mTypeRecords->begin();iter != NULL;iter = mTypeRecords->next(iter))
 	{

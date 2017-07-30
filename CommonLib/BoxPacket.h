@@ -65,32 +65,72 @@ namespace Lynx
 
 		COIN_BUY_REQ                  =		sShopBase + 6,	//金币购买
 		COIN_BUY_RESP                 =		sShopBase + 7,	//金币购买返回
+
+
+		COURAGE_SHOP_INFO_REQ                 =		sShopBase + 10,	//勇气商店信息
+		COURAGE_SHOP_INFO_RESP                =		sShopBase + 11,	//勇气商店信息返回
+		COURAGE_SHOP_BUY_REQ				  =     sShopBase + 12,	//勇气商店购买
+		COURAGE_SHOP_BUY_RESP				  =     sShopBase + 13,	//勇气商店购买返回	
 	};
 	
 	enum 
 	{
-		GROWTH_FOUND_REQ                 =		sInLineActivityBase + 0,	//成长基金
-		GROWTH_FOUND_RESP                =		sInLineActivityBase + 1,	//成长基金
+// 		GROWTH_FOUND_REQ                 =		sInLineActivityBase + 0,	//成长基金
+// 		GROWTH_FOUND_RESP                =		sInLineActivityBase + 1,	//成长基金
+// 
+// 		MONTH_SIGN_REQ					 =     sInLineActivityBase + 2,		//月签到
+// 		MONTH_SIGN_RESP			  		 =     sInLineActivityBase + 3,		//月签到	
+// 
+// 		ONLINE_WELFARE_REQ              =		sInLineActivityBase + 4,	//在线奖励
+// 		ONLINE_WELFARE_RESP             =		sInLineActivityBase + 5,	//在线奖励
+// 
+// 		PEOPLE_WELFARE_REQ              =		sInLineActivityBase + 6,	//全民福利
+// 		PEOPLE_WELFARE_RESP             =		sInLineActivityBase + 7,	//全民福利
+// 
+// 		SEVENDAY_LOGIN_AWARD_REQ       =		sInLineActivityBase + 8,	//7天登录奖励
+// 		SEVENDAY_LOGIN_AWARD_RESP      =		sInLineActivityBase + 9,	//7天登录奖励
+// 
+// 		SEVENDAY_TASK_REQ              =		sInLineActivityBase + 10,	//7天任务奖励
+// 		SEVENDAY_TASK_RESP             =		sInLineActivityBase + 11,	//7天任务奖励
+// 
+// 		TIME_AWARD_REQ                 =		sInLineActivityBase + 12,	//分时段奖励
+// 		TIME_AWARD_RESP                =		sInLineActivityBase + 13,	//分时段奖励
 
-		MONTH_SIGN_REQ					 =     sInLineActivityBase + 2,		//月签到
-		MONTH_SIGN_RESP			  		 =     sInLineActivityBase + 3,		//月签到	
+		SEND_ACTIVITY_RESP                =		sInLineActivityBase + 15,	//登录时发活动数据包
 
-		ONLINE_WELFARE_REQ              =		sInLineActivityBase + 4,	//在线奖励
-		ONLINE_WELFARE_RESP             =		sInLineActivityBase + 5,	//在线奖励
-
-		PEOPLE_WELFARE_REQ              =		sInLineActivityBase + 6,	//全民福利
-		PEOPLE_WELFARE_RESP             =		sInLineActivityBase + 7,	//全民福利
-
-		SEVENDAY_LOGIN_AWARD_REQ       =		sInLineActivityBase + 8,	//7天登录奖励
-		SEVENDAY_LOGIN_AWARD_RESP      =		sInLineActivityBase + 9,	//7天登录奖励
-
-		SEVENDAY_TASK_REQ              =		sInLineActivityBase + 10,	//7天任务奖励
-		SEVENDAY_TASK_RESP             =		sInLineActivityBase + 11,	//7天任务奖励
-
-		TIME_AWARD_REQ                 =		sInLineActivityBase + 12,	//分时段奖励
-		TIME_AWARD_RESP                =		sInLineActivityBase + 13,	//分时段奖励
+		ONE_ACTIVITY_REQ					       =		sInLineActivityBase + 16,	//活动请求
+		ONE_ACTIVITY_RESP					       =		sInLineActivityBase + 17,	//分时段奖励
 
 	};
+
+
+
+	enum 
+	{
+
+
+		RANKGAME_INFO_REQ              =	sRankGameBase + 0,	//排位赛信息
+		RANKGAME_INFO_RESP             =	sRankGameBase + 1,	//排位赛信息返回
+		RANKGAME_RANKING_REQ		   =    sRankGameBase + 2,	//排位赛排行榜
+		RANKGAME_RANKING_RESP			=    sRankGameBase + 3,	//排位赛排行榜返回
+		RANKGAME_REPORT_REQ			   =    sRankGameBase + 4,	//排位赛战报
+		RANKGAME_REPORT_RESP		   =    sRankGameBase + 5,	//排位赛战报返回	
+		RANKGAME_SHOP_REQ			   =    sRankGameBase + 6,	//排位赛商店信息
+		RANKGAME_SHOP_RESP			   =    sRankGameBase + 7,	//排位赛商店信息返回
+		RANKGAME_SHOPBUY_REQ			=    sRankGameBase + 8,	//排位赛商店购买
+		RANKGAME_SHOPBUY_RESP		   =    sRankGameBase + 9,	//排位赛商店购买返回
+		RANKGAME_BEGIN_REQ				=    sRankGameBase + 10,	//排位赛开始
+		RANKGAME_BEGIN_RESP			   =    sRankGameBase + 11,	//排位赛开始返回
+		RANKGAME_END_REQ			   =    sRankGameBase + 12,	//排位赛结束
+		RANKGAME_END_RESP			   =    sRankGameBase + 13,	//
+		RANKGAME_BUYTIMES_REQ			   =    sRankGameBase + 14,	//排位赛购买次数
+		RANKGAME_BUYTIMES_RESP			   =    sRankGameBase + 15,	//排位赛购买次数返回
+
+		
+
+	};
+
+
 }// namespace Lynx
 
 #endif // __LYNX_COMMON_LIB_BOX_PACKET_H__

@@ -498,6 +498,7 @@ TcpConnection::onReceived(IOEvent* ev, UInt32 eventType)
         //}
         //else // EPOOL AND SELECT
         {
+			//epoll 边缘触发需要while循环中读取 王戊辰
             if (conn->mReadUtilNull) // read until tcp buffer is null when read event arrived.
             {
                 while (1)
@@ -532,6 +533,8 @@ TcpConnection::onReceived(IOEvent* ev, UInt32 eventType)
                     {
                         conn->mIStream.deallocNode(ev->mData);
                         ev->mData = NULL;
+						//调用connection 的onReceived
+						// LYNX_REGISTER_RECEIVED(tcpConnection, this, &NetworkWorker::onReceived);
                         if (!conn->mOnReceived.empty())
                         {
                             conn->mOnReceived(conn, conn->mIStream, conn->mOStream);
@@ -542,6 +545,7 @@ TcpConnection::onReceived(IOEvent* ev, UInt32 eventType)
             }
             else // read one time when read event arrived.
             {
+				//epoll LT模式或者select模式
                 ev->mData = conn->mIStream.allocNode();
                 Int32 nBytes = conn->tcpRecv((char *)ev->mData + sizeof(StreamBuffer::Node),
                     conn->mIStream.mNodeDataSize);
@@ -590,6 +594,8 @@ TcpConnection::onReceived(IOEvent* ev, UInt32 eventType)
     }
 }
 
+//这个函数是因为调用asyncsend之后调用
+//如果有数据没发送完则添加写事件
 void 
 TcpConnection::onSent(IOEvent* ev, UInt32 eventType)
 {

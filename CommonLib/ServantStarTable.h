@@ -18,11 +18,11 @@ namespace Lynx
 		UInt32 mPower;
 		UInt32 mAttrType;
 		UInt32 mAttrValue;
-		
+		UInt32 mCostCoin;
 
-		LYNX_S11N_8(ServantStarTemplate, UInt64, mId,UInt64, mServantId,UInt32, mStar,
+		LYNX_S11N_9(ServantStarTemplate, UInt64, mId,UInt64, mServantId,UInt32, mStar,
 			UInt32, mCost,UInt32, mCount,UInt32, mPower,
-			UInt32, mAttrType, UInt32, mAttrValue);
+			UInt32, mAttrType, UInt32, mAttrValue, UInt32, mCostCoin);
 
 	};
 

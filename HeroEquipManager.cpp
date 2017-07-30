@@ -113,9 +113,15 @@ errorId HeroEquipManager::enhanceLvUp(HeroEquipData& equipData, UInt32& playerLv
 			  equipData.m_nStep++;
 			}
 		
-			m_pPlayer->mPlayerData.mBaseData.m_nCoin -= newEquipLvTemp->mLvUpNeedCoin;
+			Goods goods;
+			List<Goods> itemList;
 
-			m_pPlayer->getPersistManager().setDirtyBit(BASEDATABIT);
+			goods.resourcestype =AWARD_BASE;
+			goods.subtype = AWARD_BASE_COIN;
+			goods.num = 0 - newEquipLvTemp->mLvUpNeedCoin;
+			itemList.insertTail(goods);
+			GiftManager::getSingleton().addToPlayer(m_pPlayer->getPlayerGuid(),REFLASH_AWARD,itemList,MiniLog2);
+
 
 			return LynxErrno::None;
 
@@ -188,9 +194,16 @@ errorId HeroEquipManager::enhanceLvUp(HeroEquipData& equipData, UInt32& playerLv
 				equipData.m_nStep++;
 			}
 
-			m_pPlayer->mPlayerData.mBaseData.m_nCoin -= newEquipLvTemp->mLvUpNeedCoin;
 
-			m_pPlayer->getPersistManager().setDirtyBit(BASEDATABIT);
+			Goods goods;
+			List<Goods> itemList;
+
+			goods.resourcestype =AWARD_BASE;
+			goods.subtype = AWARD_BASE_COIN;
+			goods.num = 0 - newEquipLvTemp->mLvUpNeedCoin;
+			itemList.insertTail(goods);
+			GiftManager::getSingleton().addToPlayer(m_pPlayer->getPlayerGuid(),REFLASH_AWARD,itemList,MiniLog2);
+
 
 			return LynxErrno::None;
 		}
@@ -231,6 +244,8 @@ void HeroEquipManager::enhanceEquip(UInt64 playerUid, UInt32 equipPos, UInt32 en
 	}
 
 	UInt32 &equipLv = equipDataIter->mValue->m_nEquipLv;
+	UInt32 lastEquipLv = equipDataIter->mValue->m_nEquipLv;
+
 	NewEquipLvTemplate * nextEquipLvTempB = NEWEQUIPLV_TABLE().reverseGet(equipId, equipLv + 1);
 	
 	if(!nextEquipLvTempB)
@@ -306,7 +321,14 @@ void HeroEquipManager::enhanceEquip(UInt64 playerUid, UInt32 equipPos, UInt32 en
 			cout << enhanceResp.mRespJsonStr;
 
 			NetworkSystem::getSingleton().sendMsg(enhanceResp,connId);
-	
+
+			if (enhanceType == 1 &&root["errorId"] == 0)
+			{
+				UInt32 max = equipLv - lastEquipLv;
+				//更新七日训
+				LogicSystem::getSingleton().updateSevenDayTask(m_pPlayer->getPlayerGuid(),SDT02,max);
+			}
+
 			return;
 
 		}
@@ -363,6 +385,14 @@ void HeroEquipManager::enhanceEquip(UInt64 playerUid, UInt32 equipPos, UInt32 en
 			enhanceResp.mRespJsonStr = writer.write(root);
 			cout << enhanceResp.mRespJsonStr;
 			NetworkSystem::getSingleton().sendMsg(enhanceResp,connId);
+
+			if (enhanceType == 0 &&root["errorId"] == 0)
+			{
+				//更新七日训
+				LogicSystem::getSingleton().updateSevenDayTask(m_pPlayer->getPlayerGuid(),SDT02,1);
+			}
+			
+			
 
 			return;
 
@@ -621,6 +651,11 @@ bool HeroEquipManager::manualActive(UInt32 equipPos, UInt32 gemSlot)
 	else
 	{
 		 EquipGemRuleTemplate * equipGemRuleTemp = EQUIPGEMRULE_TABLE().get(heroEquipDataIter->mValue->m_nEquipId);
+		 if (equipGemRuleTemp == NULL)
+		 {
+			 LOG_WARN("equipGemRuleTemp not found!!");
+			 return false;
+		 }
 		 
 		 switch(gemSlot)
 		 {
@@ -709,6 +744,11 @@ bool HeroEquipManager::manualActive(UInt32 equipPos, UInt32 gemSlot)
 void HeroEquipManager::checkEquipActive(UInt32 equipPos, UInt32 heroModelId, Map<UInt32, HeroEquipData *>::Iter *equipMapIter, bool &changeFlag)
 {
 	HeroEquipRuleTemplate * heroEquipRuleTemp = HEROEQUIPRULE_TABLE().get(heroModelId);
+	if (heroEquipRuleTemp == NULL)
+	{
+		LOG_WARN("heroEquipRuleTemp not found!!");
+		return;
+	}
 	
 
 	switch(equipPos)
@@ -757,6 +797,11 @@ void HeroEquipManager::dealEquipActive( UInt32 heroModelId, Map<UInt32, HeroEqui
 
 		
 		EquipGemRuleTemplate * equipGemRuleTemp = EQUIPGEMRULE_TABLE().get(equipId);
+		if (equipGemRuleTemp == NULL)
+		{
+			LOG_WARN("equipGemRuleTemp not found!!");
+			return;
+		}
 
 		dealGemActive(*equipMapIter->mValue, Gem1SlotBit,equipGemRuleTemp->mGemLevel1,equipGemRuleTemp->mCondKey1,changeFlag);
 
@@ -783,6 +828,11 @@ void HeroEquipManager::initEquipGemBit(HeroEquipData &heroEquipData,  UInt32& le
 void HeroEquipManager::checkGemActive(HeroEquipData &heroEquipData,bool & changeFlag)
 {
 	EquipGemRuleTemplate * equipGemRuleTemp  = EQUIPGEMRULE_TABLE().get(heroEquipData.m_nEquipId);
+	if (equipGemRuleTemp == NULL)
+	{
+		LOG_WARN("equipGemRuleTemp not found!!");
+		return;
+	}
 	
 	 dealGemActive(heroEquipData, Gem1SlotBit, equipGemRuleTemp->mGemLevel1, equipGemRuleTemp->mCondKey1,changeFlag);
 	 dealGemActive(heroEquipData, Gem2SlotBit, equipGemRuleTemp->mGemLevel2, equipGemRuleTemp->mCondKey2,changeFlag);
@@ -855,7 +905,16 @@ void HeroEquipManager::dealGemManualActive(HeroEquipData &heroEquipData, UInt32 
 							errorId = LynxErrno::None;
 							heroEquipData.m_nActiveBit = heroEquipData.m_nActiveBit | dirtyBit;
 							coin -= gemCondValue;
-							m_pPlayer->setPlayerCoin(coin);
+
+							Goods goods;
+							List<Goods> itemList;
+
+							goods.resourcestype =AWARD_BASE;
+							goods.subtype = AWARD_BASE_COIN;
+							goods.num = 0 - gemCondValue;
+							itemList.insertTail(goods);
+							GiftManager::getSingleton().addToPlayer(m_pPlayer->getPlayerGuid(),REFLASH_AWARD,itemList,MiniLog15);
+
 							return;
 						}
 					}
@@ -872,8 +931,17 @@ void HeroEquipManager::dealGemManualActive(HeroEquipData &heroEquipData, UInt32 
 						{
 							errorId = LynxErrno::None;
 							heroEquipData.m_nActiveBit = heroEquipData.m_nActiveBit | dirtyBit;
-							gold -= gemCondValue;
-							m_pPlayer->setPlayerGold(gold);
+							
+							Goods goods;
+							List<Goods> itemList;
+
+							goods.resourcestype =AWARD_BASE;
+							goods.subtype = AWARD_BASE_GOLD;
+								goods.num = 0 - gemCondValue;
+							itemList.insertTail(goods);
+							GiftManager::getSingleton().addToPlayer(m_pPlayer->getPlayerGuid(),REFLASH_AWARD,itemList,MiniLog79);
+
+
 							return;
 						}
 					}
@@ -1074,6 +1142,10 @@ void HeroEquipManager::sendSetRespToClient(errorId  errorId, UInt64 gemId, UInt3
 		NetworkSystem::getSingleton().sendMsg(gemSetResp,connId);
 
 		cout << gemSetResp.mRespJsonStr;
+
+		char dest[1024]={0};
+		snprintf(dest,sizeof(dest),"%d,%d",equipPos,gemId);
+		LogicSystem::getSingleton().write_log(LogType92,m_pPlayer->getPlayerGuid(), dest,LogInfo);
 	}
 	else
 	{
@@ -1396,6 +1468,19 @@ void HeroEquipManager::equipGemLvUp(UInt32 equipPos, UInt32 gemSlot)
 		List<UInt64>::Iter * gemIDIter = heroEquipDataIter->mValue->m_nGemsList.getn(gemSlot-1);
 
 		GemCombineTemplate * gemCombineTemplate = GEMCOMBINE_TABLE().get(gemIDIter->mValue);
+		if (gemCombineTemplate == NULL)
+		{
+			LOG_WARN("gemCombineTemplate not found!!");
+			GCHeroEquipGemLvUpResp gemLvUpResp;
+			Json::Value root;
+			root["errorId"] = LynxErrno::ClienServerDataNotMatch;
+			Json::StyledWriter writer;
+			gemLvUpResp.mRespJsonStr = writer.write(root);
+			gemLvUpResp.mPacketID = BOC_HERO_EQUIPGEM_LVUP_RESP;
+
+			NetworkSystem::getSingleton().sendMsg(gemLvUpResp,connId);
+			return;
+		}
 		GemData* gemData = m_pPlayer->getGemManager().getGemData(gemIDIter->mValue);
 		
 		if(gemCombineTemplate->mNextGem)
@@ -1436,7 +1521,8 @@ void HeroEquipManager::equipGemLvUp(UInt32 equipPos, UInt32 gemSlot)
 		
 			//发送成功的数据包给客户端
 			
-			
+			//更新七日训
+			LogicSystem::getSingleton().updateSevenDayTask(m_pPlayer->getPlayerGuid(),SDT03,1);
 				
 			Json::Value root;
 			root["errorId"] = LynxErrno::None;
@@ -1536,6 +1622,10 @@ void HeroEquipManager::equipGemUnload(UInt32 equipPos, UInt32 gemSlot)
 
 		NetworkSystem::getSingleton().sendMsg(gemUnloadResp,connId);
 		cout << gemUnloadResp.mRespJsonStr;
+
+		char dest[1024]={0};
+		snprintf(dest,sizeof(dest),"%d,%d",equipPos,gemId);
+		LogicSystem::getSingleton().write_log(LogType98,m_pPlayer->getPlayerGuid(), dest,LogInfo);
 	}
 	else
 	{
@@ -1566,6 +1656,11 @@ UInt64 HeroEquipManager::changeCharacterEquip(UInt64 charactorId)
 	}
 	
 	HeroEquipRuleTemplate * heroEquipRuleTemp = HEROEQUIPRULE_TABLE().get(charactorId);
+	if (heroEquipRuleTemp == NULL)
+	{
+		LOG_WARN("heroEquipRuleTemp not found!!");
+		return 0;
+	}
 	
 	heroEquipDataIter->mValue->m_nEquipId =  heroEquipRuleTemp->mEquipId1;
 

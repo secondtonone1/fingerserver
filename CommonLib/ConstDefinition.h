@@ -185,6 +185,10 @@
 #define SAVE_INV_TIME      5000
 //服务器心跳检测重置，毫秒
 #define RESET_INV_TIME    1000
+//服务器在线人数计数，毫秒
+#define SAVE_ONLINE_NUM_TIME      180000
+//服务器在线奖励检测重置，毫秒
+#define CHECK_ONLEWELFARE_TIME    60000
 
 // 活动模板ID
 #define Activity_Setting_Rune_TemplateID 1
@@ -747,6 +751,8 @@ namespace Lynx
 
 //每一章节最大关卡数
 #define CHAPTERSTAGECOUNT 20
+//强制断开客户端次数，时间是 100*30s
+#define KEEP_ALIVE_COUNT  40
 
 enum ItemType
 {
@@ -974,6 +980,19 @@ enum DataBit
 	STRENGTHDATABIT =  0x00200000,
 	COUNTERDATABIT =  0x00400000,
 	COURAGECHALLENGEDATABIT =  0x00800000,
+	RANKGAMEDATABIT =  0x01000000,
+	BUYCOINDATABIT =  0x02000000,
+	FRIENDBEAPPLYDATABIT =  0x04000000,
+
+
+	MAXBIT =  0x80000000
+};
+
+enum ServantInfoLock
+{
+	FIRSTLOCK = 0x00000001,
+	SECONDLOCK = 0x00000002,
+	THIRDLOCK = 0x00000004
 };
 
 enum ProcessState
@@ -2071,6 +2090,7 @@ enum CopyType
 	STAGE_SPECIAL	 = 5,	//爬塔5
 	STAGE_TRIAL		 = 6,	//多人副本
 	STAGE_TWELVEPALACE    = 7,	//十二宗宫
+	STAGE_COURAGE    = 10,	//勇气试炼
 	STAGE_WELFARE    = 116,	//
 
 
@@ -2100,27 +2120,36 @@ enum AwardType
 	AWARD_SERVANTPIECE = 8, //佣兵碎片
 	AWARD_SERVANTTREASURE = 9,//佣兵宝物
 	AWARD_SERVANTSWITCH = 10, //佣兵的生命之光，用于佣兵兑换
-    AWARD_ENHANCEMATERIAL = 11,
+    AWARD_ENHANCEMATERIAL = 11, //强化材料
 	AWARD_GEM = 12,
 	AWARD_JEWELRY = 13,
 	AWARD_FASHION = 14,
 	AWARD_HOARSTONEEQUIP = 16,//符文
 	AWARD_HEROEQUIP = 17,//英雄装备，目前不可获取
 
-	AWARD_TOWERBUFF = 18,//爬塔buff
-	AWARD_TOWERATTR = 19,//爬塔属性
+	AWARD_CONSORTCONTRIBUTE = 32,
+
+
+
+
 
 	//........................以下内容不是策划定义获取的物品，只是神仙方便通用添加的
-	
+	AWARD_TOWERBUFF = 18,//爬塔buff
+	AWARD_TOWERATTR = 19,//爬塔属性
 	AWARD_STAGEDATA = 20,//关卡信息
 	AWARD_COUNTER = 21,//计数器
 	AWARD_REWARDCOUNTER = 22,//奖励计算器
-	AWARD_FOODDATA = 23,//美食屋
 	AWARD_STRENGTHDATA = 24,//体力
 	AWARD_TWELVEPALACE_STAGEDATA = 25,//十二宗宫关卡信息
-	AWARD_SHOP = 26,//商店商品
+	AWARD_SHOP = 26,//神秘商品
+	AWARD_SERVANTSHOP = 27,//佣兵商品
+	AWARD_GIFTSHOP = 28,//礼包商品
 	
 	AWARD_CATCOIN = 29,//勇气试炼硬币
+	AWARD_CURRENCY = 30,//通宝
+	AWARD_FREETICKET = 31,//抽奖券
+
+	
 
 	AWARD_RANDOM_SERVANTPIECE = 80, //随机佣兵碎片
 	AWARD_JEWELRY_SELL = 113,//饰品卖
@@ -2137,10 +2166,16 @@ enum AwardBase
 	AWARD_BASE_GOLD = 2,	//元宝
 	AWARD_BASE_STRENGTH = 3,	//体力
 	AWARD_BASE_EXP = 4,	//经验
-	AWARD_BASE_COMPETITIVE_POINT = 5,	//竞技点
-	AWARD_BASE_RHYME_SOUL = 6,	//韵魂
+	AWARD_BASE_COMPETITIVE_POINT = 5,	//竞技点（脸谱）
+	AWARD_BASE_RHYME_SOUL = 6,	//韵魂	
 	AWARD_BASE_SCORE = 7,	//爬塔积分
-	AWARD_BASE_LEVEL = 100,	//等级
+
+	AWARD_BASE_VIP_EXP = 9,	//VIP经验
+	AWARD_BASE_VIP_LEVEL = 10,	//VIP等级
+
+	AWARD_BASE_RANKEDSCORE = 20001,	//排位赛积分
+	AWARD_BASE_LEVEL = 100	//等级
+
 
 };
 enum RhymeGrass
@@ -2149,6 +2184,13 @@ enum RhymeGrass
 	MidGrass =2,
 	LargeGrass = 3
 
+};
+
+enum RobotData
+{
+	RobotMinRoleID = 1000,
+	RobotMaxRoleID = 10000,
+	RankGameInitScore = 1000
 };
 
 enum AwardTowerAttr
@@ -2201,15 +2243,39 @@ enum ChannelType
 	WORLDCHAT = 1, //世界
 	CONSORTIACHAT = 2,//公会聊天
 	PRIVATECHAT = 3,//私聊
-	SYSTEMMSG = 4//系统信息
-
+	SYSTEMMSG = 4,//系统信息
+	GMMSG = 5,//GM消息
+	CONSORTMASG = 10 //工会招募
 };
 
 enum GlobelVar
 {
-	MAXJEWELRYCOUNT = 200,
+	MAXJEWELRYCOUNT = 96,
 	OFFLINESAVETIME = 120,//离线保存时间120s
+	RANKGAMECOPYID = 100000000,//排位赛关卡id
 
+	GETAWARDSCOPYID = 99999999,//获取奖励物品用fireconfirm
+	XINSHOUYINDAOSTAGE = 10000,//新手引导关卡服务器不用
+
+};
+
+enum Ticket
+{	
+	ONCEFREELOTTERYTICKET = 1,
+	TENFREELOTTERYTICKET	 = 2,
+};
+
+enum Foods
+{	
+	// 		1	美食烧制次数
+	// 			2	全鱼火锅
+	// 			3	糖稀鱼丸
+	// 			4	鱼尾烧麦
+	
+	FOODTYPE1 = 1,
+	FOODTYPE2 = 2,
+	FOODTYPE3 = 3,
+	FOODTYPE4 = 4,
 };
 
 //成就，关联的事件id
@@ -2228,6 +2294,7 @@ enum GlobelVar
 	OWNPURPULESERVANT = 2011, //拥有紫色佣兵数量
 	UNLOCKSERVANTASSIS = 2012, //解锁助阵位数量
 	OWNGREENASSIST = 2013, //拥有绿色助阵位数量
+
 	OWNBLUEASSIST = 2014,  //拥有蓝色助阵位数量
 	OWNPURPLEASSIST = 2015,  //拥有紫色助阵位数量
 	QUALIFYDANLV = 2016,  //排位赛段数
@@ -2235,8 +2302,11 @@ enum GlobelVar
 	ARIEASUCCESS = 2018,  //竞技场胜利场次
 	BUYCHARACTOR = 2019,  //购买角色个数
 	COURAGESUCCESS = 2020,  //勇气试炼成功次数
-	WXCHALLENGESUC = 2021,  //无限挑战成功次数
+
+	WXCHALLENGESUC = 2021,  //通关某一楼
 	USERHYMESKILL = 2022,  //释放韵功次数
+
+
 	USERHYMESPEED = 2023, //释放韵力激发次数
 	CALLSERVANTCNT = 2024,  //战斗中召唤佣兵次数
 	FRIENDCNT = 2025,  //好友个数
@@ -2246,7 +2316,7 @@ enum GlobelVar
 	LINGRENCALLSERVANT = 2029, //伶人召唤次数
 	XIBANCALLSERVANT = 2030, //戏班子召唤次数
 	MINGLINGCALLSERVANT = 2031, //名妓召唤次数
-	MAXGEMLV = 2032
+	MAXGEMLV = 2032 //宝石最大等级
  };
 
  //每日任务关联的事件id
@@ -2266,9 +2336,429 @@ enum GlobelVar
 		DLYRHYMEENHANCECNT		= 1012, //韵文强化次数
 		DLYHORNORSTONELVUPCNT	= 1013, //界石升级次数
 		DLYBAICAISHEN                    = 1014, //拜财神次数（免费和付费都算次数）
-        DLYBUYENERGE						= 1015//购买体力
+        DLYBUYENERGE						= 1015,//购买体力
+		DLYFOODCOOK						= 1017,//美食屋烹饪
+		DLYCONSORTSIGN					= 1016//戏班签到
 		
  };
 
+ //7日训
+ enum SevenDayTranningEvent
+ {
+	 SDT01		= 3001,//成功通关任意关卡%d次
+	 SDT02     = 3002,//强化任意装备%d次
+	 SDT03     = 3003, //进行%d次玉器合成操作
+	 SDT04      = 3004, //升级任意技能%d次
+	 SDT05      = 3005,  //进行%d次体力购买
+	 SDT06		= 3006,  //扫荡任意精英关卡%d次
+	 SDT07		= 3007, //拜财神%d次
+	 SDT08		= 3008, //进行%d次伶人招募
+	 SDT09		 = 3009, //对任意京剧猫进行升级操作%d次
+	 SDT10		= 3010, //进行%d次饰品洗练操作
+	 SDT11		= 3011,//成功挑战多人副本%d次
+	 SDT12		= 3012, //挑战招福集市%d次
+	 SDT13		= 3013, //挑战任意十二宗宫关卡%d次
+	 SDT14      = 3014, //刷新神秘商店%d次
+	 SDT15		= 3015,//成功挑战任意大师关卡%d次
+	 SDT16      = 3016,//成功进行%d次勇气试炼挑战
+	 SDT17      = 3017,//进行%d排位赛挑战
+// 	 SDT18      = 3018,//进行%d次同步PVP挑战  
+	 SDT19      = 3019,//挑战%d次无限挑战玩法
+	 SDT20      = 3020,//在京剧猫商店购买%d次商品
+	 SDT21      = 3021//成功挑战%d次任意十二宗宫的宗主关
+
+ };
+
+ //公会日志关联id
+enum ConsortLogEvent
+ {
+		CNLCREATE = 111, //创建公会
+		CNLLVUP	= 112, //公会升级
+		CNLSETUPVICELEADER = 113, //公会设置副会长
+		CNLCHANGENAME = 114, //公会改名
+		CNLMEMBERJOIN = 115, //公会成员加入
+		CNLMEMBERLEAVE = 116, //成员离开
+		CNLCHANGEDESCS = 117, //更改公会宣言
+		CNLCHANGECHECK = 118, //更改公会招募方式
+		CNLCHANGEPOWERLIMIT = 119,  //更改加入战力需求
+		CNLKICKMEMBER = 120,//被踢出公会
+		CNLREFUSEAPPLY	= 121, //拒绝申请
+		CNLCLEARAPPLY = 122,
+		CNLSETDOWNMEMBER = 123
+};
+
+//公会常量条件
+enum ConsortCondition
+{
+	CREATENEEDVIPLV = 3, //公会创建需要vip等级
+	CREATENEEDGOLD = 1000, //公会创建需要的元宝
+    POWERLIMIT = 1000 //公会战力限制，至少1000才可加入
+};
+
+enum ConsortNotifyMsgType
+{
+	NOTIFYJOINCONSORT = 1,
+	APPLYADD = 2,
+	APPLYREFUSE = 3,
+	APPLYACCEPT = 4,
+	APPLYCLEAR = 5,
+	CHANGECHECKNOTIFY = 6,
+	CHANGEPOWERLIMIT = 7,
+	CHANGEDESC = 8,
+	KICKMEMBERNOTIFY = 9,
+	SETVICELEADER = 10,
+	LEAVECONSORT = 11
+
+};
+// 装备
+// 行头
+// 冒险
+// 普通难度冒险
+// 邮件
+// 设置
+// 公告
+// 充值
+// 体力购买
+// 拜财神
+// 福利
+// 在线奖励
+// 纳宗七日训
+// 角色信息
+// 招式
+// 京剧猫
+// 图鉴
+// 赏罚令
+// 玉器
+// 任务
+// 成就
+// 每日任务
+// 七天登陆奖励
+// 美食屋
+// 全民福利
+// 珍宝阁
+// 礼包商店
+// 珍宝商店
+// 月签到
+// 好友
+// 聊天
+// 三庆便当
+// 咚锵镇基金
+// 竞技场
+// 排位赛
+// 斗技场
+// 排行榜
+// 饰品
+// 界石
+// 大师难度冒险
+// 十二宗宫
+// 韵纹
+// 巴山试炼
+// 时装
+// 招福集市
+// 通宝当铺
+// 猛禽市场
+// 玉石工坊
+// 市集安保
+// 京剧猫商店
+// 勇气试炼
+// 戏班
+// 助阵
+// 无限挑战
+
+
+enum SYSTEM_ID
+{
+	SYSTEM_SHOP 			= 2001,
+	SYSTEM_ZHAOFUJISHI 	= 1501,
+	SYSTEM_SHANGFALING 	= 701,
+	SYSTEM_RANK 			= 2201,
+	SYSTEM_FOOD 			= 2101,
+	SYSTEM_GUILD 			= 2301,//0
+	SYSTEM_PVP			= 1702,//0
+	SYSTEM_COURAGE 		= 1802,
+	SYSTEM_PALACE 			= 1901,
+	SYSTEM_CHALLENGE 		= 1801,
+	SYSTEM_MULTI 			= 1601,
+	SYSTEM_EQUIP 			= 104,//0
+	SYSTEM_SERVANT 		= 501,//0
+	SYSTEM_JEWELRY		= 201,//0
+	SYSTEM_SKILL 			= 401,//0
+	SYSTEM_HOARSTONE 		= 302,//0
+	SYSTEM_RHYME 			= 301,//0
+	SYSTEM_GROW 			= 300,//0
+	SYSTEM_SETTING 		= 1101,//0
+	SYSTEM_FRIEND 			= 601,//0
+	SYSTEM_CHAT 			= 1201,//0
+	SYSTEM_EMAIL 			= 1001,
+	SYSTEM_MISSION 		= 901,//0
+	SYSTEM_FULI 			= 1401,//0
+	SYSTEM_PAY				= 1301,//0
+	SYSTEM_ONLINEAWARD		= 1403,//0
+	SYSTEM_STAGE			= 801,//0
+	SYSTEM_NOTICE 			= 1102,//0
+	SYSTEM_CONSORT			= 2301,
+	SYSTEM_TASK			= 5000,
+	SYSTEM_NEWPLAYERGUIDE			= 5001,
+	SYSTEM_ELSEAWARD			= 5002,
+};
+
+enum systemidrefreshtime
+{
+	TIME_REFRESH_ID01 = 802,  //普通难度冒险（包含普通+精英关卡）可挑战次数每日重置时间
+	TIME_REFRESH_ID02 = 803,  //大师难度冒险（不包含哥布林关卡）可挑战次数每日重置时间
+	TIME_REFRESH_ID03 = 903,  //每日任务每日重置时间
+	TIME_REFRESH_ID04 = 1302,  //体力购买每日重置次数时间
+	TIME_REFRESH_ID05 = 1303,  //拜财神每日重置次数时间
+	TIME_REFRESH_ID06 = 1404,  //月签到每日判断时间
+	TIME_REFRESH_ID07 = 1408,  //三庆便当每日重置时间
+	TIME_REFRESH_ID08 = 1501,  //招福集市每日可挑战次数重置时间
+	TIME_REFRESH_ID09 = 1601,  //巴山试炼每日可挑战次数重置时间
+	TIME_REFRESH_ID10 = 1702,  //排位赛每日可挑战次数重置时间
+	TIME_REFRESH_ID11 = 1703,  //排位赛每日可额外购买次数重置时间
+	TIME_REFRESH_ID12 = 1801,  //无限挑战每日可挑战次数重置时间
+	TIME_REFRESH_ID13 = 1802,  //勇气试炼通宝商店每日重置时间
+	TIME_REFRESH_ID14 = 1803,  //勇气试炼每日可额外购买次数重置时间
+	TIME_REFRESH_ID15 = 1804,  //勇气试炼免费刷新挑战对象次数重置时间1
+	TIME_REFRESH_ID16 = 1805,  //勇气试炼免费刷新挑战对象次数重置时间2
+	TIME_REFRESH_ID17 = 1901,  //十二宗宫每日副本重置时间
+	TIME_REFRESH_ID18 = 701,  //赏罚令免费最大次数重置时间
+};
+
+enum LOG_LEVEL
+{
+	LogInfo	= 1,
+	LogWarn	=	2,
+	LogError	= 3,
+	LogFatal	= 4,
+
+};
+
+enum LOG_TYPE
+{
+	CoinChange = 25,
+	GoldChange = 26,
+	ServantChange = 27,
+	ServantPieceChange = 28,
+	JewelryChange = 29,
+
+	LogType50 = 50, //	新增账号
+	LogType51 = 51, //  新增角色
+	LogType52 = 52, // 活跃用户
+	LogType53 = 53, //	7天连续登陆+月连续
+	LogType54 = 54, //   
+	LogType55 = 55, //	
+	LogType56 = 56, //	玩家登陆
+	LogType57 = 57, //玩家离线
+
+	LogType58 = 58, //玩家在线时长
+
+	LogType59 = 59, //	在线人数
+	LogType60 = 60, //最高在线人数
+	LogType61 = 61, //每天登陆不同账号总数
+
+	LogType62 = 62, //体力恢复
+	LogType63= 63, //体力购买
+	LogType64 = 64, //gm修改体力
+	LogType65 = 65, //美食次数恢复
+	LogType66 = 66, //美食总个数变化
+	LogType67 = 67, //购买美食次数直接变成美食个数
+
+	LogType68 = 68, //玉石
+	LogType69 = 69, //经验
+	LogType70 = 70, //韵魂
+	LogType71 = 71, //排位赛积分
+	LogType72 = 72, //竞技点（脸谱）
+	LogType73 = 73, //薄荷草
+	LogType74 = 74, //界石碎片
+	LogType75 = 75, //强化材料
+	LogType76 = 76, //符文
+	LogType77 = 77, //普通关卡次数
+	LogType78 = 78, //十二宗宫关卡次数
+	LogType79 = 79, //佣兵消耗道具，包括五种便当和原石
+	LogType80 = 80, //佣兵宝物
+	LogType81 = 81, //佣兵的生命之光
+	LogType82 = 82, //勇气试炼硬币
+	LogType83 = 83, //赏罚令单抽券
+	LogType84 = 84, //赏罚令十连抽券
+	LogType85 = 85, //勇气试炼通币
+	LogType86 = 86, //公会贡献
+	LogType87 = 87, //时装更换
+	LogType88 = 88, //角色切换
+	LogType89 = 89, //饰品装备
+	LogType90 = 90, //饰品卸载
+	LogType91 = 91, //京剧猫上阵
+	LogType92 = 92, //玉器镶嵌
+	LogType93 = 93, //界石装备符文
+	LogType94 = 94, //京剧猫助阵位上阵
+	LogType95 = 95, //
+	LogType96 = 96,//招式切换
+	LogType97 = 97,//
+	LogType98 = 98,//宝石卸载
+
+	LogType99 = 99,//等级
+	LogType100 = 100,//gm调等级
+	LogType101 = 101,//VIP等级
+	LogType102 = 102,//gm调VIP等级
+	LogType103 = 103,//vip经验
+
+
+
+	LogType200 = 200//
+
+
+};
+
+enum MINI_LOG
+{
+	MiniLog1=1,//装备强化
+	MiniLog2=2,//装备升阶
+	MiniLog3=3,//GM命令修改
+	MiniLog4=4,//装备洗练
+	MiniLog5=5,//角色重命名
+	MiniLog6=6,//饰品出售
+	MiniLog7=7,//饰品洗练
+	MiniLog8=8,//多人副本双倍花费
+	MiniLog9=9,//多人副本挑战
+	MiniLog10=10,//时装购买
+	MiniLog11=11,//	购买角色
+	MiniLog12=12,//
+	MiniLog13=13,//
+	MiniLog14=14,//
+	MiniLog15=15,//招式升级
+	MiniLog16=16,//
+	MiniLog17=17,//
+	MiniLog18=18,//
+	MiniLog19=19,//
+	MiniLog20=20,//京剧猫升星
+	MiniLog21=21,//京剧猫助阵位
+	MiniLog22=22,//
+	MiniLog23=23,//
+	MiniLog24=24,//
+	MiniLog25=25,//玉器解锁
+	MiniLog26=26,//
+	MiniLog27=27,//
+	MiniLog28=28,//
+	MiniLog29=29,//
+	MiniLog30=30,//界石激活
+	MiniLog31=31,//界石升级
+	MiniLog32=32,//
+	MiniLog33=33,//
+	MiniLog34=34,//
+	MiniLog35=35,//韵纹强化
+	MiniLog36=36,//
+	MiniLog37=37,//
+	MiniLog38=38,//
+	MiniLog39=39,//
+	MiniLog40=40,//福利月签到领取
+	MiniLog41=41,//基金
+	MiniLog42=42,//全民福利
+	MiniLog43=43,//三庆便当
+	MiniLog44=44,//7天登录
+	MiniLog45=45,//7天任务
+	MiniLog46=46,//在线奖励
+	MiniLog47=47,//成长基金
+	MiniLog48=48,//
+	MiniLog49=49,//
+	MiniLog50=50,//任务每日任务
+	MiniLog51=51,//任务成就
+	MiniLog52=52,//奖励关卡挑战
+	MiniLog53=53,//精英关卡挑战
+	MiniLog54=54,//大师关卡挑战
+	MiniLog55=55,//关卡宝箱
+	MiniLog56=56,//普通关卡挑战
+	MiniLog57=57,//普通关卡扫荡
+	MiniLog58=58,//关卡购买体力
+	MiniLog59=59,//关卡翻牌
+	MiniLog60=60,//招福集市挑战
+	MiniLog61=61,//招福集市扫荡
+	MiniLog62=62,//奖励关卡扫荡
+	MiniLog63=63,//精英关卡扫荡
+	MiniLog64=64,//大师关卡扫荡
+	MiniLog65=65,//十二宗宫购买号角
+	MiniLog66=66,//十二宗宫购买挑战次数
+	MiniLog67=67,//十二宗宫挑战
+	MiniLog68=68,//十二宗宫扫荡
+	MiniLog69=69,//
+	MiniLog70=70,//美食屋购买次数
+	MiniLog71=71,//
+	MiniLog72=72,//
+	MiniLog73=73,//
+	MiniLog74=74,//
+	MiniLog75=75,//戏班 创建
+	MiniLog76=76,//戏班 签到
+	MiniLog77=77,//戏班 箱子
+	MiniLog78=78,//戏班 行侠仗义
+	MiniLog79=79,//戏班 行商猫
+	MiniLog80=80,//戏班 厨房特训
+	MiniLog81=81,//戏班 眼力修炼
+	MiniLog82=82,//戏班 兑换
+	MiniLog83=83,//
+	MiniLog84=84,//勇气试炼通宝商店刷新
+	MiniLog85=85,//勇气试炼刷新
+	MiniLog86=86,//勇气试炼购买次数
+	MiniLog87=87,//勇气试炼挑战
+	MiniLog88=88,//勇气试炼通宝商店购买
+	MiniLog89=89,//硬币盒
+	MiniLog90=90,//赏罚令令人免费招募
+	MiniLog91=91,//赏罚令令人招募
+	MiniLog92=92,//赏罚令戏班免费招募
+	MiniLog93=93,//赏罚令戏班招募
+	MiniLog94=94,//赏罚令名伶招募
+	MiniLog95=95,//赏罚令铜鼓招募
+	MiniLog96=96,//代金券十连抽
+	MiniLog97=97,//代金券vip抽
+	MiniLog98=98,//
+	MiniLog99=99,//
+	MiniLog100=100,//珍宝阁珍宝
+	MiniLog101=101,//珍宝阁京剧猫
+	MiniLog102=102,//珍宝阁珍宝刷新
+	MiniLog103=103,//珍宝阁京剧猫刷新
+	MiniLog104=104,//珍宝阁礼包
+	MiniLog105=105,//无限挑战购买次数
+	MiniLog106=106,//无限挑战挑战
+	MiniLog107=107,//无限挑战扫荡
+	MiniLog108=108,//无限挑战选择获得
+	MiniLog109=109,//无限挑战复活
+	MiniLog110=110,//排位赛购买次数
+	MiniLog111=111,//排位赛脸谱商店购买
+	MiniLog112=112,//排位赛段位奖励
+	MiniLog113=113,//排位赛挑战
+	MiniLog114=114,//排位赛脸谱商店刷新
+	MiniLog115=115,//巴山试炼挑战
+	MiniLog116=116,//巴山试炼翻倍
+	MiniLog117=117,//
+	MiniLog118=118,//
+	MiniLog119=119,//
+	MiniLog120=120,//邮件收邮件
+	MiniLog121=121,//
+	MiniLog122=122,//
+	MiniLog123=123,//
+	MiniLog124=124,//
+	MiniLog125=125,//聊天发消息
+	MiniLog126=126,//
+	MiniLog127=127,//
+	MiniLog128=128,//
+	MiniLog129=129,//
+	MiniLog130=130,//拜财神免费拜
+	MiniLog131=131,//拜财神1次拜
+	MiniLog132=132,//拜财神10次拜
+	MiniLog133=133,//拜财神箱子
+	MiniLog134=134,//
+	MiniLog135=135,//VIP购买vip
+	MiniLog136=136,//新手礼物
+	MiniLog137=137,//客户端进度条奖励
+	MiniLog138=138,//
+	MiniLog139=139,//
+	MiniLog140=140,//复活复活 
+	MiniLog141=141,//
+	MiniLog142=142,//
+	MiniLog143=143,//
+	MiniLog144=144,//首次登录赠送
+	MiniLog145=145,//技能升级
+	MiniLog146=146,//
+	MiniLog147=147,//
+	MiniLog148=148,//
+
+};
 
 #endif // __LYNX_COMMON_LIB_CONST_DEFINITION_DEFINITION_H__

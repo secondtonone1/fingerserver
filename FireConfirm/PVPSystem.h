@@ -100,12 +100,6 @@ namespace Lynx
 // 		Map<UInt32,SceneTempelete*> SceneMap;
 
 
-
-		
-
-		
-
-
 	};
 
 	

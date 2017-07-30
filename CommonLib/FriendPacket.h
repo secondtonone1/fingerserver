@@ -11,8 +11,11 @@ namespace Lynx
 		BOC_FRIENDBLACKLIST_RESP				= sFriendBlackMsgBase + 2,  //服务器回复客户端好友和黑名单列表
 		BOC_FRIENDADD_REQ                           = sFriendBlackMsgBase + 3,  //客户端请求服务器加好友请求
 		BOC_FRIENDADD_NOTIFY                     = sFriendBlackMsgBase + 4,     //服务器通知客户端有人添加好友
+		BOC_FRIENDADD_NOTIFY_A                    = sFriendBlackMsgBase + 44,     //A向B添加好友通知A
+
 		BOC_ADDAGRU_REQ								= sFriendBlackMsgBase + 5,		//客户端同意或者拒绝添加好友，发送给服务器
 		BOC_ADDAGRU_RESP								= sFriendBlackMsgBase + 6,    //A请求B，B同意，这个时候服务器审核A好友是否满了，给客户端B回包
+		BOC_ADDAGRU_RESP_A							= sFriendBlackMsgBase + 46,    //A请求B，B同意给客户端A回包
 		//BOC_FRIENDADD_RESP							= sFriendBlackMsgBase + 7,//服务器通知客户端添加好友结果，同意
 
 		BOC_FRIENDDEL_REQ								= sFriendBlackMsgBase + 8, //客户端请求删除好友
@@ -29,19 +32,24 @@ namespace Lynx
 		BOC_RECOMMENDLIST_RESP				= sFriendBlackMsgBase + 18, //服务器同步好友列表回复
 
 		BOC_FINDPLAYER_REQ                          = sFriendBlackMsgBase + 19, //查找指定玩家
-		BOC_FINDPLAYER_RESP                         = sFriendBlackMsgBase + 20
+		BOC_FINDPLAYER_RESP                         = sFriendBlackMsgBase + 20,
+
+		
+
+		
 
 	};
 
 	//-----------------CG-------------------
 	struct CGFriendBlackListReq
 	{
-		CGFriendBlackListReq(): mPacketID(BOC_FRIENDBLACKLIST_REQ), mCharGUID(0) {}
+		CGFriendBlackListReq(): mPacketID(BOC_FRIENDBLACKLIST_REQ), /*mCharGUID(0),*/mReqJsonStr("") {}
 
 		UInt16	mPacketID;
-		UInt64	mCharGUID;
+// 		UInt64	mCharGUID;
+		std::string mReqJsonStr;
 
-		LYNX_MESSAGE_2(BOC_FRIENDBLACKLIST_REQ, CGFriendBlackListReq, UInt16, mPacketID, UInt64, mCharGUID);
+		LYNX_MESSAGE_2(BOC_FRIENDBLACKLIST_REQ, CGFriendBlackListReq, UInt16, mPacketID, std::string, mReqJsonStr);
 	};
 
 	struct CGFriendAddReq
@@ -135,6 +143,15 @@ namespace Lynx
 		LYNX_MESSAGE_2(BOC_FRIENDADD_NOTIFY,GCFriendAddNotify,UInt16, mPacketID,std::string, mRespJsonStr);
 	};
 	
+	struct GCFriendAddNotifyA
+	{
+		GCFriendAddNotifyA():mPacketID(BOC_FRIENDADD_NOTIFY_A),mRespJsonStr(""){}
+		UInt16 mPacketID;
+		std::string mRespJsonStr;
+
+		LYNX_MESSAGE_2(BOC_FRIENDADD_NOTIFY_A,GCFriendAddNotifyA,UInt16, mPacketID,std::string, mRespJsonStr);
+	};
+
 	//A加B好友，B同意后，服务器审核A目前好友是否满了，将结果回复给B
 	struct GCFriendAddBackResp
 	{
@@ -144,6 +161,17 @@ namespace Lynx
 
 		LYNX_MESSAGE_2(BOC_ADDAGRU_RESP,GCFriendAddBackResp,UInt16, mPacketID,std::string, mRespJsonStr);
 	};
+
+	struct GCFriendAddBackRespA
+	{
+		GCFriendAddBackRespA():mPacketID(BOC_ADDAGRU_RESP_A),mRespJsonStr(""){}
+		UInt16 mPacketID;
+		std::string mRespJsonStr;
+
+		LYNX_MESSAGE_2(BOC_ADDAGRU_RESP_A,GCFriendAddBackRespA,UInt16, mPacketID,std::string, mRespJsonStr);
+	};
+
+	
 
 	//struct GCFriendAddResp
 	//{

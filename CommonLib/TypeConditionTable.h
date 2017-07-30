@@ -12,6 +12,7 @@ namespace Lynx
 		UInt32 num;
 		LYNX_S11N_2(TypeNum, UInt32, type,UInt32, num);
 	};
+
 	struct TypeConditionTemplate 
 	{
 		UInt32 id;

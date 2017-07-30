@@ -26,6 +26,9 @@ namespace Lynx
 // 		十连抽
 // 		vip抽
 // 		十连抽券
+		BIG_RL_ONCE	= 1,//大类型单抽 包含免费、代金券、一抽
+		BIG_RL_TEN	= 2,//大类型十连抽 包含免费十抽 、十连抽券、十连抽
+		BIG_RL_VIP	= 3,//大类型VIP抽 
 
 	};
 
@@ -95,20 +98,32 @@ namespace Lynx
 	};
 	struct RewardLotteryMsgResp
 	{
-		RewardLotteryMsgResp(): onceLeftTime(0),tenLeftTime(0),couponOnceNum(0),couponTenNum(0){}
+		RewardLotteryMsgResp(): onceLeftTime(0),tenLeftTime(0),freeOnceLeftTimes(0),couponOnceNum(0),couponTenNum(0){}
 
-		UInt32 onceLeftTime;
-		UInt32 tenLeftTime;
+		int onceLeftTime;
+		int tenLeftTime;
+
+		int freeOnceLeftTimes;
 		UInt32 couponOnceNum;
 		UInt32 couponTenNum;
+
+		UInt32 awardId1;
+		UInt32 awardId2;
+		UInt32 awardId3;
 
 		std::string convertDataToJson()
 		{
 			Json::Value root;     	
 			root["onceLeftTime"] = Json::Value(onceLeftTime);
 			root["tenLeftTime"] = Json::Value(tenLeftTime);
+
+			root["freeOnceLeftTimes"] = Json::Value(freeOnceLeftTimes);
 			root["couponOnceNum"] = Json::Value(couponOnceNum);
 			root["couponTenNum"] = Json::Value(couponTenNum);
+
+			root["awardId1"] = Json::Value(awardId1);
+			root["awardId2"] = Json::Value(awardId2);
+			root["awardId3"] = Json::Value(awardId3);
 
 
 			Json::FastWriter writer;  
@@ -142,7 +157,7 @@ namespace Lynx
 
 	struct RewardLotteryResp
 	{
-		RewardLotteryResp(): reqType(0),result(0),onceLeftTime(0),tenLeftTime(0),couponOnceNum(0),couponTenNum(0),gold(0){}
+		RewardLotteryResp(): reqType(0),result(0),onceLeftTime(0),tenLeftTime(0),freeOnceLeftTimes(0),couponOnceNum(0),couponTenNum(0),gold(0){}
 
 		UInt32 reqType;
 		UInt32 result;
@@ -150,10 +165,21 @@ namespace Lynx
 		List<UInt32> newServant;//1 获得新佣兵
 		// 		UInt32 leftTime;
 		UInt32 gold;
-		UInt32 onceLeftTime;
-		UInt32 tenLeftTime;
+		int onceLeftTime;
+		int tenLeftTime;
+		UInt32 freeOnceLeftTimes;
 		UInt32 couponOnceNum;
 		UInt32 couponTenNum;
+
+		UInt32 rlOnceFreeCount;//免费单抽次数 大于maxkey给了最好则重置
+		UInt32 rlOnceTicketCount;//单抽券数量 大于maxkey给了最好则重置
+		UInt32 rlOnceCount;//单抽次数 大于maxkey给了最好则重置
+		UInt32 rlTenFreeCount;//免费十连抽次数 大于maxkey给了最好则重置
+		UInt32 rlTenTicketCount;//十连抽券数量 大于maxkey给了最好则重置
+		UInt32 rlTenCount;//十连抽次数 大于maxkey给了最好则重置
+		UInt32 rlVipDefaultCount;//vip次数 大于maxkey给了最好则重置
+		UInt32 rlVipAwardID;
+		UInt32 rlVipElseCount;
 
 		List<Award> awards;
 		List<Goods> ends;
@@ -165,10 +191,22 @@ namespace Lynx
 			root["reqType"] = Json::Value(reqType);
 			root["result"] = Json::Value(result);
 			root["onceLeftTime"] = Json::Value(onceLeftTime);
-			root["tenLeftTime"] = Json::Value(tenLeftTime);		
+			root["tenLeftTime"] = Json::Value(tenLeftTime);	
+			root["freeOnceLeftTimes"] = Json::Value(freeOnceLeftTimes);	
 			root["couponOnceNum"] = Json::Value(couponOnceNum);
 			root["couponTenNum"] = Json::Value(couponTenNum);
 			root["gold"] = Json::Value(gold);
+
+			//for test
+			root["rlOnceFreeCount"] = Json::Value(rlOnceFreeCount);
+			root["rlOnceTicketCount"] = Json::Value(rlOnceTicketCount);
+			root["rlOnceCount"] = Json::Value(rlOnceCount);
+			root["rlTenFreeCount"] = Json::Value(rlTenFreeCount);
+			root["rlTenTicketCount"] = Json::Value(rlTenTicketCount);
+			root["rlTenCount"] = Json::Value(rlTenCount);
+			root["rlVipDefaultCount"] = Json::Value(rlVipDefaultCount);
+			root["rlVipAwardID"] = Json::Value(rlVipAwardID);
+			root["rlVipElseCount"] = Json::Value(rlVipElseCount);
 
 			for(List<UInt32>::Iter *item = newServant.begin();item !=NULL;item = newServant.next(item) )
 			{			
@@ -191,15 +229,15 @@ namespace Lynx
 				root["awards"].append(son);
 			}
 
-			for(List<Goods>::Iter * iter = ends.begin(); iter != NULL; iter = ends.next(iter))
-			{
-				Json::Value son;
-				son.append(iter->mValue.resourcestype);
-				son.append(iter->mValue.subtype);
-				son.append(iter->mValue.num);
-
-				root["ends"].append(son);
-			}
+// 			for(List<Goods>::Iter * iter = ends.begin(); iter != NULL; iter = ends.next(iter))
+// 			{
+// 				Json::Value son;
+// 				son.append(iter->mValue.resourcestype);
+// 				son.append(iter->mValue.subtype);
+// 				son.append(iter->mValue.num);
+// 
+// 				root["ends"].append(son);
+// 			}
 
 			root["allAttr"] = Json::Value(allAttr);
 
@@ -406,10 +444,8 @@ namespace Lynx
 	class GiftManager : public Singleton<GiftManager>
 	{
 	public:
-		static void onOpenGiftReq(const  ConnId& ,GiftReq & );		//开礼包 
 		static void onOpenBoxReq(const  ConnId& ,BoxReq & );	//开箱子
-		static void onqiyongReq(const  ConnId& ,LotteryDrawReq & );//
-		static void onPropertyChang(const  ConnId& ,CGPropertyChange & );		//属性更改
+
 
 		static void onRewardLotteryMsgReq(const  ConnId& ,RewardLotteryMsgReq & );	//抽奖 又名赏罚令
 
@@ -420,26 +456,34 @@ namespace Lynx
 		UInt32 getOpenLotteryID();
 
 		UInt32 getRewardLotteryAwardID(Guid playerID,UInt32 id,UInt32 &awardID);
+		UInt32 onlyGetRewardLotteryAwardID(Guid playerID,UInt32 id,UInt32 &awardID);
+		
+
+		UInt32 getUpDownOne( UInt32 &nowCount,UInt32 maxKey, RewardLotteryTemplate *rewardLotteryTemplate);
 
 		UInt32 checkRewardLotteryTen(Guid playerID,UInt32 typeID);
 
+		void canRewardLotteryType(UInt64 playerID,UInt32 &reqType);
+
 		UInt32 checkRewardLotteryTenCount(Guid playerID,UInt32 typeID,UInt32 &count);
 
-		void getLotteryLeftTime(Guid playerID,UInt32 &onceTime,UInt32 &tenTime);
+		void getLotteryLeftTime(Guid playerID,int &onceTime,int &tenTime);
 
 		void getAllAttr(Guid playerID,UInt32 resType,UInt32 subType,Json::Value &jsonValue);
 
 		void servanNeedChangeToPiece(Guid playerID, List<Award> &awards,List<Goods> &ends);
 
+		bool findValueExit(UInt32 id, List<UInt32>ids);
+
+		void servanNeedChangeToPieceEX(Guid playerID, List<Goods> &itemList,List<Goods> &ends);
+
 		void getGift(const ConnId& connId ,UInt32 id,ChapterEndResp &resp);//获取礼包
 
-		UInt32 modifyCoin(Guid playerID,Int32 num);//铜钱
 		UInt32 modifyExp(Guid playerID,Int32 num);//经验
 		UInt32 modifyItem(Guid playerID,Guid templateID,Int32 num);//装备
 		UInt32 modifyShengWang(Guid playerID,Int32 num);//声望
 		UInt32 modifyRhyme(Guid playerID,Int32 num);//声望		 
 
-		UInt32 modifyYuanBao(Guid playerID,Int32 num);//元宝
 		UInt32 modifyMercenary(Guid playerID,Int32 num);//佣兵
 		UInt32 updateCounter(Guid playerID,UInt32 boxID,Int32 num);//计数器
 		UInt32 updateRewardCounter(Guid playerID,UInt32 boxID,Int32 num);//回馈计数器
@@ -462,8 +506,8 @@ namespace Lynx
 		// 		 UInt32 subMercenary(Guid playerID,Int32 num);//佣兵
 
 		UInt32 PlayerItemChangeResult(Guid playerID,UInt32 reFlashType,List<Goods> &itemList);
-		UInt32 addToPlayer(Guid playerID,UInt32 reFlashType,List<Goods> itemList);
-		void sendToPlayer(Guid playerID,UInt32 type,List<Goods> itemList,List<UInt64> newItemUids);
+		UInt32 addToPlayer(Guid playerID,UInt32 reFlashType,List<Goods> itemList,UInt32 systemID);
+// 		void sendToPlayer(Guid playerID,UInt32 type,List<Goods> itemList,List<UInt64> newItemUids);
 		void sendItemListChange(Guid playerID,List<UInt64> ItemUids);
 		UInt32 subFromPlayer(Guid playerID,Goods goods);
 		UInt32 getEmputyBagNum(Guid playerID);
@@ -480,6 +524,15 @@ namespace Lynx
 		void splitKind( List<Goods> &goodsList, List<Goods> &kindgoodsList,UInt32 kind);//拆分一类资源
 
 		void checkJewelry(List<Goods> &itemList,PlayerFireConfirmData &fireConfirmData,UInt32 isFull);
+
+		UInt32 addToPlayerAttr(Guid playerID,List<ReturnItemEle> &rtItemList,Json::Value &root, List<Goods> itemList,UInt32 systemID);
+
+		void saveEndsAttr(Guid playerID,List<Goods> &ends,Json::Value &allAttr,Json::Value &stages,UInt32 systemID);
+
+		void saveEndsAttrNotCombine(Guid playerID,List<Goods> &ends,Json::Value &allAttr,Json::Value &stages,UInt32 systemID);		
+
+		void saveEndsGetAttr(Guid playerID,List<Goods> &ends,Json::Value &allAttr,UInt32 systemID);
+
 	};
 
 	struct StepContent

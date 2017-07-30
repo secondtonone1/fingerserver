@@ -97,11 +97,20 @@ void SkillManager::skillLevelUp(UInt64 skillId)
 
 			playerCoin -= skillNextLvTemplate->mLearnCoin;
 
-			m_pPlayer->setPlayerCoin(playerCoin);
+
+			Goods goods;
+			List<Goods> itemList;
+
+			goods.resourcestype =AWARD_BASE;
+			goods.subtype = AWARD_BASE_COIN;
+			goods.num = 0 - skillNextLvTemplate->mLearnCoin;
+			itemList.insertTail(goods);
+			GiftManager::getSingleton().addToPlayer(m_pPlayer->getPlayerGuid(),REFLASH_AWARD,itemList,MiniLog15);
 			
 			iterSkill->mValue->m_nLevel = skillNextLvTemplate->mLevel;
 
-			m_pPlayer->getPersistManager().setDirtyBit(SKILLDATABIT|BASEDATABIT);
+
+			m_pPlayer->getPersistManager().setDirtyBit(SKILLDATABIT);
 
 			//
 			GCSkillLevelUpResp skillLevelUpResp;
@@ -119,6 +128,165 @@ void SkillManager::skillLevelUp(UInt64 skillId)
 			const ConnId& connId = m_pPlayer->getConnId();
 
 			NetworkSystem::getSingleton().sendMsg(skillLevelUpResp,connId);
+
+			//更新七日训
+			LogicSystem::getSingleton().updateSevenDayTask(m_pPlayer->getPlayerGuid(),SDT04,1);
+
+			return;
+			
+		}
+		else
+		{
+			//提示玩家已经满级
+
+			GCSkillLevelUpResp skillLevelUpResp;
+			skillLevelUpResp.mPacketID = BOC_SKILL_LEVELUP_RESP;
+
+			Json::Value root;
+			Json::FastWriter writer;
+
+			root["errorId"] = LynxErrno::SkillLevelLimit;
+			root["skillID"] = iterSkill->mValue->m_nID;
+			root["skillLevel"] = iterSkill->mValue->m_nLevel;
+			skillLevelUpResp.mRespJsonStr = writer.write(root);
+
+			const ConnId& connId = m_pPlayer->getConnId();
+
+			NetworkSystem::getSingleton().sendMsg(skillLevelUpResp,connId);
+
+			return;
+		}
+	}
+	else
+	{
+		//提示玩家技能id无效
+
+		GCSkillLevelUpResp skillLevelUpResp;
+		skillLevelUpResp.mPacketID = BOC_SKILL_LEVELUP_RESP;
+
+		Json::Value root;
+		Json::FastWriter writer;
+
+		root["errorId"] = LynxErrno::InvalidParameter;
+		root["skillID"] = 0;
+		root["skillLevel"] = 0;
+		skillLevelUpResp.mRespJsonStr = writer.write(root);
+
+		const ConnId& connId = m_pPlayer->getConnId();
+
+		NetworkSystem::getSingleton().sendMsg(skillLevelUpResp,connId);
+
+		return;
+	}
+}
+
+void SkillManager::skillLvUpOnce(UInt64 skillId)
+{
+
+	cout << "receive skilllevel up msg!";
+	Map<UInt64, SkillData*>::Iter * iterSkill = m_mapIDToSkillData.find(skillId);
+	
+	if(iterSkill)
+	{
+		
+		SkillLevelTemplate * skillNextLvTemplate = SKILLLEVEL_TABLE().reverseGetNextLv(skillId,iterSkill->mValue->m_nLevel);
+		 
+		if(skillNextLvTemplate)
+		{
+			UInt64 playerCoin = m_pPlayer->getPlayerCoin();
+
+			if(playerCoin < skillNextLvTemplate->mLearnCoin)
+			{
+				GCSkillLevelUpResp skillLevelUpResp;
+				skillLevelUpResp.mPacketID = BOC_SKILL_LEVELUP_RESP;
+
+				Json::Value root;
+				Json::FastWriter writer;
+
+				root["errorId"] = LynxErrno::CoinNotEnough;
+				
+				skillLevelUpResp.mRespJsonStr = writer.write(root);
+
+				const ConnId& connId = m_pPlayer->getConnId();
+
+				NetworkSystem::getSingleton().sendMsg(skillLevelUpResp,connId);
+
+				return;
+			}
+			
+			if(m_pPlayer->mPlayerData.mBaseData.m_nLevel < skillNextLvTemplate->mLearnLevel)
+			{
+				GCSkillLevelUpResp skillLevelUpResp;
+				skillLevelUpResp.mPacketID = BOC_SKILL_LEVELUP_RESP;
+
+				Json::Value root;
+				Json::FastWriter writer;
+
+				root["errorId"] = LynxErrno::LevelNotEnough;
+
+				skillLevelUpResp.mRespJsonStr = writer.write(root);
+
+				const ConnId& connId = m_pPlayer->getConnId();
+
+				NetworkSystem::getSingleton().sendMsg(skillLevelUpResp,connId);
+
+				return;
+			}
+
+			UInt32 cost =0;
+			cost += skillNextLvTemplate->mLearnCoin;
+			playerCoin -= skillNextLvTemplate->mLearnCoin;
+
+			//更新七日训
+			LogicSystem::getSingleton().updateSevenDayTask(m_pPlayer->getPlayerGuid(),SDT04,1);
+
+			iterSkill->mValue->m_nLevel = skillNextLvTemplate->mLevel;
+
+            skillNextLvTemplate = SKILLLEVEL_TABLE().reverseGetNextLv(skillId,iterSkill->mValue->m_nLevel);
+
+			while( skillNextLvTemplate && playerCoin >= skillNextLvTemplate->mLearnCoin && 
+				m_pPlayer->mPlayerData.mBaseData.m_nLevel >= skillNextLvTemplate->mLearnLevel)
+			{
+					playerCoin -= skillNextLvTemplate->mLearnCoin;
+					cost += skillNextLvTemplate->mLearnCoin;
+
+					iterSkill->mValue->m_nLevel = skillNextLvTemplate->mLevel;
+					//更新七日训
+					LogicSystem::getSingleton().updateSevenDayTask(m_pPlayer->getPlayerGuid(),SDT04,1);
+
+					skillNextLvTemplate = SKILLLEVEL_TABLE().reverseGetNextLv(skillId,iterSkill->mValue->m_nLevel);
+			}
+
+
+			Goods goods;
+			List<Goods> itemList;
+
+			goods.resourcestype =AWARD_BASE;
+			goods.subtype = AWARD_BASE_COIN;
+			goods.num = 0 - cost;
+			itemList.insertTail(goods);
+			GiftManager::getSingleton().addToPlayer(m_pPlayer->getPlayerGuid(),REFLASH_AWARD,itemList,MiniLog145);
+
+			m_pPlayer->getPersistManager().setDirtyBit(SKILLDATABIT);
+
+			//
+			GCSkillLevelUpResp skillLevelUpResp;
+			skillLevelUpResp.mPacketID = BOC_SKILL_LEVELUP_RESP;
+			
+			Json::Value root;
+			Json::FastWriter writer;
+			
+			root["errorId"] = LynxErrno::None;
+			root["skillID"] = iterSkill->mValue->m_nID;
+			root["skillLevel"] = iterSkill->mValue->m_nLevel;
+			root["coin"] = playerCoin;
+			skillLevelUpResp.mRespJsonStr = writer.write(root);
+
+			const ConnId& connId = m_pPlayer->getConnId();
+
+			NetworkSystem::getSingleton().sendMsg(skillLevelUpResp,connId);
+
+		
 
 			return;
 			
@@ -171,6 +339,9 @@ void SkillManager::skillLevelUp(UInt64 skillId)
 
 void SkillManager::skillPositonSet(Map<UInt64,UInt32> skillEquipMap)
 {
+
+	char dest[1024]={0};
+
 	for(List<SkillData>::Iter * iter = m_pListSkillDatas->begin(); iter != NULL; iter = m_pListSkillDatas->next(iter) )
 	{
 		iter->mValue.m_nEquipPos = 0;
@@ -180,12 +351,19 @@ void SkillManager::skillPositonSet(Map<UInt64,UInt32> skillEquipMap)
 		{
 			//在更新列表里，替换位置信息
 			iter->mValue.m_nEquipPos = skillEquipIter->mValue;
+
+			char tmp[64] = {0};
+			snprintf(tmp,sizeof(tmp),"%d,",skillEquipIter->mValue);
+			strcat(dest,tmp);
+			
 		}
 		else
 		{
 			
 		}
 	}
+
+	LogicSystem::getSingleton().write_log(LogType96,m_pPlayer->getPlayerGuid(), dest,LogInfo);
 
 	m_pPlayer->getPersistManager().setDirtyBit(SKILLDATABIT);
 
@@ -261,19 +439,39 @@ List<SkillData> SkillManager::activeSkill(void)
 	return skillList;
 }
 
+Map<UInt64, SkillData*> *SkillManager::getSkillMap()
+{
+	return &m_mapIDToSkillData;
+}
+		
+
+
 void SkillManager::changeCharactorSkill(UInt64 charactorId)
 {
 	for(List<SkillData>::Iter * iter = m_pListSkillDatas->begin(); iter != NULL; iter = m_pListSkillDatas->next(iter))
 	{
-		if(iter->mValue.m_nLevel == 0 || !(iter->mValue.m_nID) )
+		if(iter->mValue.m_nLevel == 0 && !(iter->mValue.m_nID) )
 		{
 			continue;
 			
 		}
 
-		UInt64 tail = (iter->mValue.m_nID)%1000;
-		UInt64 newSkill = charactorId * 1000 + tail;
-		iter->mValue.m_nID = newSkill;
+		//UInt64 tail = (iter->mValue.m_nID)%1000;
+		//UInt64 newSkill = charactorId * 1000 + tail;
+		SkillListTemplate * skillListtmep = SKILLCONVERT_TABLE().get(iter->mValue.m_nID);
+		if(!skillListtmep)
+		{
+			continue;
+		}
+
+		List<UInt32>::Iter * skillIter = skillListtmep->skillList.getn(charactorId);
+		if( !skillIter )
+		{
+			continue;
+		}
+		//iter->mValue.m_nID = newSkill;
+		iter->mValue.m_nID = skillIter->mValue;
+		//LOG_INFO("skillid is: %llu",iter->mValue.m_nID);
 	}
 
 	skillMapInitial();

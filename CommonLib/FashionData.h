@@ -9,12 +9,12 @@ namespace Lynx
 	{
 
 
-		FashionData() : m_nFahionID(0), m_nFashionUid(0){}
+		FashionData() : m_nFahionID(0){}
 
 		//buffID
 		Guid m_nFahionID;
-		Guid m_nFashionUid;
-		LYNX_S11N_2(FashionData, Guid, m_nFahionID, Guid, m_nFashionUid);
+		
+		LYNX_S11N_1(FashionData, Guid, m_nFahionID);
 
 
 	};

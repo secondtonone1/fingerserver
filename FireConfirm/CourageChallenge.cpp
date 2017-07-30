@@ -6,92 +6,140 @@
 #include "../CommonLib/CopyFinishTime.h"
 #include "Gift.h"
 #include "CourageChallenge.h"
+#include "GlobalValue.h"
+#include "RankGame.h"
+
+
+
+#include "StringConverter.h"
+#include "../PlatformLib/SerializeType.h"
+#include "../PlatformLib/Utilex.h"
+#include "Shop.h"
+
 
 using namespace Lynx;
 
-//reqtype 0请求信息 1刷新 2购买 3激活
-void CourageChallengeManager::onCourageChallengeReq(const  ConnId& connId,CourageChallengeReq & req)
+
+void CourageChallengeManager::refreshTimes(Player *player,PlayerCourageChallengeData &courageChallengeData)
 {
-	UInt32 i = 0;
-	UInt32 ii = 0;
 	UInt32 maxBuyTimes = 0;
 	int lastFinishTimes = 0;
 	UInt32 finishTimes = 0;
 	int maxCanAddTimes = 0;
-	UInt32 cost = 0;
+
 	UInt32 nowTime = TimeUtil::getTimeSec();
-	UInt32 dayBeiginTime =  TimeUtil::getTimeSec() - TimeUtil::getSecOfToday();
-	Goods goods;
-	List<Goods> itemList;
-	CourageChallengeResp resp;
-	PlayerCourageChallengeData courageChallengeData;	
-	
-	req.convertJsonToData(req.strReceive);
-	resp.reqType = req.reqType;	
-	resp.id = req.id;
+	UInt32 dayBeiginTime =  nowTime - TimeUtil::getSecOfToday();
 
-	Player *player = LogicSystem::getSingleton().getPlayerByConnId(connId);	
-	courageChallengeData = player->getCourageChallengeData();
-	TerritoryLuckyTemplate territoryLuckyTemplate = GlobalVarManager::getSingleton().getTerritoryLucky();
+	GlobalValue globalValue = GlobalValueManager::getSingleton().getGlobalValue();
 
+	UInt32 buyTimesRefreshTime = LogicSystem::getSingleton().getRefreshTime(TIME_REFRESH_ID14);
+	UInt32 challangeRefreshTime1 = LogicSystem::getSingleton().getRefreshTime(TIME_REFRESH_ID15);
+	UInt32 challangeRefreshTime2 = LogicSystem::getSingleton().getRefreshTime(TIME_REFRESH_ID16);
+
+	UInt32 refreshTime1 = dayBeiginTime + challangeRefreshTime1;
+	UInt32 refreshTime2 = dayBeiginTime + challangeRefreshTime2;
 
 	for (List<VipTemplate>::Iter * iter = gVipTable->mVip.begin();iter!= NULL;iter = gVipTable->mVip.next(iter))
 	{
 		if (iter->mValue.id == player->getVipLevel())
 		{
 			maxBuyTimes =  iter->mValue.territorybuytimes; 
-
-			if ((nowTime - dayBeiginTime)< 6 * 3600 )
-			{
-				if (courageChallengeData.m_BuyTime < (dayBeiginTime - 6 * 3600))
-				{
-					courageChallengeData.m_BuyTime = nowTime;
-					courageChallengeData.m_BuyTimes = 0;
-					courageChallengeData.m_BuyTimes = 0;
-					courageChallengeData.m_RefreshTimes = 0;
-				}
-			}
-			else if ( (nowTime - dayBeiginTime)>= (6 * 3600) &&(nowTime - dayBeiginTime) < (18 * 3600))
-			{
-				if (courageChallengeData.m_BuyTime < (dayBeiginTime + 6 * 3600))
-				{
-					courageChallengeData.m_BuyTime = nowTime;
-					courageChallengeData.m_BuyTimes = 0;
-					courageChallengeData.m_BuyTimes = 0;
-					courageChallengeData.m_RefreshTimes = 0;
-				}
-			}
-			else
-			{				
-				if (courageChallengeData.m_BuyTime < (dayBeiginTime + 18 * 3600))
-				{
-					courageChallengeData.m_BuyTime = nowTime;
-					courageChallengeData.m_BuyTimes = 0;
-					courageChallengeData.m_BuyTimes = 0;
-					courageChallengeData.m_RefreshTimes = 0;
-				}
-			}
 			break;
 		}
 	}
 
-	lastFinishTimes = (nowTime - courageChallengeData.m_BeginTime) / (territoryLuckyTemplate.recovertime);
+
+	if ((nowTime - dayBeiginTime)< buyTimesRefreshTime )
+	{
+		if (courageChallengeData.m_BuyTime < (dayBeiginTime - (24*3600-buyTimesRefreshTime) ))
+		{
+			courageChallengeData.m_BuyTime = nowTime;
+			courageChallengeData.m_BuyTimes = 0;
+		}		
+	}
+	else if((nowTime - dayBeiginTime) >= buyTimesRefreshTime)
+	{				
+		if (courageChallengeData.m_BuyTime < (dayBeiginTime + buyTimesRefreshTime))
+		{
+			courageChallengeData.m_BuyTime = nowTime;
+			courageChallengeData.m_BuyTimes = 0;
+		}
+	}
+
+
+
+/*
+	if ((nowTime - dayBeiginTime)< challangeRefreshTime1 )
+	{
+		if (courageChallengeData.m_RefreshTime < (dayBeiginTime - (24*3600-challangeRefreshTime1) ))
+		{
+			courageChallengeData.m_RefreshTime = nowTime;
+			courageChallengeData.m_RefreshTimes = 0;
+		}
+	}
+	else if ( (nowTime - dayBeiginTime)>= (challangeRefreshTime1) &&(nowTime - dayBeiginTime) < challangeRefreshTime2)
+	{
+		if (courageChallengeData.m_RefreshTime < (dayBeiginTime + challangeRefreshTime1))
+		{
+			courageChallengeData.m_RefreshTime = nowTime;
+			courageChallengeData.m_RefreshTimes = 0;
+		}
+	}
+	else if((nowTime - dayBeiginTime) >= challangeRefreshTime2)
+	{				
+		if (courageChallengeData.m_RefreshTime < (dayBeiginTime + challangeRefreshTime2))
+		{
+			courageChallengeData.m_RefreshTime = nowTime;
+			courageChallengeData.m_RefreshTimes = 0;
+		}
+	}
+	*/
+
+	if (nowTime < refreshTime1)
+	{
+		if (courageChallengeData.m_RefreshTime < (dayBeiginTime  - 24*3600 + challangeRefreshTime1))
+		{
+			courageChallengeData.m_RefreshTime = nowTime;
+			courageChallengeData.m_RefreshTimes = 0;
+		}
+	}
+	else if (nowTime < refreshTime2)
+	{	
+		if (courageChallengeData.m_RefreshTime < refreshTime1)
+		{
+			courageChallengeData.m_RefreshTime = nowTime;
+			courageChallengeData.m_RefreshTimes = 0;
+		}
+	}
+	else if(nowTime > refreshTime2)
+	{
+		if (courageChallengeData.m_RefreshTime < refreshTime2)
+		{
+			courageChallengeData.m_RefreshTime = nowTime;
+			courageChallengeData.m_RefreshTimes = 0;
+		}
+	}
+
+
+
+
+	lastFinishTimes = (nowTime - courageChallengeData.m_BeginTime) / (globalValue.uTERRITORYLrecovertime);
 
 
 	if(lastFinishTimes < 0)//有时时间异常
 	{
 		finishTimes = 0;
 	}
-	else if (lastFinishTimes > territoryLuckyTemplate.recovertime)
+	else if (lastFinishTimes > globalValue.uTERRITORYLrecovertime)
 	{
-		finishTimes = territoryLuckyTemplate.recovertime;
+		finishTimes = globalValue.uTERRITORYLrecovertime;
 	}
 	else
 	{
 		finishTimes = lastFinishTimes;
 	}
 
-	maxCanAddTimes =(int)( territoryLuckyTemplate.maxtimes - courageChallengeData.m_LeftChallengeTimes);
+	maxCanAddTimes =(int)( globalValue.uTERRITORYLmaxtimes - courageChallengeData.m_LeftChallengeTimes);
 	if (maxCanAddTimes > 0 )
 	{
 		if (maxCanAddTimes <= finishTimes )//次数满了
@@ -102,7 +150,7 @@ void CourageChallengeManager::onCourageChallengeReq(const  ConnId& connId,Courag
 		else //次数没满还要倒计时
 		{
 			courageChallengeData.m_LeftChallengeTimes += finishTimes;
-			courageChallengeData.m_BeginTime = courageChallengeData.m_BeginTime + finishTimes * (territoryLuckyTemplate.recovertime);			
+			courageChallengeData.m_BeginTime = courageChallengeData.m_BeginTime + finishTimes * (globalValue.uTERRITORYLrecovertime);			
 		}			
 	}
 	else
@@ -110,7 +158,58 @@ void CourageChallengeManager::onCourageChallengeReq(const  ConnId& connId,Courag
 		courageChallengeData.m_BeginTime = nowTime;
 	}
 
-	if (req.reqType == 0)
+	if (courageChallengeData.m_LeftChallengeTimes >= globalValue.uTERRITORYLmaxtimes)
+	{
+		courageChallengeData.m_BeginTime = nowTime;
+	}
+
+}
+
+//reqtype 0请求信息 1刷新 2购买 3激活 4未解锁
+void CourageChallengeManager::onCourageChallengeReq(const  ConnId& connId,CourageChallengeReq & req)
+{
+	UInt32 i = 0;
+	UInt32 ii = 0;	
+	UInt32 cost = 0;
+	UInt32 nowTime = TimeUtil::getTimeSec();
+	Goods goods;
+	List<Goods> itemList;
+	CourageChallengeResp resp;
+	PlayerCourageChallengeData courageChallengeData;	
+
+	req.convertJsonToData(req.strReceive);
+	resp.reqType = req.reqType;	
+	resp.id = req.id;
+
+	Player *player = LogicSystem::getSingleton().getPlayerByConnId(connId);
+	if (player == NULL)
+	{
+		LOG_WARN("player not found!!");
+		return;
+	}
+
+	player->ResetFireConfirmData();	
+
+	courageChallengeData = player->getCourageChallengeData();
+	GlobalValue globalValue = GlobalValueManager::getSingleton().getGlobalValue();
+
+// 	if (RankGameManager::getSingleton().checkSystemOpen(player->getPlayerGuid(),SYSTEM_COURAGE) == false)
+// 	{
+// 		LOG_INFO("Open CourageChallenge level not enough");	
+// 			
+// 		resp.reqType = 4;
+// 		std::string jsonStr = resp.convertDataToJson();
+// 		NetworkSystem::getSingleton().sender( connId,COURAGE_CHALLENG_RESP,jsonStr);
+// 		return;
+// 	
+// 	}
+
+
+	CourageChallengeManager::getSingleton().refreshTimes(player,courageChallengeData);
+
+
+
+	if (req.reqType == 0||req.reqType == 10)
 	{
 		//need do nothing
 	}
@@ -139,7 +238,16 @@ void CourageChallengeManager::onCourageChallengeReq(const  ConnId& connId,Courag
 	{
 		itemList.insertTail(goods);
 		GiftManager::getSingleton().combineSame( itemList);
-		GiftManager::getSingleton().addToPlayer(player->getPlayerGuid(),REFLASH_WELFALE_MARKET,itemList);
+		if(req.reqType == 1)
+		{
+			GiftManager::getSingleton().addToPlayer(player->getPlayerGuid(),REFLASH_WELFALE_MARKET,itemList,MiniLog85);
+		}
+		else
+		{
+			GiftManager::getSingleton().addToPlayer(player->getPlayerGuid(),REFLASH_WELFALE_MARKET,itemList,MiniLog86);
+		}
+
+		
 	}
 
 	if (courageChallengeData.monsterID1 == 0)
@@ -151,30 +259,39 @@ void CourageChallengeManager::onCourageChallengeReq(const  ConnId& connId,Courag
 
 	player->setCourageChallengeData(courageChallengeData);
 	player->getPersistManager().setDirtyBit(COURAGECHALLENGEDATABIT);
-	
+
 	resp.gold  = player->getPlayerGold();
 	resp.leftChallengeTimes  = courageChallengeData.m_LeftChallengeTimes;
-	resp.needTime = territoryLuckyTemplate.recovertime - (nowTime - courageChallengeData.m_BeginTime);
+	resp.needTime = globalValue.uTERRITORYLrecovertime - (nowTime - courageChallengeData.m_BeginTime);
 	resp.buyTimes  = courageChallengeData.m_BuyTimes;
-	resp.lightOfLife  = player->getAllItemManager().getAwardCount(AWARD_SERVANTSWITCH,0); 
+	resp.lightOfLife  = courageChallengeData.m_LightOfLife ;
 	resp.monsterID1  = courageChallengeData.monsterID1;
 	resp.monsterID2  = courageChallengeData.monsterID2;
 	resp.monsterID3  = courageChallengeData.monsterID3;
 	resp.catCoins  = courageChallengeData.catCoins;
-	resp.coinGroup  = courageChallengeData.coinGroup;
+	 CourageChallengeManager::getSingleton().divisionCoinGrop(resp.coinGroup1,resp.coinGroup2,resp.coinGroup3,courageChallengeData.coinGroup);
+// 	resp.coinGroup  = courageChallengeData.coinGroup;
 	resp.refreshTimes   = courageChallengeData.m_RefreshTimes;
-	resp.maxChallengeTimes   = territoryLuckyTemplate.maxtimes;
-	resp.maxFreeRefreshTimes   = territoryLuckyTemplate.freerefresh;
-	resp.recoverTime = territoryLuckyTemplate.recovertime;
+	resp.maxChallengeTimes   = globalValue.uTERRITORYLmaxtimes;
+	resp.maxFreeRefreshTimes   = globalValue.uTERRITORYLfreerefreshtimes;
+	resp.recoverTime = globalValue.uTERRITORYLrecovertime;
+
+	resp.luckyValues1 = courageChallengeData.m_LuckyValues1;
+	resp.luckyValues2 = courageChallengeData.m_LuckyValues2;
+	resp.luckyValues3 = courageChallengeData.m_LuckyValues3;
+
+
 
 	resp.nextRefreshCost = CourageChallengeManager::getSingleton().getNextRefreshCost(courageChallengeData.m_RefreshTimes);
-	
-	for (List<UInt32>::Iter *it = territoryLuckyTemplate.buytimess.begin();it != NULL;it = territoryLuckyTemplate.buytimess.next(it))
+
+	for (List<UInt32>::Iter *it = globalValue.uTERRITORYLbuytimess.begin();it != NULL;it = globalValue.uTERRITORYLbuytimess.next(it))
 	{		
 		if (ii == courageChallengeData.m_BuyTimes)
 		{
 			resp.nextBuyCost = it->mValue;
+			break;
 		}
+		resp.nextBuyCost = it->mValue;
 		ii++;
 	}
 	for(List<VipTemplate>::Iter *iter1 = gVipTable->mVip.begin();iter1 != NULL;iter1 = gVipTable->mVip.next(iter1))
@@ -195,16 +312,21 @@ void CourageChallengeManager::onCourageChallengeReq(const  ConnId& connId,Courag
 
 void CourageChallengeManager::initCourageMonster(PlayerCourageChallengeData &courageChallengeData,UInt32 id)
 {
-		
+
 	UInt32 contentID = 0;
 	UInt32 monsterID = 0;
 	UInt32 awardID = 0;
 	UInt32 maxLuckValues = 0;
-
 	UInt32 maxContentID = 0;
 	List<Goods> itemList;
 
 	TerritoryTemplate * territoryTemplate = gTerritoryTable->get(id);
+	if (territoryTemplate == NULL)
+	{
+		LOG_WARN("territoryTemplate not found!!");
+		return;
+	}
+	GlobalValue globalValue = GlobalValueManager::getSingleton().getGlobalValue();
 
 	for(List<KeyValue>::Iter* it = territoryTemplate->conditionMonsters.begin(); it != NULL;it = territoryTemplate->conditionMonsters.next(it))
 	{
@@ -215,42 +337,86 @@ void CourageChallengeManager::initCourageMonster(PlayerCourageChallengeData &cou
 		}
 	}
 
-	if (courageChallengeData.m_LuckyValues > maxLuckValues)
-	{
-		courageChallengeData.m_LuckyValues = 0;//todo 是否已经挑战成功
-	}
-
-	for(List<KeyValue>::Iter* it = territoryTemplate->conditionMonsters.begin(); it != NULL;it = territoryTemplate->conditionMonsters.next(it))
-	{
-		if (  courageChallengeData.m_LuckyValues < it->mValue.key)
-		{
-			contentID = it->mValue.value;
-			break;
-		}
-	}
-	if (contentID == 0)
-	{
-		contentID = maxContentID;
-	}
-	getCourageContentByID(contentID,itemList);
-	for(List<Goods>::Iter * contentIter =  itemList.begin();contentIter != NULL;contentIter = itemList.next(contentIter))
-	{		
-		monsterID  = contentIter->mValue.subtype;		
-		awardID = contentIter->mValue.num;
-	}
-
 	if (id == CourageID1)
 	{
+		for(List<KeyValue>::Iter* it = territoryTemplate->conditionMonsters.begin(); it != NULL;it = territoryTemplate->conditionMonsters.next(it))
+		{
+			if (  courageChallengeData.m_LuckyValues1 < it->mValue.key)
+			{
+				contentID = it->mValue.value;
+				break;
+			}
+		}
+		if (contentID == 0)
+		{
+			contentID = maxContentID;			
+		}
+		if (contentID == maxContentID)
+		{
+			courageChallengeData.m_LuckyValues1 = 0 - 100000;
+		}
+		getCourageContentByID(contentID,itemList);
+		for(List<Goods>::Iter * contentIter =  itemList.begin();contentIter != NULL;contentIter = itemList.next(contentIter))
+		{		
+			monsterID  = contentIter->mValue.subtype;		
+			awardID = contentIter->mValue.num;
+		}
 		courageChallengeData.monsterID1 = monsterID;
 		courageChallengeData.contentID1 = awardID;
 	}
 	else if (id == CourageID2)
-	{
+	{	
+		
+		for(List<KeyValue>::Iter* it = territoryTemplate->conditionMonsters.begin(); it != NULL;it = territoryTemplate->conditionMonsters.next(it))
+		{
+			if (  courageChallengeData.m_LuckyValues2 < it->mValue.key)
+			{
+				contentID = it->mValue.value;
+				break;
+			}
+		}
+		if (contentID == 0)
+		{
+			contentID = maxContentID;
+		}
+		if (contentID == maxContentID)
+		{
+			courageChallengeData.m_LuckyValues2 = 0 - 100000;
+		}
+		getCourageContentByID(contentID,itemList);
+		for(List<Goods>::Iter * contentIter =  itemList.begin();contentIter != NULL;contentIter = itemList.next(contentIter))
+		{		
+			monsterID  = contentIter->mValue.subtype;		
+			awardID = contentIter->mValue.num;
+		}
 		courageChallengeData.monsterID2 = monsterID;
 		courageChallengeData.contentID2 = awardID;
 	}
 	else if (id == CourageID3)
-	{
+	{		
+		
+		for(List<KeyValue>::Iter* it = territoryTemplate->conditionMonsters.begin(); it != NULL;it = territoryTemplate->conditionMonsters.next(it))
+		{
+			if (  courageChallengeData.m_LuckyValues3 < it->mValue.key)
+			{
+				contentID = it->mValue.value;
+				break;
+			}
+		}
+		if (contentID == 0)
+		{
+			contentID = maxContentID;
+		}
+		if (contentID == maxContentID)
+		{
+			courageChallengeData.m_LuckyValues3 = 0 - 100000;
+		}
+		getCourageContentByID(contentID,itemList);
+		for(List<Goods>::Iter * contentIter =  itemList.begin();contentIter != NULL;contentIter = itemList.next(contentIter))
+		{		
+			monsterID  = contentIter->mValue.subtype;		
+			awardID = contentIter->mValue.num;
+		}
 		courageChallengeData.monsterID3 = monsterID;
 		courageChallengeData.contentID3 = awardID;
 	}
@@ -271,15 +437,27 @@ UInt32 CourageChallengeManager::courageChallengeRefresh(Guid playerID, PlayerCou
 	UInt32 awardContentID = 0;
 	List<Goods> itemList;
 	Player *player = LogicSystem::getSingleton().getPlayerByGuid(playerID);	
-	TerritoryLuckyTemplate territoryLuckyTemplate = GlobalVarManager::getSingleton().getTerritoryLucky();
+	if (player == NULL)
+	{
+		LOG_WARN("player not found!!");
+		return LynxErrno::NotFound;
+	}
+	GlobalValue globalValue = GlobalValueManager::getSingleton().getGlobalValue();
 
-	goldRefreshTimes = (int)courageChallengeData.m_RefreshTimes - territoryLuckyTemplate.freerefreshtimes + 1;
+	TerritoryTemplate * territoryTemplate = gTerritoryTable->get(id);
+	if (territoryTemplate == NULL)
+	{
+		LOG_WARN("territoryTemplate not found!!");
+		return 0;
+	}
+
+	goldRefreshTimes = (int)courageChallengeData.m_RefreshTimes - globalValue.uTERRITORYLfreerefreshtimes + 1;
 	if (goldRefreshTimes < 0)
 	{
 		goldRefreshTimes = 0;
 	}
-	
-	for(List<UInt32>::Iter *iter = territoryLuckyTemplate.costs.begin();iter != NULL;iter = territoryLuckyTemplate.costs.next(iter))
+
+	for(List<UInt32>::Iter *iter = globalValue.uTERRITORYLcosts.begin();iter != NULL;iter = globalValue.uTERRITORYLcosts.next(iter))
 	{
 		i++;
 		if (i == goldRefreshTimes)
@@ -296,79 +474,211 @@ UInt32 CourageChallengeManager::courageChallengeRefresh(Guid playerID, PlayerCou
 	if (goldRefreshTimes != 0 &&cost == 0)//刷新次数超过就走最后一个
 	{
 		cost = lastCost;
-		
+
 	}
 	if (player->getPlayerGold() < cost)
 	{
 		return LynxErrno::RmbNotEnough;
 	}
 
-	if (goldRefreshTimes == 0)
-	{		
-		courageChallengeData.m_LuckyValues += territoryLuckyTemplate.freerefresh;
-		getIt = 1;
-	}
-	else
-	{
-		i = 0;
-		for(List<UInt32>::Iter *iter = territoryLuckyTemplate.refreshs.begin();iter!= NULL;iter = territoryLuckyTemplate.refreshs.next(iter))
-		{
-			i++;
-			if (i == goldRefreshTimes)
-			{
-				getIt = 1;
-				courageChallengeData.m_LuckyValues += iter->mValue;
-			}
-			lastLucky = iter->mValue;
-		}
-	}
-	if (getIt == 0)
-	{
-		courageChallengeData.m_LuckyValues += lastLucky;
-	}
 
-
-	TerritoryTemplate * territoryTemplate = gTerritoryTable->get(id);
-
-	for(List<KeyValue>::Iter* it = territoryTemplate->conditionMonsters.begin(); it != NULL;it = territoryTemplate->conditionMonsters.next(it))
-	{
-		if (courageChallengeData.m_LuckyValues < it->mValue.key)
-		{
-			contentID = it->mValue.value;
-			break;
-		}
-	}
-	for(List<KeyValue>::Iter* it = territoryTemplate->conditionMonsters.begin(); it != NULL;it = territoryTemplate->conditionMonsters.next(it))
-	{		
-		lastContentID = it->mValue.value;
-	}
-	if(contentID == 0)
-	{
-		contentID = lastContentID;
-	}
-	if (contentID == lastContentID)
-	{
-		courageChallengeData.m_LuckyValues = 0;
-	}
-	getCourageContentByID(contentID,itemList);
-	for(List<Goods>::Iter * contentIter =  itemList.begin();contentIter != NULL;contentIter = itemList.next(contentIter))
-	{		
-		monsterID  = contentIter->mValue.subtype;		
-		awardContentID = contentIter->mValue.num;
-	}
 
 	if (id == CourageID1)
 	{
+		
+		if (goldRefreshTimes == 0)
+		{		
+			courageChallengeData.m_LuckyValues1 += globalValue.uTERRITORYLfreerefresh;
+			getIt = 1;
+		}
+		else
+		{
+			i = 0;
+			for(List<UInt32>::Iter *iter = globalValue.uTERRITORYLrefreshs.begin();iter!= NULL;iter = globalValue.uTERRITORYLrefreshs.next(iter))
+			{
+				i++;
+				if (i == goldRefreshTimes)
+				{
+					getIt = 1;
+					courageChallengeData.m_LuckyValues1 += iter->mValue;
+				}
+				lastLucky = iter->mValue;
+			}
+		}
+		if (getIt == 0)
+		{
+			courageChallengeData.m_LuckyValues1 += lastLucky;
+		}
+
+		if (courageChallengeData.m_LuckyValues1 < 0)
+		{
+			courageChallengeData.m_LuckyValues1 = 0;
+		}
+
+		
+		for(List<KeyValue>::Iter* it = territoryTemplate->conditionMonsters.begin(); it != NULL;it = territoryTemplate->conditionMonsters.next(it))
+		{
+			if (courageChallengeData.m_LuckyValues1 < it->mValue.key)
+			{
+				contentID = it->mValue.value;
+				break;
+			}
+		}
+		for(List<KeyValue>::Iter* it = territoryTemplate->conditionMonsters.begin(); it != NULL;it = territoryTemplate->conditionMonsters.next(it))
+		{		
+			lastContentID = it->mValue.value;
+		}
+		if(contentID == 0)
+		{
+			contentID = lastContentID;
+		}
+		if (contentID == lastContentID)
+		{
+			courageChallengeData.m_LuckyValues1 =  0 -10000;
+		}
+		getCourageContentByID(contentID,itemList);
+		for(List<Goods>::Iter * contentIter =  itemList.begin();contentIter != NULL;contentIter = itemList.next(contentIter))
+		{		
+			monsterID  = contentIter->mValue.subtype;		
+			awardContentID = contentIter->mValue.num;
+		}
 		courageChallengeData.monsterID1 = monsterID;
 		courageChallengeData.contentID1 = awardContentID;
 	}
 	else if (id == CourageID2)
 	{
+	
+		if (goldRefreshTimes == 0)
+		{		
+			courageChallengeData.m_LuckyValues2 += globalValue.uTERRITORYLfreerefresh;
+			getIt = 1;
+		}
+		else
+		{
+			i = 0;
+			for(List<UInt32>::Iter *iter = globalValue.uTERRITORYLrefreshs.begin();iter!= NULL;iter = globalValue.uTERRITORYLrefreshs.next(iter))
+			{
+				i++;
+				if (i == goldRefreshTimes)
+				{
+					getIt = 1;
+					courageChallengeData.m_LuckyValues2 += iter->mValue;
+				}
+				lastLucky = iter->mValue;
+			}
+		}
+		if (getIt == 0)
+		{
+			courageChallengeData.m_LuckyValues2 += lastLucky;
+		}
+
+		if (courageChallengeData.m_LuckyValues2 < 0)
+		{
+			courageChallengeData.m_LuckyValues2 = 0;
+		}
+
+		TerritoryTemplate * territoryTemplate = gTerritoryTable->get(id);
+		if (territoryTemplate == NULL)
+		{
+			LOG_WARN("territoryTemplate not found!!");
+			return 0;
+		}
+
+		for(List<KeyValue>::Iter* it = territoryTemplate->conditionMonsters.begin(); it != NULL;it = territoryTemplate->conditionMonsters.next(it))
+		{
+			if (courageChallengeData.m_LuckyValues2 < it->mValue.key)
+			{
+				contentID = it->mValue.value;
+				break;
+			}
+		}
+		for(List<KeyValue>::Iter* it = territoryTemplate->conditionMonsters.begin(); it != NULL;it = territoryTemplate->conditionMonsters.next(it))
+		{		
+			lastContentID = it->mValue.value;
+		}
+		if(contentID == 0)
+		{
+			contentID = lastContentID;
+		}
+		if (contentID == lastContentID)
+		{
+			courageChallengeData.m_LuckyValues2 =  0 - 100000;
+		}
+		getCourageContentByID(contentID,itemList);
+		for(List<Goods>::Iter * contentIter =  itemList.begin();contentIter != NULL;contentIter = itemList.next(contentIter))
+		{		
+			monsterID  = contentIter->mValue.subtype;		
+			awardContentID = contentIter->mValue.num;
+		}
 		courageChallengeData.monsterID2 = monsterID;
 		courageChallengeData.contentID2 = awardContentID;
 	}
 	else if (id == CourageID3)
 	{
+		
+		if (goldRefreshTimes == 0)
+		{		
+			courageChallengeData.m_LuckyValues3 += globalValue.uTERRITORYLfreerefresh;
+			getIt = 1;
+		}
+		else
+		{
+			i = 0;
+			for(List<UInt32>::Iter *iter = globalValue.uTERRITORYLrefreshs.begin();iter!= NULL;iter = globalValue.uTERRITORYLrefreshs.next(iter))
+			{
+				i++;
+				if (i == goldRefreshTimes)
+				{
+					getIt = 1;
+					courageChallengeData.m_LuckyValues3 += iter->mValue;
+				}
+				lastLucky = iter->mValue;
+			}
+		}
+		if (getIt == 0)
+		{
+			courageChallengeData.m_LuckyValues3 += lastLucky;
+		}
+
+		if (courageChallengeData.m_LuckyValues3 < 0)
+		{
+			courageChallengeData.m_LuckyValues3 = 0;
+		}
+
+
+		TerritoryTemplate * territoryTemplate = gTerritoryTable->get(id);
+		if (territoryTemplate == NULL)
+		{
+			LOG_WARN("territoryTemplate not found!!");
+			return 0;
+		}
+
+		for(List<KeyValue>::Iter* it = territoryTemplate->conditionMonsters.begin(); it != NULL;it = territoryTemplate->conditionMonsters.next(it))
+		{
+			if (courageChallengeData.m_LuckyValues3 < it->mValue.key)
+			{
+				contentID = it->mValue.value;
+				break;
+			}
+		}
+		for(List<KeyValue>::Iter* it = territoryTemplate->conditionMonsters.begin(); it != NULL;it = territoryTemplate->conditionMonsters.next(it))
+		{		
+			lastContentID = it->mValue.value;
+		}
+		if(contentID == 0)
+		{
+			contentID = lastContentID;
+		}
+		if (contentID == lastContentID)
+		{
+			courageChallengeData.m_LuckyValues3 =  0 - 10000;
+		}
+		getCourageContentByID(contentID,itemList);
+		for(List<Goods>::Iter * contentIter =  itemList.begin();contentIter != NULL;contentIter = itemList.next(contentIter))
+		{		
+			monsterID  = contentIter->mValue.subtype;		
+			awardContentID = contentIter->mValue.num;
+		}
 		courageChallengeData.monsterID3 = monsterID;
 		courageChallengeData.contentID3 = awardContentID;
 	}
@@ -386,14 +696,15 @@ UInt32 CourageChallengeManager::getNextRefreshCost(UInt32 refreshTimes)
 	int goldRefreshTimes = 0;
 	UInt32 lastCost = 0;
 
-	TerritoryLuckyTemplate territoryLuckyTemplate = GlobalVarManager::getSingleton().getTerritoryLucky();
-	goldRefreshTimes = (int)refreshTimes - territoryLuckyTemplate.freerefreshtimes + 1;
+	GlobalValue globalValue = GlobalValueManager::getSingleton().getGlobalValue();
+
+	goldRefreshTimes = (int)refreshTimes - globalValue.uTERRITORYLfreerefreshtimes + 1;
 	if (goldRefreshTimes < 0)
 	{
 		goldRefreshTimes = 0;
 	}
 
-	for(List<UInt32>::Iter *iter = territoryLuckyTemplate.costs.begin();iter != NULL;iter = territoryLuckyTemplate.costs.next(iter))
+	for(List<UInt32>::Iter *iter = globalValue.uTERRITORYLcosts.begin();iter != NULL;iter = globalValue.uTERRITORYLcosts.next(iter))
 	{
 		i++;
 		if (i == goldRefreshTimes)
@@ -424,11 +735,16 @@ UInt32 CourageChallengeManager::courageChallengeBuy(Guid playerID, PlayerCourage
 	int goldBuyTimes = 0;
 	UInt32 lastCost = 0;
 	Player *player = LogicSystem::getSingleton().getPlayerByGuid(playerID);	
-	TerritoryLuckyTemplate territoryLuckyTemplate = GlobalVarManager::getSingleton().getTerritoryLucky();
+	if (player == NULL)
+	{
+		LOG_WARN("player not found!!");
+		return LynxErrno::NotFound;
+	}
+	GlobalValue globalValue = GlobalValueManager::getSingleton().getGlobalValue();
 
 	goldBuyTimes = courageChallengeData.m_BuyTimes + 1;
 
-	for(List<UInt32>::Iter *iter = territoryLuckyTemplate.buytimess.begin();iter != NULL;iter = territoryLuckyTemplate.buytimess.next(iter))
+	for(List<UInt32>::Iter *iter = globalValue.uTERRITORYLbuytimess.begin();iter != NULL;iter = globalValue.uTERRITORYLbuytimess.next(iter))
 	{
 		i++;
 		if (i == goldBuyTimes)
@@ -441,7 +757,7 @@ UInt32 CourageChallengeManager::courageChallengeBuy(Guid playerID, PlayerCourage
 			lastCost = iter->mValue;
 		}
 	}
-	
+
 	for(List<VipTemplate>::Iter *iter1 = gVipTable->mVip.begin();iter1 != NULL;iter1 = gVipTable->mVip.next(iter1))
 	{
 		if (iter1->mValue.id == player->getVipLevel())
@@ -465,19 +781,16 @@ UInt32 CourageChallengeManager::courageChallengeBuy(Guid playerID, PlayerCourage
 		return LynxErrno::RmbNotEnough;
 	}
 
-	i = 0;
-	for(List<UInt32>::Iter *iter = territoryLuckyTemplate.costs.begin();iter!= NULL;iter = territoryLuckyTemplate.costs.next(iter))
-	{
-		i++;
-		if (i == goldBuyTimes)
-		{
-			courageChallengeData.m_LuckyValues += iter->mValue;
-		}
-	}
-	
+	UInt32 nowTime = TimeUtil::getTimeSec();
 	courageChallengeData.m_BuyTimes ++;
 	courageChallengeData.m_LeftChallengeTimes ++;
-	
+	courageChallengeData.m_BuyTime =nowTime;
+
+	if (courageChallengeData.m_LeftChallengeTimes >= globalValue.uTERRITORYLmaxtimes)
+	{
+		courageChallengeData.m_BeginTime = nowTime;
+	}
+
 	return LynxErrno::None;
 }
 
@@ -492,7 +805,11 @@ UInt32 CourageChallengeManager::courageChallengeActivate(Guid playerID, PlayerCo
 	Goods goods;
 	CoinGroupSaveReq req;
 	Player *player = LogicSystem::getSingleton().getPlayerByGuid(playerID);	
-	TerritoryLuckyTemplate territoryLuckyTemplate = GlobalVarManager::getSingleton().getTerritoryLucky();
+	if (player == NULL)
+	{
+		LOG_WARN("player not found!!");
+		return LynxErrno::NotFound;
+	}
 
 	for(List<UInt32>::Iter *iter = courageChallengeData.coinGroup.begin(); iter != NULL;iter = courageChallengeData.coinGroup.next(iter))
 	{
@@ -533,7 +850,7 @@ UInt32 CourageChallengeManager::courageChallengeActivate(Guid playerID, PlayerCo
 		}	
 	}
 
-	
+
 	if (getIt == 0)
 	{
 		return LynxErrno::CatCoinNotEnough;
@@ -555,7 +872,7 @@ UInt32 CourageChallengeManager::courageChallengeActivate(Guid playerID, PlayerCo
 		return LynxErrno::CatCoinNotEnough;
 	}
 
-	
+
 	for(List<CatCoin>::Iter *it = courageChallengeData.catCoins.begin(); it != NULL;it = courageChallengeData.catCoins.next(it))
 	{
 		if (it->mValue.catCoinID == coinGroupTemplate->coin1&& coinGroupTemplate->coin1 != 0)
@@ -594,7 +911,6 @@ UInt32 CourageChallengeManager::courageChallengeActivate(Guid playerID, PlayerCo
 void CourageChallengeManager::onCourageChallengeBeginReq(const  ConnId& connId,CourageChallengeBeginReq & req)
 {
 
-	UInt32 road = 1;//初始路为1
 	UInt32 stageID = 0;
 	UInt32 chapterID = 0;
 	UInt32 nowTime = TimeUtil::getTimeSec();
@@ -608,14 +924,14 @@ void CourageChallengeManager::onCourageChallengeBeginReq(const  ConnId& connId,C
 	{
 		return;
 	}
-	courageChallengeData = player->getCourageChallengeData();
+	
 	req.convertJsonToData(req.strReceive);
 	resp.id = req.id;
-	
+
 	CCreq.id = req.id;
 	CCreq.needSend = false;
-
 	onCourageChallengeReq(connId ,CCreq);
+	courageChallengeData = player->getCourageChallengeData();
 
 	if (courageChallengeData.m_LeftChallengeTimes < 1)
 	{
@@ -629,16 +945,22 @@ void CourageChallengeManager::onCourageChallengeBeginReq(const  ConnId& connId,C
 
 	if (resp.result == LynxErrno::None)
 	{
-		courageChallengeData.m_LeftChallengeTimes --;
+		courageChallengeData.m_LeftChallengeTimes --;		
 	}
 
-	TerritoryLuckyTemplate territoryLuckyTemplate = GlobalVarManager::getSingleton().getTerritoryLucky();
-	resp.needTime = territoryLuckyTemplate.recovertime - (nowTime - courageChallengeData.m_BeginTime);
+	GlobalValue globalValue = GlobalValueManager::getSingleton().getGlobalValue();
+	
+	resp.needTime = globalValue.uTERRITORYLrecovertime - (nowTime - courageChallengeData.m_BeginTime);
+	if (resp.needTime == globalValue.uTERRITORYLrecovertime)//客户端不显示1小时
+	{
+		courageChallengeData.m_BeginTime ++;
+		resp.needTime --;
+	}
 	resp.leftChallengeTimes = courageChallengeData.m_LeftChallengeTimes;
 
 	player->setCourageChallengeData(courageChallengeData);
 	player->getPersistManager().setDirtyBit(COURAGECHALLENGEDATABIT);
-	
+
 	std::string jsonStr = resp.convertDataToJson();
 	NetworkSystem::getSingleton().sender( connId,COURAGE_CHALLENG_BEGIN_RESP,jsonStr);
 
@@ -652,7 +974,18 @@ UInt32 CourageChallengeManager::checkLimit(Guid playerID,UInt32 id)
 
 
 	TerritoryTemplate *territoryTemplate =  gTerritoryTable->get(id);
-	Player *player = LogicSystem::getSingleton().getPlayerByGuid(playerID);	
+	if (territoryTemplate == NULL)
+	{
+		LOG_WARN("territoryTemplate not found!!");
+		return 0;
+	}
+
+	Player *player = LogicSystem::getSingleton().getPlayerByGuid(playerID);
+	if (player == NULL)
+	{
+		LOG_WARN("player not found!!");
+		return LynxErrno::NotFound; 
+	}
 	courageChallengeData = player->getCourageChallengeData();
 
 	if (player->getPlayerLeval() < territoryTemplate->condition1)
@@ -666,7 +999,7 @@ UInt32 CourageChallengeManager::checkLimit(Guid playerID,UInt32 id)
 		{
 			continue;
 		}
-		if (coinGroupTemplate->territoryID == id)
+		if (coinGroupTemplate->territoryID == (id-1))
 		{
 			count ++;
 		}
@@ -685,21 +1018,47 @@ void CourageChallengeManager::onCourageChallengeEndReq(const  ConnId& connId,Cou
 {
 	List<Goods> itemList;
 	List<Goods> tmpItemList;
-	
+
 	CourageChallengeEndResp resp;
 	PlayerCourageChallengeData courageChallengeData;
 
 
 	req.convertJsonToData(req.strReceive);
+	resp.doType = req.doType;
+	resp.id = req.id;
+
 	Player *player = LogicSystem::getSingleton().getPlayerByConnId(connId);	
 	if (player == NULL)
 	{
 		return;
 	}
 	courageChallengeData = player->getCourageChallengeData();
-	
-	resp.doType = req.doType;
-	resp.id = req.id;
+
+	UInt32 reqResult = req.doType;
+	if (reqResult == 1)
+	{
+		reqResult = 0;
+	}
+	//判断是否作弊
+	UInt32 checkRet =  FireConfirmManager::getSingleton().checkIsCheat(player->getPlayerGuid(), req.fireConfirmData,reqResult);	
+	if(checkRet != LynxErrno::None)
+	{
+		FireConfirmManager::getSingleton().UpdataConfirmLevel(connId,true);
+		resp.result = checkRet;
+		std::string jsonStr = resp.convertDataToJson();	
+		NetworkSystem::getSingleton().sender( connId,COURAGE_CHALLENG_END_RESP,jsonStr);
+		return;
+	}	
+
+	if( req.doType !=0 && req.doType !=1)
+	{
+		FireConfirmManager::getSingleton().UpdataConfirmLevel(connId,true);
+		resp.result = req.doType;
+		std::string jsonStr = resp.convertDataToJson();	
+		NetworkSystem::getSingleton().sender( connId,COURAGE_CHALLENG_END_RESP,jsonStr);
+		return;
+	}	
+
 
 	if (req.doType == 1)
 	{
@@ -722,37 +1081,51 @@ void CourageChallengeManager::onCourageChallengeEndReq(const  ConnId& connId,Cou
 		GiftManager::getSingleton().getContentByID(it->mValue.subtype,itemList);
 	}
 
-	for (List<Goods>::Iter *iter = itemList.begin();iter != NULL;iter= itemList.next(iter))
-	{
-		if (iter->mValue.resourcestype == AWARD_CATCOIN)
-		{
-			CourageChallengeManager::getSingleton().setCatCoins(player->getPlayerGuid(),courageChallengeData,iter->mValue,true);
-		}
-	}
 	courageChallengeData = player->getCourageChallengeData();//顺序在前一点
 	UInt32 flag = CourageChallengeManager::getSingleton().checkLimit(player->getPlayerGuid(),req.id);
 	if(flag != LynxErrno::None)
 	{
 		resp.result = flag;
 	}
-	
+
 	if (resp.result == LynxErrno::None)
 	{
-		TerritoryLuckyTemplate territoryLuckyTemplate = GlobalVarManager::getSingleton().getTerritoryLucky();
-		courageChallengeData.m_LuckyValues += territoryLuckyTemplate.challage;
+		GlobalValue globalValue = GlobalValueManager::getSingleton().getGlobalValue();
+
+		if (req.id == CourageID1 )
+		{
+			courageChallengeData.m_LuckyValues1 += globalValue.uTERRITORYLchallage;	
+			if (courageChallengeData.m_LuckyValues1 < 0)
+			{
+				courageChallengeData.m_LuckyValues1 = 0;
+			}
+		}
+		if (req.id == CourageID2 )
+		{
+			courageChallengeData.m_LuckyValues2 += globalValue.uTERRITORYLchallage;	
+			if (courageChallengeData.m_LuckyValues2 < 0)
+			{
+				courageChallengeData.m_LuckyValues2 = 0;
+			}
+		}
+		if (req.id == CourageID3 )
+		{
+			courageChallengeData.m_LuckyValues3 += globalValue.uTERRITORYLchallage;	
+			if (courageChallengeData.m_LuckyValues3 < 0)
+			{
+				courageChallengeData.m_LuckyValues3 = 0;
+			}
+		}
+		player->setCourageChallengeData(courageChallengeData);//必须存档1
 		CourageChallengeManager::getSingleton().initCourageMonster(courageChallengeData,req.id );
+		player->setCourageChallengeData(courageChallengeData);//必须存档2
 	}
 
-	player->setCourageChallengeData(courageChallengeData);
-	player->getPersistManager().setDirtyBit(COURAGECHALLENGEDATABIT);
+	player->getPersistManager().setDirtyBit(COURAGECHALLENGEDATABIT);//要和setCourageChallengeData分开
 
-	GiftManager::getSingleton().combineSame(itemList);
 
-	GiftManager::getSingleton().addToPlayer(player->getPlayerGuid(),REFLASH_AWARD,itemList);
-
-	Award award;
-	award.award = itemList;
-	resp.awards.insertTail(award);
+	Json::Value stages;
+	GiftManager::getSingleton().saveEndsAttr(player->getPlayerGuid(),itemList,resp.allAttr,stages,MiniLog87);
 
 	//更新成就
 	player->getAchieveManager().updateAchieveData(COURAGESUCCESS, 1);
@@ -762,13 +1135,21 @@ void CourageChallengeManager::onCourageChallengeEndReq(const  ConnId& connId,Cou
 
 	GiftManager::getSingleton().PlayerItemChangeResult(player->getPlayerGuid(),0,resp.ends);
 
-	
-// 	resp.goodsList = itemList;
-	resp.catCoins = courageChallengeData.catCoins;
+
+	// 	resp.goodsList = itemList;
+// 	resp.catCoins = courageChallengeData.catCoins;
 	std::string jsonStr = resp.convertDataToJson();
 	NetworkSystem::getSingleton().sender( connId,COURAGE_CHALLENG_END_RESP,jsonStr);
 
+	LogicSystem::getSingleton().updateSevenDayTask(player->getPlayerGuid(),SDT16,1);
+
+
 	
+	CourageChallengeReq courageChallengeReq;
+	courageChallengeReq.reqType =0;
+	CourageChallengeManager::getSingleton().onCourageChallengeReq(connId,courageChallengeReq);
+
+
 
 }
 
@@ -786,6 +1167,7 @@ void CourageChallengeManager::onCatCoinReq(const  ConnId& connId,CatCoinReq  & r
 	CourageChallengeReq CCreq;
 	PlayerCourageChallengeData courageChallengeData;
 	CatCoinResp resp;	
+	List<Goods> itemList;
 	List<CatCoin> catCoins;	
 
 	Player *player = LogicSystem::getSingleton().getPlayerByConnId(connId);	
@@ -802,7 +1184,7 @@ void CourageChallengeManager::onCatCoinReq(const  ConnId& connId,CatCoinReq  & r
 	CCreq.needSend = false;
 	onCourageChallengeReq(connId ,CCreq);
 
-	
+
 	if (req.reqType == 1)
 	{		
 		for(List<CatCoin>::Iter*it =  courageChallengeData.catCoins.begin();it != NULL;it = courageChallengeData.catCoins.next(it))
@@ -814,18 +1196,26 @@ void CourageChallengeManager::onCatCoinReq(const  ConnId& connId,CatCoinReq  & r
 				{
 					continue;
 				}
-				lightOfLife += it->mValue.num * coinTemplate->light;
+				goods.resourcestype = AWARD_CURRENCY;
+				goods.subtype = 1;
+				goods.num = it->mValue.num * coinTemplate->light;
+				itemList.insertTail(goods);
 				goods.resourcestype = AWARD_CATCOIN;
 				goods.subtype = req.catCoinID;
 				goods.num = 0 - it->mValue.num;
-				CourageChallengeManager::getSingleton().setCatCoins(player->getPlayerGuid(),courageChallengeData,goods,true);
+				itemList.insertTail(goods);
+				GiftManager::getSingleton().saveEndsGetAttr(player->getPlayerGuid(),itemList,resp.allAttr,MiniLog89);	
+// 				CourageChallengeManager::getSingleton().setCatCoins(player->getPlayerGuid(),courageChallengeData,goods,true);
+				courageChallengeData = player->getCourageChallengeData();
 				if (it->mValue.num == 0)
 				{
 					courageChallengeData.catCoins.erase(it);
 				}
+				
 				break;
 			}
 		}
+		player->setCourageChallengeData(courageChallengeData);
 	}
 	else if(req.reqType == 2)
 	{		
@@ -836,12 +1226,24 @@ void CourageChallengeManager::onCatCoinReq(const  ConnId& connId,CatCoinReq  & r
 			{
 				continue;
 			}
-			lightOfLife += it->mValue.num * coinTemplate->light;
+			goods.resourcestype = AWARD_CURRENCY;
+			goods.subtype = 1;
+			goods.num = it->mValue.num * coinTemplate->light;
+			itemList.insertTail(goods);
 			goods.resourcestype = AWARD_CATCOIN;
 			goods.subtype = it->mValue.catCoinID;
 			goods.num = 0 - it->mValue.num;
-			CourageChallengeManager::getSingleton().setCatCoins(player->getPlayerGuid(),courageChallengeData,goods,true);			
+			if (goods.num == 0)
+			{
+				continue;
+			}
+			itemList.insertTail(goods);
+					
 		}
+		GiftManager::getSingleton().combineSame(itemList);
+		GiftManager::getSingleton().saveEndsGetAttr(player->getPlayerGuid(),itemList,resp.allAttr,MiniLog89);	
+		courageChallengeData = player->getCourageChallengeData();
+		
 		for(List<CatCoin>::Iter*it =  courageChallengeData.catCoins.begin();it != NULL;it = courageChallengeData.catCoins.next(it))
 		{
 			if (it->mValue.num == 0)
@@ -849,6 +1251,7 @@ void CourageChallengeManager::onCatCoinReq(const  ConnId& connId,CatCoinReq  & r
 				courageChallengeData.catCoins.erase(it);
 			}			
 		}
+		player->setCourageChallengeData(courageChallengeData);
 	}
 	else if(req.reqType == 3)
 	{
@@ -862,48 +1265,62 @@ void CourageChallengeManager::onCatCoinReq(const  ConnId& connId,CatCoinReq  & r
 			if (it->mValue.catCoinID == req.catCoinID)
 			{
 				getIt = 1;
-				if (req.num *coinTemplate->light > player->getAllItemManager().getAwardCount(AWARD_SERVANTSWITCH,0))
+				if (req.num *coinTemplate->light > courageChallengeData.m_LightOfLife )
 				{
-					resp.result = LynxErrno::CoinNotEnough;//todo
+					resp.result = LynxErrno::CatCoinNotEnough;
 				}
 				else
 				{
-					Goods goods;
-					List<Goods> itemList;
-					goods.resourcestype = AWARD_SERVANTSWITCH;
+					goods.resourcestype = AWARD_CURRENCY;
+					goods.subtype = 1;
 					goods.num = 0 - it->mValue.num * coinTemplate->light;
 					itemList.insertTail(goods);
-					GiftManager::getSingleton().addToPlayer(player->getPlayerGuid(),1,itemList);
+					Goods goods;
 					goods.resourcestype = AWARD_CATCOIN;
 					goods.subtype = req.catCoinID;
 					goods.num = req.num;
-					CourageChallengeManager::getSingleton().setCatCoins(player->getPlayerGuid(),courageChallengeData,goods,true);
+					itemList.insertTail(goods);
+					
 				}				
 				break;
 			}
 		}
-	}
-	if (lightOfLife > 0)
-	{
-		Goods goods;
-		List<Goods> itemList;
-		goods.resourcestype = AWARD_SERVANTSWITCH;
-		goods.num = lightOfLife;
-		itemList.insertTail(goods);
-		GiftManager::getSingleton().addToPlayer(player->getPlayerGuid(),1,itemList);
+		GiftManager::getSingleton().saveEndsGetAttr(player->getPlayerGuid(),itemList,resp.allAttr,MiniLog89);	
 	}
 
-	player->setCourageChallengeData(courageChallengeData);
-	player->getPersistManager().setDirtyBit(COURAGECHALLENGEDATABIT);
+// 	courageChallengeData.m_LightOfLife += lightOfLife;
+// 	player->setCourageChallengeData(courageChallengeData);
+// 	player->getPersistManager().setDirtyBit(COURAGECHALLENGEDATABIT);
 
-	resp.lightOfLife =  player->getAllItemManager().getAwardCount(AWARD_SERVANTSWITCH,0); 
+	courageChallengeData = player->getCourageChallengeData();
+	resp.lightOfLife = courageChallengeData.m_LightOfLife;
 	resp.catCoins = courageChallengeData.catCoins;
 
-	resp.luckyValues = courageChallengeData.m_LuckyValues;
 	
 	std::string jsonStr = resp.convertDataToJson();
 	NetworkSystem::getSingleton().sender( connId,CAT_COIN_RESP,jsonStr);
 
+}
+
+UInt32 CourageChallengeManager::getCatCoinNum(Guid playerID,UInt32 id)
+{
+
+	Player *player = LogicSystem::getSingleton().getPlayerByGuid(playerID);
+	if (player == NULL)
+	{
+		LOG_WARN("player not found!!");
+		return 0;
+	}
+	PlayerCourageChallengeData courageChallengeData = player->getCourageChallengeData();
+
+	for (List<CatCoin>::Iter *iter = courageChallengeData.catCoins.begin();iter != NULL;iter = courageChallengeData.catCoins.next(iter) )
+	{
+		if (iter->mValue.catCoinID == id)
+		{
+			return iter->mValue.num;
+		}
+	}
+	return 0;
 }
 
 void CourageChallengeManager::setCatCoins(Guid playerID,PlayerCourageChallengeData &courageChallengeData, Goods goods, bool needSave = true)
@@ -916,6 +1333,11 @@ void CourageChallengeManager::setCatCoins(Guid playerID,PlayerCourageChallengeDa
 	CatCoinSaveReq req;
 
 	Player *player = LogicSystem::getSingleton().getPlayerByGuid(playerID);
+	if (player == NULL)
+	{
+		LOG_WARN("player not found!!");
+		return;
+	}
 	if (goods.resourcestype != AWARD_CATCOIN)
 	{
 		return;
@@ -946,12 +1368,12 @@ void CourageChallengeManager::setCatCoins(Guid playerID,PlayerCourageChallengeDa
 	player->getPersistManager().setDirtyBit(COURAGECHALLENGEDATABIT);
 
 
-	if (needSave == true)//todo
+	if (needSave == true)
 	{
 		req.catCoinID = goods.subtype;
 		req.playerID = playerID;
 		req.num = coinNum;
- 		PersistSystem::getSingleton().postThreadMsg(req, 0);
+		PersistSystem::getSingleton().postThreadMsg(req, 0);
 	}
 
 	return ;
@@ -1030,4 +1452,560 @@ void CourageChallengeManager::getCourageContentByID(UInt32 itemID,List<Goods> &I
 
 		}
 	}
+}
+
+
+void CourageChallengeManager::onCourageShopReq(const  ConnId& connId, CourageShopReq & msg)
+{
+	UInt32 refreshTimes = 0;
+	CourageShopResp resp;
+
+	LOG_INFO("onCourageShopReq = %s",msg.jsonStr.c_str());	
+
+	msg.convertJsonToData(msg.jsonStr);
+	resp.reqType = msg.reqType;
+	resp.shopType = msg.shopType;
+	Player *player = LogicSystem::getSingleton().getPlayerByConnId(connId);
+
+	if (player == NULL)
+	{
+		return;
+	}
+	PlayerCourageChallengeData courageChallengeData = player->getCourageChallengeData();
+
+	if (msg.shopType == CourageShop)
+	{
+		resp.result = CourageChallengeManager::getSingleton().getCourageShopInfo( player->getPlayerGuid(),msg.reqType,resp);
+	}
+
+	resp.gold = player->getPlayerGold();
+
+	resp.lightOfLife = courageChallengeData.m_LightOfLife;
+
+	if (msg.needSend == 1)
+	{
+		std::string jsonStr = resp.convertDataToJson();
+		NetworkSystem::getSingleton().sender( connId,COURAGE_SHOP_INFO_RESP,jsonStr);
+
+		LOG_INFO("onCourageShopReq resp= %s",jsonStr.c_str());	
+	}	
+}
+
+
+
+
+//refresh 0获取信息 1刷新 2 时间到刷新
+//refreshTimes 第几个
+
+UInt32 CourageChallengeManager::getCourageShopInfo(Guid playerID,UInt32 refresh,CourageShopResp &resp)
+{
+	UInt32 acID = 0;
+	UInt32 level = 0;
+	UInt32 vipLevel = 0;
+	UInt32 refreshTimes = 0;
+	double cost = 0;
+	UInt32 getIt = 0;
+	UInt32 refreshTime = 0;
+	UInt32 refreshMaxTimes = 0;
+	UInt32 j = 0;
+	Goods goods;
+	List<Goods> addGoodsList;
+	List<UInt32> awardcontentIDs;
+	List<Goods> goodsList;
+
+	Player *player = LogicSystem::getSingleton().getPlayerByGuid(playerID);
+	GlobalValue globalValue = GlobalValueManager::getSingleton().getGlobalValue();
+
+
+	UInt32 flag = ShopManager::getSingleton().checkRefreshTime(playerID,CourageShop,resp.refreshNeedTime);
+
+	refreshTimes = flag;
+	if(refresh == 1)
+	{
+		refreshTimes ++;
+	}
+	else
+	{
+		if (flag == 10000)
+		{
+			refresh = 2;
+			refreshTimes = 0;			 
+		}
+	}
+
+
+
+
+	refreshMaxTimes = globalValue.uCOURAGESHOPrefreshtimes.size();
+
+
+	resp.refreshMaxTimes = refreshMaxTimes;
+
+	if (refreshTimes > refreshMaxTimes)
+	{
+		refreshTimes = refreshMaxTimes;
+		return LynxErrno::RefreshTimesNotEnough;
+	}
+	resp.refreshTimes = refreshTimes;
+	if (refresh != 0)
+	{
+		refreshTime = TimeUtil::getTimeSec();
+		ShopManager::getSingleton().setShopItems(playerID,CourageShop,refreshTimes,refreshTime,true);
+
+	}	
+
+	if (refresh ==1 )
+	{
+		for(List<UInt32>::Iter *iter = globalValue.uCOURAGESHOPrefreshtimes.begin();iter!= NULL;iter = globalValue.uCOURAGESHOPrefreshtimes.next(iter))
+		{
+			j++;
+			if (j == refreshTimes)
+			{
+				cost = iter->mValue;
+				break;
+			}
+		}
+
+		if (player->getPlayerGold() < cost)
+		{
+			return LynxErrno::RmbNotEnough;
+		}
+
+		goods.resourcestype = AWARD_BASE;
+		goods.subtype = AWARD_BASE_GOLD;
+		goods.num = 0 - cost;
+		addGoodsList.insertTail(goods);
+		GiftManager::getSingleton().addToPlayer(player->getPlayerGuid(),1,addGoodsList,MiniLog84);
+	}
+
+	UInt32 needSave = 0;
+	List<Item> itemList;
+	UInt32 getItemCount = 0;
+	UInt32 max = ShopItemCount; 
+	for (UInt32 i = 1;i <= max;i++)
+	{
+		acID = 0;
+
+		if (refresh != 0)
+		{
+			acID = getCourageShopID(i,player->getPlayerLeval(),player->getVipLevel(),refreshTimes,refresh);
+		}
+
+
+		Item item;
+
+		ShopManager::getSingleton().getShopNewItems(playerID, i,acID,CourageShop,item);
+
+		if (acID != 0)
+		{
+			needSave = 1;
+			item.buyTimes = 0;			
+		}
+
+		itemList.insertTail(item);//要发送给客户端数据，存盘数据
+		if (item.goods.subtype != 0)
+		{
+			getItemCount ++;
+			// 			resp.items.insertTail(item);
+		}
+		else
+		{
+			LOG_WARN("failed  getMysticalShop item.goods.subtype is 0 i = %d !", i);
+		}
+
+	}
+
+
+
+
+
+	if (getItemCount != max  )
+	{
+		LOG_WARN("failed  getMysticalShop count not right refreshTimes = %d !", refreshTimes);		
+	}
+
+	if ( needSave == 1)
+	{
+		UInt32 count1 = 0;
+		UInt32 count2 = 0;
+		List<Item> tmpItemList;
+		List<UInt32> indexList;
+
+		RankGameManager::getSingleton().getRandomOrderNums(max ,indexList);	
+		for (List<UInt32>::Iter *indexIter = indexList.begin();indexIter != NULL;indexIter = indexList.next(indexIter))
+		{
+			count1 ++;
+			count2 = 0;
+			for (List<Item>::Iter *itemIter = itemList.begin();itemIter!=NULL;itemIter= itemList.next(itemIter))
+			{
+				count2 ++;
+				if (count1 == count2 )
+				{
+					itemIter->mValue.position = indexIter->mValue +1;
+
+					break;
+				}
+			}
+		}
+
+		count1 = 0;
+		for (UInt32 i = 1;i <= max;i++)
+		{	
+			count1 ++;//1开始
+			for (List<Item>::Iter *itemIter = itemList.begin();itemIter!=NULL;itemIter= itemList.next(itemIter))
+			{
+				if (itemIter->mValue.position == count1)
+				{
+					tmpItemList.insertTail(itemIter->mValue);
+					break;
+				}
+			}			
+		}
+
+
+		for (List<Item>::Iter *itemIter = tmpItemList.begin();itemIter!=NULL;itemIter= tmpItemList.next(itemIter))
+		{
+			ShopManager::getSingleton().setShopItem(playerID,CourageShop,itemIter->mValue.position,itemIter->mValue,true);
+			resp.items.insertTail(itemIter->mValue);
+		}
+	}
+	else
+	{
+		for (List<Item>::Iter *itemIter = itemList.begin();itemIter!=NULL;itemIter= itemList.next(itemIter))
+		{
+			resp.items.insertTail(itemIter->mValue);
+		}
+	}
+
+
+	j = 0;
+	for(List<UInt32>::Iter *iter = globalValue.uCOURAGESHOPrefreshtimes.begin();iter!= NULL;iter = globalValue.uCOURAGESHOPrefreshtimes.next(iter))
+	{
+		j++;
+		cost = iter->mValue;			
+		if (j == (refreshTimes+1))
+		{
+			break;
+		}
+	}
+	resp.refreshCost = cost;
+	return LynxErrno::None;
+
+}
+// 
+// 
+// UInt32 CourageChallengeManager::checkCourageRefreshTime(Guid playerID,UInt32 shopType,UInt32 &refreshNeedTime)
+// {
+// 	UInt32 lastRefreshTime = 0;
+// 	UInt32 nextRefreshTime = 0;
+// 	UInt32 refreshTime = 0;
+// 	UInt32 refreshTimes = 0;
+// 	UInt32 tmp = TimeUtil::getSecOfToday();
+// 	UInt32 dayBeiginTime =  TimeUtil::getTimeSec() - TimeUtil::getSecOfToday();
+// 	Vector<String> strVector;
+// 	Item item;
+// 
+// 
+// 	UInt32 nowTime = TimeUtil::getTimeSec();
+// 	Player *player = LogicSystem::getSingleton().getPlayerByGuid(playerID);
+// 	if (player == NULL)
+// 	{
+// 		LOG_WARN("player not found!!");
+// 		return 0;
+// 	}
+// 
+// 	ShopManager::getSingleton().getPlayerItem( playerID,shopType, 0,item,refreshTime,refreshTimes);
+// 
+// 	UInt32 systemRefreshTime = LogicSystem::getSingleton().getRefreshTime(TIME_REFRESH_ID13);
+// 	char dest[64] = {};
+// 	sprintf(dest,"%d",systemRefreshTime);
+// 	String sSystemRefreshTime = (String)dest;
+// 	strVector.push_back(sSystemRefreshTime);
+// 
+// 	UInt32 getIt = 0;
+// 
+// 	for (UInt32 i = 0; i < strVector.size();i++)
+// 	{
+// 		if (nowTime < (dayBeiginTime + atoi(strVector[i].c_str())  ) )
+// 		{
+// 			nextRefreshTime = (dayBeiginTime + atoi(strVector[i].c_str())  );
+// 			if (i == 0)
+// 			{
+// 				lastRefreshTime = dayBeiginTime - 24*3600 + atoi(strVector[strVector.size() -1].c_str());//昨天最后一个
+// 			}
+// 			else
+// 			{
+// 				lastRefreshTime = dayBeiginTime + atoi(strVector[i -1].c_str());
+// 
+// 			}
+// 			getIt = 1;
+// 			break;			
+// 		}		
+// 	}
+// 	if (getIt == 0)
+// 	{
+// 		nextRefreshTime = (dayBeiginTime +  (24*3600+atoi(strVector[0].c_str()))  );//明天第一次
+// 		lastRefreshTime = dayBeiginTime  + atoi(strVector[strVector.size() -1].c_str());//今天最后一次刷新
+// 	}
+// 	refreshNeedTime = nextRefreshTime - nowTime;
+// 
+// 	if(refreshTime < lastRefreshTime )
+// 	{
+// 		return 10000;		
+// 	}
+// 
+// 	return refreshTimes;
+// }
+
+UInt32 CourageChallengeManager::getCourageShopID(UInt32 position,UInt32 level,UInt32 vipLevel,UInt32 refreshTimes,UInt32 refresh)
+{
+	UInt32 nowTime = TimeUtil::getTimeSec();
+	CourageshopTemplate *courageshopTemplate = NULL;
+
+	if (level % 10 == 0)
+	{
+		level = (level/10)*10;
+	}
+	else
+	{
+		level = (level/10)*10+ 10;
+	}
+
+	vipLevel = (vipLevel/5)*5;
+
+	for(Map<UInt32, CourageshopTemplate>::Iter *iter = gCourageshopTable->mMap.begin();iter != NULL;iter = gCourageshopTable->mMap.next(iter))
+	{
+		if (iter->mValue.shopposition == position /*&& iter->mValue.playerLv == level*/ && iter->mValue.vipLv == vipLevel)
+		{
+			courageshopTemplate = &iter->mValue;
+			break;
+		}
+	}
+	if (courageshopTemplate == NULL)
+	{
+		return 0;
+	}
+
+	if (refreshTimes == 0)
+	{
+		return courageshopTemplate->timeawardcontentshop;
+	}
+	else
+	{
+		UInt32 i = 0;
+		for (List<UInt32>::Iter * it =  courageshopTemplate->awardcontentshops.begin(); it != NULL; it = courageshopTemplate->awardcontentshops.next(it))
+		{
+			i++;
+			if (i == refreshTimes)
+			{
+				return it->mValue;
+			}
+		}
+	}	
+
+	return 0;
+}
+
+void CourageChallengeManager::onCourageShopBuyReq(const  ConnId& connId, CourageShopBuyReq & msg)
+{
+	UInt32 cost = 0;
+	CourageShopBuyResp resp;
+	msg.convertJsonToData(msg.jsonStr);
+	resp.shopType = msg.shopType;
+	resp.position = msg.position;
+
+	Player *player = LogicSystem::getSingleton().getPlayerByConnId(connId);
+	if (player == NULL)
+	{
+		return;
+	}
+
+	//先刷新	
+	CourageShopReq  msg1;
+	msg1.shopType = CourageShop;
+	msg1.reqType = 0;
+	msg1.needSend = 0;
+	CourageChallengeManager::getSingleton().onCourageShopReq(connId,msg1);
+
+	if (msg.shopType == CourageShop)
+	{
+		resp.result = CourageChallengeManager::getSingleton().dealCourageshopbuy(player->getPlayerGuid(),msg.shopType,msg.position,resp);
+	}
+
+	PlayerCourageChallengeData courageChallengeData = player->getCourageChallengeData();
+
+	resp.lightOfLife = courageChallengeData.m_LightOfLife;
+	std::string jsonStr = resp.convertDataToJson();
+	NetworkSystem::getSingleton().sender( connId,COURAGE_SHOP_BUY_RESP,jsonStr);
+
+	
+}
+
+
+// 
+// 
+// void CourageChallengeManager::getCourageShopNewItems(Guid playerID, UInt32 position,UInt32 acID,UInt32 shopType,Item &item)
+// {
+// 	UInt32 refreshTime;
+// 	UInt32 refreshTimes;
+// 	UInt32 nowTime = TimeUtil::getTimeSec();
+// 	UInt32 dayBeiginTime =  TimeUtil::getTimeSec() - TimeUtil::getSecOfToday();
+// 	List<Goods> goodsList;
+// 	CourageshopTemplate *courageshopTemplate;
+// 	courageshopTemplate =  gCourageshopTable->get(position);
+// 	if (courageshopTemplate == NULL)
+// 	{
+// 		return;
+// 	}
+// 
+// 	ShopManager::getSingleton().getPlayerItem( playerID,shopType, position,item,refreshTime,refreshTimes);
+// 
+// 	if (item.goods.subtype == 0)
+// 	{
+// 		item.itemID = acID;
+// 		item.position = position;
+// 		item.shopType = shopType;
+// 		item.buyTime = 0;
+// 		item.buyTimes = 0;
+// 
+// 		item.goods.resourcestype = courageshopTemplate->subtype1;
+// 		item.goods.subtype = courageshopTemplate->num1;
+// 		item.goods.num = 1;
+// 
+// 		item.cost = courageshopTemplate->costnumber1;
+// 
+// 		ShopManager::getSingleton().setShopItem(playerID,shopType,position,item,true);
+// 	}
+// 	else
+// 	{
+// 		item.cost = courageshopTemplate->costnumber1;
+// 	}
+// 
+// }
+
+
+
+UInt32 CourageChallengeManager::dealCourageshopbuy(Guid playerID,UInt32 shopType,UInt32 position,CourageShopBuyResp &resp)
+{
+	Goods goods;
+	List<Goods> addGoodsList;
+
+	Player *player = LogicSystem::getSingleton().getPlayerByGuid(playerID);
+
+
+	ShopItems  shopItems = ShopManager::getSingleton().getShopItems( playerID,  shopType);
+
+	Item  item = ShopManager::getSingleton().getShopItem( playerID, shopType, position);
+	PlayerCourageChallengeData courageChallengeData = player->getCourageChallengeData();
+
+	if(item.position == 0)
+	{
+		return LynxErrno::NotFound;
+	}
+
+	if (item.buyTimes > 0)
+	{
+		return LynxErrno::HadBuy;
+	}
+
+	CommodityTemplate* commodityTemplate = gCommodityTable->get(item.goods.subtype);
+	if (commodityTemplate == NULL)
+	{
+		return LynxErrno::NotFound;
+	}
+	UInt32 cost = commodityTemplate->costnumber1;
+
+	if( commodityTemplate->costype1 == AWARD_BASE &&  commodityTemplate->subtype1 == AWARD_BASE_GOLD)
+	{
+		if(player->getPlayerGold() < cost)
+		{
+			return LynxErrno::RmbNotEnough;
+		}
+	}
+	if (commodityTemplate->costype1 == AWARD_SERVANTSWITCH)
+	{
+		if(player->getAllItemManager().getAwardCount(AWARD_SERVANTSWITCH,0) < cost)
+		{
+			return LynxErrno::ServantSwitchNotEnough;
+		}
+	}
+	if(commodityTemplate->costype1 == AWARD_CURRENCY)
+	{
+		if (courageChallengeData.m_LightOfLife < cost)
+		{
+			return LynxErrno::CurrencyNotEnough;
+		}
+	}
+	if( commodityTemplate->costype1 == AWARD_BASE &&  commodityTemplate->subtype1 == AWARD_BASE_COIN)
+	{
+		if(player->getPlayerCoin() < cost)
+		{
+			return LynxErrno::CoinNotEnough;
+		}
+	}
+
+	item.buyTimes += commodityTemplate->num1;
+	ShopManager::getSingleton().setShopItem(playerID,shopType,position,item,true);
+	resp.buyNum = item.buyTimes;
+
+	// 	getShopItemGoods();
+	goods.resourcestype = commodityTemplate->resourcesType1;
+	goods.subtype = commodityTemplate->subtype1;
+	goods.num = commodityTemplate->num1 ;
+	addGoodsList.insertTail(goods);
+
+	Award award;
+	award.award = addGoodsList;
+	resp.awards.insertTail(award);
+
+
+
+	addGoodsList.clear();
+	goods.resourcestype = commodityTemplate->costype1;
+	goods.subtype = commodityTemplate->costsubtype1;
+	goods.num = 0 - cost;
+	addGoodsList.insertTail(goods);	
+
+	player->ResetFireConfirmData();
+	PlayerFireConfirmData mFireConfirmData =  player->GetFireConfirmData();
+
+	mFireConfirmData.m_AwardsList = resp.awards;
+	mFireConfirmData.m_CostList = addGoodsList;
+	mFireConfirmData.m_CopyID = GETAWARDSCOPYID;
+	player->SetFireConfirmData(mFireConfirmData);
+
+	ChapterEndResp awardResult;
+	FireConfirmManager::getSingleton().saveAndGetResult(player->getConnId(),awardResult,0,MiniLog100);
+	resp.ends = awardResult.ends;
+	resp.allAttr = awardResult.allAttr;
+	player->ResetFireConfirmData();
+
+	return LynxErrno::None;
+}
+
+void CourageChallengeManager::divisionCoinGrop(List<UInt32> &group1,List<UInt32> &group2,List<UInt32> &group3,List<UInt32> group)
+{
+	CoinGroupTemplate * coinGroupTemplate;
+	for(List<UInt32>::Iter *iter = group.begin();iter!=NULL;iter = group.next(iter))
+	{
+		coinGroupTemplate = gCoinGroupTable->get(iter->mValue);
+		if (coinGroupTemplate == NULL)
+		{
+			continue;
+		}
+		if (coinGroupTemplate->territoryID == CourageID1 )
+		{
+			group1.insertTail(iter->mValue);
+		}
+		else if (coinGroupTemplate->territoryID == CourageID2 )
+		{
+			group2.insertTail(iter->mValue);
+		}
+		else if (coinGroupTemplate->territoryID == CourageID3 )
+		{
+			group3.insertTail(iter->mValue);
+		}
+
+	}
+
 }

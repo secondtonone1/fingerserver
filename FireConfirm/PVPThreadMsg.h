@@ -112,8 +112,10 @@ namespace Lynx
 		UInt32 result;
 		Guid otherPlayerID;
 		UInt32 isRobot;
+		UInt32 gold;
 		std::string otherPlayer;
 		List<RoomData> roomDatas;
+		List<UInt32> confirmIDs;
 
 		std::string convertDataToJson()
 		{
@@ -123,6 +125,7 @@ namespace Lynx
 			root["result"] = Json::Value(result);
 			root["isRobot"] = Json::Value(isRobot);
 			root["otherPlayerID"] = Json::Value(otherPlayerID);
+			root["gold"] = Json::Value(gold);
 			for (List<RoomData>::Iter *iter = roomDatas.begin();iter!= NULL;iter = roomDatas.next(iter))
 			{
 				Json::Value son;
@@ -162,6 +165,11 @@ namespace Lynx
 				}
 
 				root["roomDatas"].append(son);
+				for(List<UInt32>::Iter * iter =  confirmIDs.begin();iter !=NULL;iter = confirmIDs.next(iter))
+				{
+					root["confirmIDs"].append(iter->mValue);
+
+				}
 			}
 
 			Json::FastWriter writer;  

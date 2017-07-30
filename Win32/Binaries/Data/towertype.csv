@@ -1,4 +1,4 @@
-id,name,desc,towerheight,attackpower,hp,strength,startscore,mopupcost,operatetlimittime,strengthreduce,hprecover,roulettemaxtimes,rouletteid1,rouletteid2,rouletteid3,rouletteid4,rouletteid5,roulette,scorerate,awardshow,mopupaward1,mopupawardrate1,mopupaward2,mopupawardrate2,mopupaward3,mopupawardrate3,mopupaward4,mopupawardrate4
-1,¼òµ¥,¹Ä30²ã,30,1200,10000,120,100,30,0,1,10,1,118001,,,,,10000,10,12_1006_1;12_2001_1;11_1001_10;6_6_10;6_6_20;6_6_30;1_1_30;1_2_30000,119001,2000,119002,2000,119003,1000,119004,5000
-2,¹Ü,Ëþ60²ã,60,,,150,500,40,0,1,0,3,128001,128002,128003,,,50000,10,12_1006_1;12_2001_1;11_1001_10;6_6_10;6_6_20;6_6_30;1_1_30;1_2_30000,129001,2000,129002,2000,129003,1000,129004,5000
-3,ÏÒ,Ëþ100²ã,100,,,180,2000,50,5,1,0,5,138001,138002,138003,138004,138005,100000,15,12_1006_1;12_2001_1;11_1001_10;6_6_10;6_6_20;6_6_30;1_1_30;1_2_30000,139001,2000,139002,2000,139003,1000,139004,5000
+id,name,desc,towerheight,attackpower,hp,strength,startscore,mopupcost,operatetlimittime,strengthreduce,roulettemaxtimes,rouletteid,roulette,scorerate,exchange,mopupaward1,mopupawardrate1,mopupaward2,mopupawardrate2,mopupaward3,mopupawardrate3,mopupaward4,mopupawardrate4,selecttime,strengthrecover,selecteventtime
+1,¼òµ¥,¹Ä30²ã,30,30,100,180,100,30,0,1,1,1,200,1000,10,119001,1500,119002,3500,119003,5000,119004,0,5,1000,0
+2,¹Ü,Ëþ60²ã,60,,,360,500,40,0,1,3,2,1000,1000,10,129001,1500,129002,3500,129003,5000,129004,0,5,1000,0
+3,ÏÒ,Ëþ100²ã,100,,,720,1000,50,5,1,5,3,20000,1500,10,139001,1500,139002,3500,139003,5000,139004,0,5,1000,5

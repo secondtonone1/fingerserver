@@ -69,7 +69,12 @@ ItemManager::initial(Player* player)
 		//方便发送给客户端消息
 		UInt64 itemTableID = it->mValue.m_nItemId;
 		
-		ItemTemplate * itemTemplate = ITEM_TABLE().get(itemTableID);
+		ItemTemplate * itemTemplate =ITEM_TABLE().get(itemTableID);
+		if (itemTemplate == NULL)
+		{
+			LOG_WARN("itemTemplate not found!!");
+			return false;
+		}
 		
 		if(itemTemplate->mBagTab == 1)
 		{
@@ -203,6 +208,11 @@ void ItemManager::delTypeMapEle(ItemData* itemData)
 	//删除对应的类型存储map中的元素
 
 	ItemTemplate * itemTemplate = ITEM_TABLE().get(itemData->m_nItemId);
+	if (itemTemplate == NULL)
+	{
+		LOG_WARN("itemTemplate not found!!");
+		return;
+	}
 
 	if(itemTemplate->mBagTab == 1)
 	{
@@ -284,7 +294,12 @@ ItemManager::useItem(const Guid& itemUid, UInt32 count)
 
 	Guid itemID = iterMap->mValue->m_nItemId;
 
-	ItemTemplate* itemTemplate = ITEM_TABLE().get(itemID); 
+	ItemTemplate* itemTemplate = ITEM_TABLE().get(itemID);
+	if (itemTemplate == NULL)
+	{
+		LOG_WARN("itemTemplate not found!!");
+		return LynxErrno::NotFound;
+	}
 
 	if (!itemTemplate->mUseful)
 	{
@@ -398,6 +413,11 @@ void ItemManager::addTypeMapEle(ItemData* itemData)
 {
 	//将物品根据类型，插入对应的类型map里
 	ItemTemplate * itemTemplate =  ITEM_TABLE().get(itemData->m_nItemId);
+	if (itemTemplate == NULL)
+	{
+		LOG_WARN("itemTemplate not found!!");
+		return;
+	}
 
 	if(itemTemplate->mBagTab == 1)
 	{
@@ -446,6 +466,11 @@ List<UInt64> ItemManager::addItems(Guid templateId, UInt32 count)
 {
 	List<UInt64> listUids;
 	ItemTemplate* itemTemplate = ITEM_TABLE().get(templateId);
+	if (itemTemplate == NULL)
+	{
+		LOG_WARN("itemTemplate not found!!");
+		return listUids;
+	}
 	//物品最大叠加数量  sec
 	UInt32 maxStackAmount = itemTemplate->mStackAmount;
 	
@@ -471,6 +496,11 @@ List<UInt64> ItemManager::addItems(Guid templateId, UInt32 count)
 UInt32 ItemManager::calculateCount(Guid itemId, UInt32 count)
 {
 	ItemTemplate* itemTemplate = ITEM_TABLE().get(itemId);
+	if (itemTemplate == NULL)
+	{
+		LOG_WARN("itemTemplate not found!!");
+		return 0;
+	}
 	//物品最大叠加数量  sec
 	UInt32 maxStackAmount = itemTemplate->mStackAmount;
 
@@ -785,8 +815,15 @@ ItemManager::sellItem(const List<Guid>& itemList, UInt32& getGold)
 	    getGold += itemTemplate->mPrice * existIter->mValue->m_nCurStackAmount;
 	    delItem(existIter->mValue->m_nUid);
 	}
-	
-	mPlayer->mPlayerData.mBaseData.m_nCoin += getGold;
+	Goods goods;
+	List<Goods> goodList;
+
+	goods.resourcestype =AWARD_BASE;
+	goods.subtype = AWARD_BASE_COIN;
+	goods.num = getGold;
+	goodList.insertTail(goods);
+	GiftManager::getSingleton().addToPlayer(mPlayer->getPlayerGuid(),REFLASH_AWARD,goodList,MiniLog31);
+
 	mPlayer->getPersistManager().setDirtyBit(ITEMDATABIT);
 
 	return LynxErrno::None;
@@ -1028,6 +1065,17 @@ void ItemManager::enhanceEquip(UInt64 equipID, List<UInt64> materialLists)
 	if(!iterFind)
 	{
 		LOG_INFO("NO Equip IDs!");
+		Json::Value root;
+		root["errorId"] = LynxErrno::ClienServerDataNotMatch;
+		Json::FastWriter writer;
+		std::string respJson = writer.write(root);
+
+		EquipEhanceResp enhanceResp;
+		enhanceResp.mPacketID = EQUIP_ENHANCE_RESP;
+		enhanceResp.mRespJsonStr = respJson;
+		const ConnId& connId = mPlayer->getConnId();
+
+		NetworkSystem::getSingleton().sendMsg(enhanceResp,connId);
 		//提示玩家装备失效，信息以后写
 		return;
 	}
@@ -1041,6 +1089,17 @@ void ItemManager::enhanceEquip(UInt64 equipID, List<UInt64> materialLists)
 	if(starLevel == starMax && enhanceLevel == maxLvLimit)
 	{
 		LOG_INFO("yidadaozuidaqianghuadengji");
+		Json::Value root;
+		root["errorId"] = LynxErrno::ClienServerDataNotMatch;
+		Json::FastWriter writer;
+		std::string respJson = writer.write(root);
+
+		EquipEhanceResp enhanceResp;
+		enhanceResp.mPacketID = EQUIP_ENHANCE_RESP;
+		enhanceResp.mRespJsonStr = respJson;
+		const ConnId& connId = mPlayer->getConnId();
+
+		NetworkSystem::getSingleton().sendMsg(enhanceResp,connId);
 		//通知玩家
 		return;
 	}
@@ -1095,12 +1154,30 @@ void ItemManager::enhanceEquip(UInt64 equipID, List<UInt64> materialLists)
 	{
 		//提示玩家错误信息，金币不足
 		LOG_INFO("Not enouph gold!");
+		Json::Value root;
+		root["errorId"] = LynxErrno::ClienServerDataNotMatch;
+		Json::FastWriter writer;
+		std::string respJson = writer.write(root);
+
+		EquipEhanceResp enhanceResp;
+		enhanceResp.mPacketID = EQUIP_ENHANCE_RESP;
+		enhanceResp.mRespJsonStr = respJson;
+		const ConnId& connId = mPlayer->getConnId();
+
+		NetworkSystem::getSingleton().sendMsg(enhanceResp,connId);
 		return ;
 	}
 	else
 	{
 		playerCoin = playerCoin - needCoin;
-		mPlayer->setPlayerCoin(playerCoin);
+		Goods goods;
+		List<Goods> itemList;
+
+		goods.resourcestype =AWARD_BASE;
+		goods.subtype = AWARD_BASE_COIN;
+		goods.num = 0 - needCoin;
+		itemList.insertTail(goods);
+		GiftManager::getSingleton().addToPlayer(mPlayer->getPlayerGuid(),REFLASH_AWARD,itemList,MiniLog1);
 	}
 	
 	//循环判断，如果物品此时获得经验值后总经验值大于强化经验值上限，那么进行升级操作
@@ -1154,7 +1231,7 @@ void ItemManager::enhanceEquip(UInt64 equipID, List<UInt64> materialLists)
 	iterFind->mValue->m_itemAttribute.m_nEnhanceLevel = enhanceLevel;
 
 	iterFind->mValue->m_nDirtyType = UPDATEDIRTY;
-	mPlayer->getPersistManager().setDirtyBit(ITEMDATABIT|BASEDATABIT);
+	mPlayer->getPersistManager().setDirtyBit(ITEMDATABIT);
 
 	//通知玩家强化成功，以及金币数的更新，消息以后写
 	Json::Value root;
@@ -1198,7 +1275,7 @@ void ItemManager::enhanceEquip(UInt64 equipID, List<UInt64> materialLists)
 
 	NetworkSystem::getSingleton().sendMsg(enhanceResp,connId);
 
-
+	
 }
 
 void  ItemManager::polishEquip(UInt64 objEquipUid, UInt64 materialEquipUid, UInt32 objRdAttrIndex)
@@ -1445,9 +1522,15 @@ void  ItemManager::polishEquip(UInt64 objEquipUid, UInt64 materialEquipUid, UInt
 	}
 
 	//消耗金钱
-	mPlayer->mPlayerData.mBaseData.m_nCoin -= objectTemplate->mRefreshcoin ;
 
-	mPlayer->getPersistManager().setDirtyBit(BASEDATABIT);
+	Goods goods;
+	List<Goods> itemList;
+
+	goods.resourcestype =AWARD_BASE;
+	goods.subtype = AWARD_BASE_COIN;
+	goods.num = 0 - objectTemplate->mRefreshcoin;
+	itemList.insertTail(goods);
+	GiftManager::getSingleton().addToPlayer(mPlayer->getPlayerGuid(),REFLASH_AWARD,itemList,MiniLog4);
 
 	AttrPolishTemplate *materialPolishTem = ATTRPOLISH_TABLE().get(materialTemplate->mLevelRequire);
 
@@ -1686,6 +1769,7 @@ void  ItemManager::polishEquip(UInt64 objEquipUid, UInt64 materialEquipUid, UInt
 	const ConnId& connId = mPlayer->getConnId();
 
 	NetworkSystem::getSingleton().sendMsg(polishResp,connId);
+
 }
 
 UInt32 ItemManager::getAttrQuality(const RandomAttribute &randomAttr, EquipTemplate * objectTemplate)
@@ -2252,8 +2336,16 @@ void  ItemManager::polishResetEquip(UInt64 objEquipUid)
 	rdAttrIter->mValue = rdAttribute;
 	
 	objEquipIter->mValue->m_nDirtyType = UPDATEDIRTY;
-	mPlayer->getPersistManager().setDirtyBit(ITEMDATABIT|BASEDATABIT);
-	mPlayer->mPlayerData.mBaseData.m_nCoin -= PolishNeedCoin;
+
+	Goods goods;
+	List<Goods> itemList;
+
+	goods.resourcestype =AWARD_BASE;
+	goods.subtype = AWARD_BASE_COIN;
+	goods.num = 0 - PolishNeedCoin;
+	itemList.insertTail(goods);
+	GiftManager::getSingleton().addToPlayer(mPlayer->getPlayerGuid(),REFLASH_AWARD,itemList,MiniLog4);
+
 	
 	Json::Value root;
 	root["errorId"] = LynxErrno::None;

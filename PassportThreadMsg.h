@@ -21,6 +21,11 @@ namespace Lynx
 		// 验证码返回
 		PASSPORT_CODE_RESP          = 6, 
 
+		// 获取服务器id
+		PASSPORT_SERVERID_REQ           = 7,
+		// 服务器id返回
+		PASSPORT_SERVERID_RESP          = 8, 
+
 	};
 
     struct PassportAuthReq      
@@ -67,9 +72,9 @@ namespace Lynx
 		LYNX_MESSAGE_4(PASSPORT_CODE_REQ,PassportCodeReq, Guid, playerID, string, code, UInt32, reqType, UInt32, isSave);
 	};
 
-	struct PassporCodeResp      
+	struct PassportCodeResp      
 	{
-		PassporCodeResp() : PlayerID(0), reqType(0), beginTime(0), code(""),
+		PassportCodeResp() : PlayerID(0), reqType(0), beginTime(0), code(""),
 			endTime(0), awardID(0), errorId(0) {}
 
 		UInt32 errorId;
@@ -80,10 +85,28 @@ namespace Lynx
 		UInt32 endTime;
 		UInt32 awardID;
 
-		LYNX_MESSAGE_7(PASSPORT_CODE_RESP,PassporCodeResp, Guid, PlayerID,string, code,UInt32, reqType,
+		LYNX_MESSAGE_7(PASSPORT_CODE_RESP,PassportCodeResp, Guid, PlayerID,string, code,UInt32, reqType,
 		UInt32, beginTime,UInt32, endTime,UInt32, awardID,UInt32, errorId);
 	};
 
+	struct PassportServerIDReq      
+	{
+		PassportServerIDReq() :  serverIP(""), port(0) {}
+
+		string serverIP;
+		UInt32 port;	
+
+		LYNX_MESSAGE_2(PASSPORT_SERVERID_REQ,PassportServerIDReq,string, serverIP, UInt32, port);
+	};
+
+	struct PassportServerIDResp      
+	{
+		PassportServerIDResp() : serverID(0) {}
+
+		UInt32 serverID;
+
+		LYNX_MESSAGE_1(PASSPORT_SERVERID_RESP,PassportServerIDResp,UInt32, serverID);
+	};
    
 
 } // namespace Lynx

@@ -44,11 +44,16 @@ namespace Lynx
 			GCResp.mRespJsonStr = jsonStr;
 			GCResp.mPacketID = PacketID;
 
+			
+
 			ClientConnection* clientConn = getClientConnection(connId);
 			if (!clientConn)
 			{
+				LOG_WARN("clientConn had closed %d %d",PacketID,connId);
 				return;
 			}
+
+			LOG_INFO("[ Send ] messageID %d  connId %d",PacketID,connId);
 
 			StreamBuffer& ostream = clientConn->mOStream;
 
@@ -77,6 +82,9 @@ namespace Lynx
 			}
 
 			clientConn->mKeepaliveTime = TimeUtil::getTimeMilliSec();
+
+			clientConn->mKeepaliveCount = KEEP_ALIVE_COUNT;
+// 			LOG_INFO("sendmsg time is: %llu", clientConn->mKeepaliveTime);
 		}
 
 		template <typename MsgType >
@@ -86,8 +94,11 @@ namespace Lynx
 			if (!clientConn)
 			{
 				//pushEvent(EVENT_CLIENT_CONNECTION_NOT_EXIST, connId);
+				LOG_WARN("clientConn had closed %d %d",MessageId<MsgType >::sMsgId,connId);
 				return;
 			}
+
+			LOG_INFO("[ Send ] messageID %d  connId %d",MessageId<MsgType >::sMsgId,connId);
 
 			StreamBuffer& ostream = clientConn->mOStream;
 
@@ -116,6 +127,9 @@ namespace Lynx
 			}
 
             clientConn->mKeepaliveTime = TimeUtil::getTimeMilliSec();
+
+			clientConn->mKeepaliveCount = KEEP_ALIVE_COUNT;
+// 			LOG_INFO("sendmsg time is: %llu", clientConn->mKeepaliveTime);
 		}
 
 		void sendMsg(StreamBuffer& stream, const ConnId& connId)
@@ -126,7 +140,7 @@ namespace Lynx
 				//pushEvent(EVENT_CLIENT_CONNECTION_NOT_EXIST, connId);
 				return;
 			}
-
+			
 			StreamBuffer& ostream = clientConn->mOStream;
 			ostream += stream;
 
@@ -144,6 +158,9 @@ namespace Lynx
 			}
 
             clientConn->mKeepaliveTime = TimeUtil::getTimeMilliSec();
+
+			clientConn->mKeepaliveCount = KEEP_ALIVE_COUNT;
+// 			LOG_INFO("sendmsg time is: %llu", clientConn->mKeepaliveTime);
 		}
 
         template <typename MsgType >
@@ -182,6 +199,11 @@ namespace Lynx
 		void onConnectionAcceptedNotify(ConnectionAcceptedNotify& msg);
 		void onConnectionReceiveNotify(ConnectionReceiveNotify& msg);
 		void onConnectionBrokenNotify(ConnectionBrokenNotify& msg);
+	public:
+		//王戊辰 网络层T除所有连接
+		void closeAllConnection();
+		//王戊辰 踢掉某个连接
+		void closeConnection(const ConnId& connId);
 
 	private:
 		void onClientConnectionClosed(const Event& ev);

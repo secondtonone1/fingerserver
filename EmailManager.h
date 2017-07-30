@@ -32,13 +32,17 @@ namespace Lynx
 
 		void getContant(List<UInt64> emailUid);
 
-		void dealSubStr(std::string &contantStr, std::string ::size_type  findIndex,Map<UInt64, List<UInt64> > &mapRes2Sub, List<JewelryData *> &lsitJewelryData);
+		void dealSubStr(std::string &contantStr, std::string ::size_type  findIndex,Map<UInt64, List<UInt64> > &mapRes2Sub, List<JewelryData *> &lsitJewelryData, 
+			List<ReturnItemEle> & rtcontantList,UInt32 systemID);
 
 		void clearAllEmail();
 
 		std::string convertDataToJson();
 
 		std::string convertGetToJson(Map<UInt64, List<UInt64> > mapRes2Sub, List<JewelryData *> lsitJewelryData);
+
+		//更改后的邮件发包
+		std::string convertGetToJson(UInt64 emailUid,const List<ReturnItemEle> & rtcontantList);
 
 	private:
 		

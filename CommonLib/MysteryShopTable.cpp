@@ -75,8 +75,8 @@ ShopsTable::loadFromCsv(const String& filePath)
 
 		if (!csvReader.bind("shoptype", shopsTemplate.shoptype))
 		{
-			LOG_WARN("Failed to load shopsTemplate.csv for [name]");
-			return false;
+// 			LOG_WARN("Failed to load shopsTemplate.csv for [name]");
+// 			return false;
 		}
 
 		char str1[32]={};

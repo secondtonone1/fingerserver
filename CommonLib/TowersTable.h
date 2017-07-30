@@ -35,19 +35,13 @@ namespace Lynx
 
 		UInt32 roulettemaxtimes;
 
-		UInt32 rouletteid1;
-
-		UInt32 rouletteid2;
-
-		UInt32 rouletteid3;
-
-		UInt32 rouletteid4;
-
-		UInt32 rouletteid5;
+		UInt32 rouletteid;
 
 		UInt32 roulette;
 
 		UInt32 scorerate;
+
+		UInt32 exchange;
 
 		String awardshow;
 
@@ -67,12 +61,14 @@ namespace Lynx
 
 		UInt32 mopupawardrate4;
 
-		LYNX_S11N_29(TowerTypeTemplate,UInt32, id,String, name,String, desc,UInt32, towerheight,UInt32, attackpower,
+		UInt32 strengthrecover;
+
+
+		LYNX_S11N_27(TowerTypeTemplate,UInt32, id,String, name,String, desc,UInt32, towerheight,UInt32, attackpower,
 			UInt32, hp,UInt32, strength,UInt32, startscore,UInt32, mopupcost,UInt32, operatetlimittime,UInt32, strengthreduce,
-			UInt32, hprecover,UInt32, roulettemaxtimes,UInt32, rouletteid1,UInt32, rouletteid2,UInt32, rouletteid3,
-			UInt32, rouletteid4,UInt32, rouletteid5,UInt32, roulette,UInt32, scorerate,String, awardshow,	
+			UInt32, hprecover,UInt32, roulettemaxtimes,UInt32, rouletteid,UInt32, exchange,UInt32, roulette,UInt32, scorerate,String, awardshow,	
 			UInt32, mopupaward1,UInt32, mopupawardrate1,UInt32, mopupaward2,UInt32,mopupawardrate2,
-			UInt32, mopupaward3,UInt32, mopupawardrate3,UInt32 ,mopupaward4,UInt32, mopupawardrate4
+			UInt32, mopupaward3,UInt32, mopupawardrate3,UInt32 ,mopupaward4,UInt32, mopupawardrate4,UInt32,strengthrecover
 			);
 
 	};

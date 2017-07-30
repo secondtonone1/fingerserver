@@ -64,8 +64,9 @@ namespace Lynx
 		const String& getAccountDbUsername() const { return mAccountDbUsername; }
 		const String& getAccountDbPassword() const { return mAccountDbPassword; }
 		const String& getShutdownPassword() const { return mShutdownPassword; }
-                const String& getRedisServerIp() const { return mRedisServerIp; }
-		UInt16 getRedisServerPort() const { return mRedisPort; }                
+        const String& getRedisServerIp() const { return mRedisServerIp; }
+		UInt16 getRedisServerPort() const { return mRedisPort; } 
+		const String& getRedisPassword() const { return mRedisPassword; }
 
 
 		bool parser(const char* filePath)
@@ -233,7 +234,7 @@ namespace Lynx
 			elem = node->toElement();
 			mRedisServerIp = elem->getAttribute("ip");
 			mRedisPort = lynxAtoi<UInt16>(elem->getAttribute("port"));
-			
+			mRedisPassword = elem->getAttribute("password");
 			return true;
 		}
 
@@ -269,6 +270,7 @@ namespace Lynx
 		String mShutdownPassword;
 		String mRedisServerIp;
 		UInt16 mRedisPort;
+		String mRedisPassword;
 	};
 } // namespace Lynx
 

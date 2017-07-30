@@ -126,39 +126,26 @@ TowerTypeTable::loadFromCsv(const String& filePath)
 			LOG_WARN("Failed to load towerTypeTemplate.csv for [strengthreduce]");
 			return false;
 		}
-		if (!csvReader.bind("hprecover", towerTypeTemplate.hprecover))
-		{
-			LOG_WARN("Failed to load towerTypeTemplate.csv for [hprecover]");
-			return false;
-		}
+// 		if (!csvReader.bind("hprecover", towerTypeTemplate.hprecover))
+// 		{
+// 			LOG_WARN("Failed to load towerTypeTemplate.csv for [hprecover]");
+// 			return false;
+// 		}
 		if (!csvReader.bind("roulettemaxtimes", towerTypeTemplate.roulettemaxtimes))
 		{
 			LOG_WARN("Failed to load towerTypeTemplate.csv for [roulettemaxtimes]");
 			return false;
-		}		
-		if (!csvReader.bind("rouletteid1", towerTypeTemplate.rouletteid1))
+		}	
+
+		if (!csvReader.bind("rouletteid", towerTypeTemplate.rouletteid))
 		{
-			LOG_WARN("Failed to load towerTypeTemplate.csv for [rouletteid1]");
+			LOG_WARN("Failed to load towerTypeTemplate.csv for [rouletteid]");
 			return false;
 		}
-		if (!csvReader.bind("rouletteid2", towerTypeTemplate.rouletteid2))
+	
+		if (!csvReader.bind("exchange", towerTypeTemplate.exchange))
 		{
-			LOG_WARN("Failed to load towerTypeTemplate.csv for [rouletteid2]");
-			return false;
-		}
-		if (!csvReader.bind("rouletteid3", towerTypeTemplate.rouletteid3))
-		{
-			LOG_WARN("Failed to load towerTypeTemplate.csv for [rouletteid3]");
-			return false;
-		}
-		if (!csvReader.bind("rouletteid4", towerTypeTemplate.rouletteid4))
-		{
-			LOG_WARN("Failed to load towerTypeTemplate.csv for [rouletteid4]");
-			return false;
-		}
-		if (!csvReader.bind("rouletteid5", towerTypeTemplate.rouletteid5))
-		{
-			LOG_WARN("Failed to load towerTypeTemplate.csv for [rouletteid5]");
+			LOG_WARN("Failed to load towerTypeTemplate.csv for [exchange]");
 			return false;
 		}
 		if (!csvReader.bind("roulette", towerTypeTemplate.roulette))
@@ -171,11 +158,11 @@ TowerTypeTable::loadFromCsv(const String& filePath)
 			LOG_WARN("Failed to load towerTypeTemplate.csv for [scorerate]");
 			return false;
 		}
-		if (!csvReader.bind("awardshow", towerTypeTemplate.awardshow))
-		{
-			LOG_WARN("Failed to load towerTypeTemplate.csv for [awardshow]");
-			return false;
-		}
+// 		if (!csvReader.bind("awardshow", towerTypeTemplate.awardshow))
+// 		{
+// 			LOG_WARN("Failed to load towerTypeTemplate.csv for [awardshow]");
+// 			return false;
+// 		}
 							
 		if (!csvReader.bind("mopupaward1", towerTypeTemplate.mopupaward1))
 		{
@@ -226,11 +213,11 @@ TowerTypeTable::loadFromCsv(const String& filePath)
 			LOG_WARN("Failed to load towerTypeTemplate.csv for [mopupawardrate4]");
 			return false;
 		}
-
-
-
-
-
+		if (!csvReader.bind("strengthrecover", towerTypeTemplate.strengthrecover))
+		{
+			LOG_WARN("Failed to load towerTypeTemplate.csv for [strengthrecover]");
+			return false;
+		}
 
 		mMap.insert(towerTypeTemplate.id, towerTypeTemplate);
 	}
@@ -521,8 +508,8 @@ TowerBuffTable::loadFromCsv(const String& filePath)
 		}
 		if (!csvReader.bind("keeptime", towerBuffTemplate.keeptime))
 		{
-			LOG_WARN("Failed to load towerBuffTemplate.csv for [keeptime]");
-			return false;
+// 			LOG_WARN("Failed to load towerBuffTemplate.csv for [keeptime]");
+// 			return false;
 		}
 		if (!csvReader.bind("keepfloor", towerBuffTemplate.keepfloor))
 		{
@@ -608,11 +595,12 @@ TowerAttrTable::loadFromCsv(const String& filePath)
 			LOG_WARN("Failed to load towerAttrTemplate.csv for [attr]");
 			return false;
 		}
-		if (!csvReader.bind("num", towerAttrTemplate.num))
-		{
-			LOG_WARN("Failed to load towerAttrTemplate.csv for [num]");
-			return false;
-		}
+		//策划去掉直接读商店那个表的值
+// 		if (!csvReader.bind("num", towerAttrTemplate.num))
+// 		{
+// 			LOG_WARN("Failed to load towerAttrTemplate.csv for [num]");
+// 			return false;
+// 		}
 
 		mMap.insert(towerAttrTemplate.id, towerAttrTemplate);
 	}

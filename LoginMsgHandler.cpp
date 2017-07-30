@@ -16,6 +16,7 @@ LoginMsgHandler::onReconnectReq(const ConnId& connId, ReconnectReq& msg)
 void LoginMsgHandler::onCGGameLoginReq(const ConnId& connId, CGGameLoginReq& cgloginReqMsg)//2001
 {
 	//cout << "dddddd" <<TimeUtil::getTimeMilliSec() << endl;
+	 LogicSystem::getSingleton().setLoginTime(TimeUtil::getTimeMilliSec());
 	std::stringstream mystream;
 	mystream.clear();
 	mystream.str("");
@@ -35,6 +36,8 @@ void LoginMsgHandler::onCGGameLoginReq(const ConnId& connId, CGGameLoginReq& cgl
 
 void LoginMsgHandler::onCGCreatePlayerReq(const ConnId& connId, CGGameCreatePlayerReq& msg)
 {
+	LOG_INFO("createbegin %llu !",TimeUtil::getTimeMilliSec());
+
 	std::stringstream mystream;
 	mystream.clear();
 	mystream.str("");
@@ -47,6 +50,28 @@ void LoginMsgHandler::onCGCreatePlayerReq(const ConnId& connId, CGGameCreatePlay
 		UInt32 modelId = root["uid"].asUInt();
 		std::string name = root["name"].asString();
 		UInt64 accountID = root["accountId"].asUInt64();
+		bool flag = LogicSystem::getSingleton().isInCreateSet(name.c_str());
+		if(flag)
+		{
+				GCGameCreatePlayerResp createPlayerResp;
+				createPlayerResp.mPacketID = BOC_GAME_CREATEPLAYER_RESP;
+				Json::Value root;
+				root["errorId"] = LynxErrno::PlayerNameExist;
+			
+
+				Json::FastWriter writer;
+				std::string respStr = writer.write(root);
+
+				createPlayerResp.mRespStr = respStr;
+
+			
+
+				NetworkSystem::getSingleton().sendMsg(createPlayerResp,connId);
+
+				return;
+		}
+
+		LogicSystem::getSingleton().insertCreateSet(name.c_str());
 
 		PersistCreatePlayerReq createPlayerReq;
 		createPlayerReq.mConnId = connId;

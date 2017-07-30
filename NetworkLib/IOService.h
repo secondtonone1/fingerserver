@@ -216,7 +216,7 @@ namespace Lynx
         bool                   mShutdown;           // 标识服务是否关闭
         bool                   mPaused;             // 标识服务是否暂停
         IOEventOperator*       mIOEventOperator;    // 事件操作基类指针, 该指针根据条件编译
-        void*                  mOperation;          // 事件操作基础数据指针, 应用层只负责保留
+        void*                  mOperation;          // 事件操作基础数据指针, 应用层只负责保留,//select模型数据，epoll模型数据等
         IOEventMinHeap         mTimeoutHeap;        // 定时器计算使用的最小堆
         Timeval                mTimeFlag;           // 定时器计算使用的时间标记, 用来纠错时间
     };

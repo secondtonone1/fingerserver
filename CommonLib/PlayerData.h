@@ -19,10 +19,7 @@
 #include "AchieveData.h"
 
 #include "../FireConfirm/Box.h"
-// #include "../FireConfirm/Shop.h"
 #include"../jsoncpp/include/json/json.h"
-// #include "../FireConfirm/Character.h"
-//  #include "../FireConfirm/Character.h"
 
 namespace Lynx
 {
@@ -38,11 +35,18 @@ namespace Lynx
 		UInt32 value;
 		LYNX_S11N_2(KeyValue,UInt32,key,UInt32,value);
 	};
+	struct GuidValue
+	{
+		GuidValue():guid(0),value(0){}
+		UInt64 guid;
+		UInt32 value;
+		LYNX_S11N_2(GuidValue,UInt64,guid,UInt32,value);
+	};
 	struct Goods
 	{
 		Goods(): resourcestype(0),subtype(0),num(0){}
-		UInt32 resourcestype;	//1 第一种随机 2 第二种随机 3 固定给予
-		UInt32 subtype;			//1 金币 2 元宝 100 以上装备
+		UInt32 resourcestype;	//大类型
+		UInt32 subtype;			//小类型
 		Int32 num;				//数量
 		LYNX_S11N_3(Goods,UInt32, resourcestype,UInt32, subtype,Int32, num);
 	};
@@ -87,14 +91,34 @@ namespace Lynx
 
 	struct BaseInfoData
 	{
+		BaseInfoData():playerUid(0),modelId(0), power(0), name(""), level(0),
+			vipLv(0), leaveTime(0){}
 		UInt64 playerUid;
 		UInt32 modelId;
 		UInt64 power;
 		String name;
 		UInt32 level;
 		UInt32 vipLv;
-		UInt64 leaveTime;		
+		UInt64 leaveTime;	
+		
+	
+	    LYNX_S11N_7(BaseInfoData, UInt64 ,playerUid,
+			UInt32, modelId,UInt64, power,String, name, UInt32, level, UInt32, vipLv, UInt64 ,leaveTime);
 	};
+
+	struct ConsortInfoData
+	{
+		ConsortInfoData():playerUid(0), consortId(0), curContribute(0), totalContribute(0), consortJob(0){}
+		UInt64 playerUid;
+		UInt64 consortId;
+		UInt32 curContribute;
+		UInt32 totalContribute;
+		UInt32 consortJob;
+		UInt64 leavetime;
+		LYNX_S11N_6(ConsortInfoData, UInt64 ,playerUid,UInt64, consortId,UInt32, curContribute,
+			UInt32, totalContribute,UInt32, consortJob,UInt64, leavetime);
+	};
+
 
 	struct PlayerBaseData
 	{
@@ -102,7 +126,8 @@ namespace Lynx
 		PlayerBaseData() : m_nPlayerID(0), m_nModelID(0),m_strPlayerName(""),m_strMood(""),
 			          m_nLevel(0), m_nLevelExp(0),  mDirtyFlag(false),
 			          m_nVipLevel(0), m_nVipExp(0), m_nCoin(0), m_nGold(0), 
-					  m_nStrength(0),m_nFame(0),m_nPower(0),m_nLeavTime(0),m_strOldName(""){}
+					  m_nStrength(0),m_nFame(0),m_nPower(0),m_nLeavTime(0),
+					  m_strOldName(""),m_nFirstLoinTime(0),m_nLoginTime(0), m_nForbidLoginTime(0){}
 		
 		//玩家角色ID 
 		Guid m_nPlayerID;
@@ -126,13 +151,13 @@ namespace Lynx
 		UInt32 m_nVipLevel;
 
 		//玩家vip经验
-		Guid	m_nVipExp;
+		Guid	 m_nVipExp;
 
 		//玩家金币
-		Guid	m_nCoin;
+		Guid 	m_nCoin;
 
 		//玩家RMB个数
-		Guid	m_nGold;					
+		Guid 	m_nGold;					
 
 		//玩家体力
 		UInt32  m_nStrength;
@@ -157,13 +182,30 @@ namespace Lynx
 		UInt64 m_nLeavTime;
 
 		std::string m_strOldName;
+
+		std::string m_strGuid;
+		//新手引导初始化需要添加物品标记
+		UInt32 m_nGuidGift;
+
+		//首次登陆时间
+		UInt32 m_nFirstLoinTime;
+
+		//上次登陆时间
+		UInt32 m_nLoginTime;
+
+		//禁止登陆结束时间，当前时间如果小于禁止登陆结束时间，且大于禁止登陆的开始时间，那么禁止登陆
+		UInt64 m_nForbidLoginTime;
+		//禁止登陆的开始时间
+		UInt64 m_nForbidBeginTime;
 	
-		LYNX_S11N_17(PlayerBaseData, Guid, m_nPlayerID, UInt32 ,m_nModelID,
+		LYNX_S11N_23(PlayerBaseData, Guid, m_nPlayerID, UInt32 ,m_nModelID,
 			         std::string ,m_strPlayerName, UInt32,m_nLevel, 
 			         Guid, m_nLevelExp, UInt32, m_nVipLevel, Guid,	m_nVipExp,
 					 Guid,m_nCoin,  Guid,m_nGold,UInt32,m_nStrength,
 					 Guid, m_accountID, Guid,  m_nFame,UInt32,m_nPower,
-					 std::string, m_strMood,List<UInt32>, m_listSweepCount, UInt64, m_nLeavTime,std::string, m_strOldName);
+					 std::string, m_strMood,List<UInt32>, m_listSweepCount, UInt64, m_nLeavTime,std::string, m_strOldName,
+					 std::string, m_strGuid, UInt32,m_nGuidGift,UInt32, m_nFirstLoinTime,UInt32, m_nLoginTime, UInt64 ,m_nForbidLoginTime,
+					 UInt64, m_nForbidBeginTime);
 
 	};
 	
@@ -177,8 +219,8 @@ namespace Lynx
 		m_nActivepoint(10),m_nLastUpdateTime(0),m_nDailyMultipleCopyCount(0),m_NormalTimes(0)
 		,m_SpecialTimes(0),m_EliteTimes(0),m_NormalMopUpTimes(0),m_EliteMopUpTimes(0),
 		m_nTwelvePalaceUnlockCount(0),m_nTwelvePalaceResetFlag(0),m_nClimbTowerTimes(0),m_nCoinBuyTimes(0),
-		m_nCoinFreeBuyTimes(0),notUsed3(0),notUsed4(0),notUsed5(0),notUsed6(0),notUsed7(0),
-		spare5(0){}
+		m_nCoinFreeBuyTimes(0),m_nTwelvePalaceBuyTimes(0),m_nFishEatTimes(0),m_nRankGameLeftTimes(0),m_nRankGameBuyTimes(0),notUsed7(0),
+		m_RewardLotteryDailyOnceFreeCount(0){}
 
 	
 
@@ -242,16 +284,16 @@ namespace Lynx
 
 		UInt32 m_nTowerBuyTimes;//爬塔购买次数
 
-		UInt32 spare5;//没用
+		UInt32 m_RewardLotteryDailyOnceFreeCount;//赏罚令每天免费单抽次数
 
 		UInt64 m_nLastUpdateTime;
 
 		UInt32 m_nCoinBuyTimes;//金币购买次数
 		UInt32 m_nCoinFreeBuyTimes;//金币购买次数中的免费购买次数
-		UInt32 notUsed3;//
-		UInt32 notUsed4;//
-		UInt32 notUsed5;//
-		UInt32 notUsed6;//
+		UInt32 m_nTwelvePalaceBuyTimes;//十二宗宫号角购买次数
+		UInt32 m_nFishEatTimes;//进度条金币赠送剩余次数
+		UInt32 m_nRankGameLeftTimes;//
+		UInt32 m_nRankGameBuyTimes;//
 		UInt32 notUsed7;//
 
 
@@ -263,8 +305,8 @@ namespace Lynx
 			std::string, m_strTwelvepalaceData,UInt16,m_nCouragetrialDailyPoint,std::string, m_strCourageData,
 			UInt32, m_nActivepoint, UInt64 ,m_nLastUpdateTime,UInt32, m_nDailyMultipleCopyCount,
 			UInt32, m_nTwelvePalaceUnlockCount,UInt32, m_nTwelvePalaceResetFlag,UInt32, m_nClimbTowerTimes,UInt32,
-			m_nTowerBuyTimes,UInt32, spare5,UInt32, m_nCoinBuyTimes,UInt32, m_nCoinFreeBuyTimes,
-			UInt32, notUsed3,UInt32, notUsed4,UInt32, notUsed5,UInt32, notUsed6,
+			m_nTowerBuyTimes,UInt32, m_RewardLotteryDailyOnceFreeCount,UInt32, m_nCoinBuyTimes,UInt32, m_nCoinFreeBuyTimes,
+			UInt32, m_nTwelvePalaceBuyTimes,UInt32, m_nFishEatTimes,UInt32, m_nRankGameLeftTimes,UInt32, m_nRankGameBuyTimes,
 			UInt32, notUsed7,List<KeyValue>, m_mapIDToLock
 			);
 	}; 
@@ -316,10 +358,10 @@ namespace Lynx
 	{
 		StageData():m_nStageID(0),m_nGetStar(0),m_nChallengTimes(0),m_nLastChallengTime(0){}
 		UInt32 m_nStageID;
-		UInt8 m_nGetStar;//507 最高星数为5 上一次获得的是前3颗星
+		UInt32 m_nGetStar;//507 最高星数为5 上一次获得的是前3颗星
 		UInt32 m_nChallengTimes;
 		UInt64 m_nLastChallengTime;
-		LYNX_S11N_4(StageData,UInt32, m_nStageID, UInt8, m_nGetStar,UInt32,m_nChallengTimes,UInt64,m_nLastChallengTime);
+		LYNX_S11N_4(StageData,UInt32, m_nStageID, UInt32, m_nGetStar,UInt32,m_nChallengTimes,UInt64,m_nLastChallengTime);
 	};
 
 	struct PlayerChapterData
@@ -374,7 +416,8 @@ namespace Lynx
 	struct PlayerFireConfirmData	
 	{
 		PlayerFireConfirmData():m_ConfirmLevel(1),m_ConfirnFailTimes(0),m_ConfirnRightTimes(0),m_CopyID(0),m_CopyStartTime(0),
-			m_AwardTimes(0),m_Times(0), m_trialTimes(0), m_trialOtherTimes(0),m_Star(0),m_Gain(0),m_JewlryCanAddNum(0){}
+			m_AwardTimes(0),m_ReliveTimes(0), m_Player2ReliveTimes(0), m_trialOtherTimes(0),m_Star(0),m_Gain(0),m_JewlryCanAddNum(0),m_OtherPlayerID(0),
+		m_IsMopUp(0){}
 
 		//验证等级
 		UInt32 m_ConfirmLevel;
@@ -391,11 +434,11 @@ namespace Lynx
 		//接收到的验证
 		List<UInt32> m_RecConfirmIDs;
 		
-		//不免费使用次数
-		UInt32 m_Times;
+		//复活次数
+		UInt32 m_ReliveTimes;
 
-		//多人副本复活自己次数
-		UInt32 m_trialTimes;
+		//复活队友次数
+		UInt32 m_Player2ReliveTimes;
 
 		//多人副本复活他人次数
 		UInt32 m_trialOtherTimes;
@@ -418,7 +461,7 @@ namespace Lynx
 		//翻牌奖励
 		List<Card> m_CardsList;
 		//哥布林掉落
-		List<Goods> m_MonsterAwardList;
+		List<Award> m_MonsterAwardList;
 		//入侵者掉落
 		List<Goods> m_IntruderAwardList;
 		//花费
@@ -441,11 +484,17 @@ namespace Lynx
 
 		int m_JewlryCanAddNum;
 
+		Guid m_OtherPlayerID;//其他玩家id 十二宗宫，多人副本
 
-		LYNX_S11N_25(PlayerFireConfirmData, UInt32, m_ConfirmLevel, UInt32 ,m_ConfirnFailTimes,UInt32 ,m_ConfirnRightTimes,UInt32, m_CopyID,UInt32, m_CopyStartTime,List<UInt32>,
-			m_ConfirmIDs,List<UInt32>, m_RecConfirmIDs,List<Award>,m_AwardsList,List<Card>, m_CardsList,List<Goods>, m_MonsterAwardList,List<Goods>, m_LastSendItemList,
-			List<Goods>, m_CostList,UInt32, m_AwardTimes,UInt32, m_Star,UInt32, m_trialOtherTimes,UInt32,m_trialTimes,UInt32, m_Times,List<UInt32>, m_AwardTypes,
-			List<Award>, m_LastAwardsList,List<Goods>, m_FixedList,UInt32, m_Gain,List<Goods>, m_SendList,Goods,m_AddSendGoods,List<Goods>,m_IntruderAwardList,int, m_JewlryCanAddNum);
+		//是否扫荡
+		UInt32 m_IsMopUp;
+
+
+		LYNX_S11N_27(PlayerFireConfirmData, UInt32, m_ConfirmLevel, UInt32 ,m_ConfirnFailTimes,UInt32 ,m_ConfirnRightTimes,UInt32, m_CopyID,UInt32, m_CopyStartTime,List<UInt32>,
+			m_ConfirmIDs,List<UInt32>, m_RecConfirmIDs,List<Award>,m_AwardsList,List<Card>, m_CardsList,List<Award>, m_MonsterAwardList,List<Goods>, m_LastSendItemList,
+			List<Goods>, m_CostList,UInt32, m_AwardTimes,UInt32, m_Star,UInt32, m_trialOtherTimes,UInt32,m_Player2ReliveTimes,UInt32, m_ReliveTimes,List<UInt32>, m_AwardTypes,
+			List<Award>, m_LastAwardsList,List<Goods>, m_FixedList,UInt32, m_Gain,List<Goods>, m_SendList,Goods,m_AddSendGoods,List<Goods>,m_IntruderAwardList,
+			int, m_JewlryCanAddNum,Guid, m_OtherPlayerID,UInt32, m_IsMopUp);
 
 	};
 
@@ -545,17 +594,22 @@ namespace Lynx
 
 	struct PlayerFoodsData
 	{
-		PlayerFoodsData(): beginTime(0),leftTimes(0),food1(0),food2(0),food3(0),vipLeftTimes(0),buyTime(0),vipFoodLeftNumber(0){}
+		PlayerFoodsData(): resetState(0),beginTime(0),leftTimes(0),food1(0),food2(0),food3(0),food11(0),food12(0),food13(0),vipLeftTimes(0),buyTime(0),vipFoodLeftNumber(0){}
+		
 		
 		UInt32 leftTimes;//可使用次数
 		UInt32 beginTime;//等待时间 0倒计时停止，大于零倒计时在进行
 		UInt32 food1;//食物1数量
 		UInt32 food2;
 		UInt32 food3;
+		UInt32 food11;//购买的食物1数量
+		UInt32 food12;
+		UInt32 food13;
 		UInt32 vipLeftTimes;//vip购买次数（改）
 		UInt32 buyTime;
 		UInt32 vipFoodLeftNumber;//vip购买食物剩余个数
-		LYNX_S11N_8(PlayerFoodsData, UInt32, beginTime, UInt32 ,leftTimes,UInt32 ,food1,UInt32, food2,UInt32, food3,UInt32, vipLeftTimes,UInt32, buyTime,UInt32, vipFoodLeftNumber);
+		UInt32 resetState;//是否等级开始重置
+		LYNX_S11N_12(PlayerFoodsData,UInt32, resetState, UInt32, beginTime, UInt32 ,leftTimes,UInt32 ,food1,UInt32, food2,UInt32, food3,UInt32, food11,UInt32, food12,UInt32, food13,UInt32, vipLeftTimes,UInt32, buyTime,UInt32, vipFoodLeftNumber);
 	};
 
 	struct PlayerStrengthData
@@ -664,8 +718,10 @@ namespace Lynx
 		UInt32 star;
 		UInt32 floor;
 		UInt32 lvexp;
+		UInt32 infolock;
 		List<UInt64> equipTreasures;
-		LYNX_S11N_8(ServantData, UInt64, servantUid, UInt64, servantId, UInt32, pieceCount, UInt32, level, UInt32, star, UInt32, floor, List<UInt64>, equipTreasures, UInt32, lvexp);
+		LYNX_S11N_9(ServantData, UInt64, servantUid, UInt64, servantId, UInt32, pieceCount, UInt32, level, UInt32, star, UInt32, floor, List<UInt64>, equipTreasures, UInt32, lvexp,
+			UInt32, infolock);
 	};
 
 	struct ServantTreasure
@@ -720,10 +776,69 @@ namespace Lynx
 		LYNX_S11N_5(PlayerTowerData,UInt32, m_HighID,UInt32, m_Score,UInt32, m_AP,int, m_HP,int, m_SP);
 	};
 
+	struct ReportData
+	{
+		ReportData():id(0),roleId(0),modelID(0), score(0), name(""), level(0),vipLv(0), happenTime(0), power(0),attackType(0),rank(0),flag(0){}
+
+		UInt32 id;
+		UInt64 roleId;
+		UInt32 modelID;
+		UInt32 score;
+		String name;
+		UInt32 level;
+		UInt32 vipLv;
+		UInt32 happenTime;
+		UInt32 power;
+		UInt32 attackType;
+		UInt32 rank;
+		UInt32 flag;//0平 1上升 2 下降
+
+		LYNX_S11N_12(ReportData, UInt32, id,UInt64 ,roleId,
+			UInt32, modelID,UInt32, score,String, name, UInt32, level, UInt32, vipLv, UInt32 ,happenTime,UInt32, power,UInt32, attackType,UInt32, rank,UInt32, flag);
+	};
+
+
+	struct PlayerRankGameData
+	{
+		PlayerRankGameData():m_Score(0),m_Point(0),m_Sessions(0),m_WinSessions(0),m_Time(0),m_MaskNum(0),m_LastIndex(0),m_LastTime(0),m_PlayerIds(""),m_LastChallengeGuid(0),newReportFlag(0){}		
+
+		UInt32 m_Score;
+		UInt32 m_Point;
+		UInt32 m_Time;
+		UInt32 m_Sessions;
+		UInt32 m_WinSessions;
+		UInt32 m_MaskNum;
+		UInt32 m_LastIndex;
+		UInt32 m_LastTime;
+		String m_PlayerIds;
+		UInt64 m_LastChallengeGuid;
+		UInt32 newReportFlag;
+		List<ReportData> m_ReportData;
+
+		LYNX_S11N_12(PlayerRankGameData,UInt32, m_Score,UInt32, m_Point,UInt32, m_Sessions,UInt32, m_WinSessions,UInt32, m_Time,
+			UInt32, m_MaskNum,UInt32, m_LastIndex,UInt32, m_LastTime,String, m_PlayerIds,UInt64, m_LastChallengeGuid,List<ReportData>, m_ReportData,UInt32, newReportFlag);
+	};
+
+	struct PlayerBuyCoinData
+	{
+		PlayerBuyCoinData():m_box1(0),m_box2(0),m_box3(0),m_refreshTime(0){}		
+
+		UInt32 m_box1;
+		UInt32 m_box2;
+		UInt32 m_box3;
+		UInt32 m_refreshTime;
+	
+
+		LYNX_S11N_4(PlayerBuyCoinData,UInt32, m_box1,UInt32, m_box2,UInt32, m_box3,UInt32, m_refreshTime);
+	};
+
+
+
+
 	struct PlayerCourageChallengeData
 	{
 		PlayerCourageChallengeData():m_LeftChallengeTimes(0),m_BeginTime(0),m_BuyTime(0),m_BuyTimes(0),monsterID1(0),monsterID2(0),
-			monsterID3(0),m_LightOfLife(0),m_RefreshTimes(0),m_LuckyValues(0){}		
+			monsterID3(0),m_LightOfLife(0),m_RefreshTimes(0),m_RefreshTime(0),m_LuckyValues1(0),m_LuckyValues2(0),m_LuckyValues3(0){}		
 
 
 		UInt32 m_LeftChallengeTimes;
@@ -738,28 +853,32 @@ namespace Lynx
 		UInt32 contentID3;
 		UInt32 m_LightOfLife;
 		UInt32 m_RefreshTimes;
-		UInt32 m_LuckyValues;
+		UInt32 m_RefreshTime;
+		Int32 m_LuckyValues1;
+		Int32 m_LuckyValues2;
+		Int32 m_LuckyValues3;
 
 		List<UInt32> coinGroup;
 		List<CatCoin> catCoins;	
 
-		LYNX_S11N_15(PlayerCourageChallengeData,List<UInt32>, coinGroup,List<CatCoin>, catCoins,UInt32, m_LeftChallengeTimes,UInt32, m_BeginTime,
+		LYNX_S11N_18(PlayerCourageChallengeData,List<UInt32>, coinGroup,List<CatCoin>, catCoins,UInt32, m_LeftChallengeTimes,UInt32, m_BeginTime,
 		UInt32, m_BuyTime,UInt32, m_BuyTimes,UInt32, monsterID1,UInt32, monsterID2,UInt32, monsterID3,UInt32, contentID1,UInt32, 
-		contentID2,UInt32, contentID3,UInt32, m_LightOfLife,UInt32,m_RefreshTimes,UInt32, m_LuckyValues);
+		contentID2,UInt32, contentID3,UInt32, m_LightOfLife,UInt32,m_RefreshTimes,UInt32,m_RefreshTime,Int32, m_LuckyValues1,Int32, m_LuckyValues2,Int32, m_LuckyValues3);
 	};
 
 
 	struct Item
 	{
-		Item(): itemID(0),position(0),buyTimes(0),buyTime(0),shopType(0){}
+		Item(): itemID(0),position(0),buyTimes(0),buyTime(0),shopType(0),cost(0){}
 
 		UInt32 itemID;
 		UInt32 shopType;
 		UInt32 position;
 		UInt32 buyTimes;
 		UInt32 buyTime;
+		UInt32 cost;
 		Goods goods;
-		LYNX_S11N_6(Item,UInt32, itemID, UInt32,position,UInt32, buyTimes,UInt32,buyTime,UInt32,shopType,Goods,goods);
+		LYNX_S11N_7(Item,UInt32, itemID, UInt32,position,UInt32, buyTimes,UInt32,buyTime,UInt32,shopType,UInt32,cost,Goods,goods);
 	};
 
 	struct ShopItems
@@ -808,6 +927,46 @@ namespace Lynx
 		LYNX_S11N_1(RecordsData, TypeRecords, m_TypeRecords);
 	};
 
+	struct  PlayerOnlineDay 
+	{
+		PlayerOnlineDay(): day1(0),day2(0),day3(0),day4(0),day5(0),day6(0),day7(0),day8(0),day9(0),day10(0), day11(0),day12(0),day13(0),day14(0),day15(0),day16(0),day17(0),day18(0),day19(0),day20(0),  day21(0),day22(0),day23(0),day24(0),day25(0),day26(0),day27(0),day28(0),day29(0),day30(0){}
+		UInt32 day1;
+		UInt32 day2;
+		UInt32 day3;
+		UInt32 day4;
+		UInt32 day5;
+		UInt32 day6;
+		UInt32 day7;
+		UInt32 day8;
+		UInt32 day9;
+		UInt32 day10;
+
+		UInt32 day11;
+		UInt32 day12;
+		UInt32 day13;
+		UInt32 day14;
+		UInt32 day15;
+		UInt32 day16;
+		UInt32 day17;
+		UInt32 day18;
+		UInt32 day19;
+		UInt32 day20;
+
+		UInt32 day21;
+		UInt32 day22;
+		UInt32 day23;
+		UInt32 day24;
+		UInt32 day25;
+		UInt32 day26;
+		UInt32 day27;
+		UInt32 day28;
+		UInt32 day29;
+		UInt32 day30;
+		LYNX_S11N_30(PlayerOnlineDay,UInt32, day1,UInt32, day2,UInt32, day3,UInt32, day4,UInt32 ,day5,UInt32 ,day6,UInt32, day7,UInt32, day8,UInt32, day9,UInt32, day10,
+			UInt32, day1,UInt32, day2,UInt32, day3,UInt32, day4,UInt32 ,day5,UInt32 ,day6,UInt32, day7,UInt32, day8,UInt32, day9,UInt32, day10,
+			UInt32, day1,UInt32, day2,UInt32, day3,UInt32, day4,UInt32 ,day5,UInt32 ,day6,UInt32, day7,UInt32, day8,UInt32, day9,UInt32, day10);
+	};
+
 	struct PlayerEmailData
 	{
 		PlayerEmailData(){}
@@ -831,7 +990,7 @@ namespace Lynx
    struct PlayerInlineActivityData
    {
 	   PlayerInlineActivityData():m_GrowFoundBuyFlag(0),m_MonthSignCount(0),m_MonthSignTime(0),m_OnlineWelFareOnlineTime(0),m_PeopleWelfareRechargeNum(0),
-		   m_FirstLoginTime(0), m_SevenLoginGotCount(0),m_LastGetTime(0),m_LoginTime(0),m_TimeAwardRefreshTime(0){}		
+		   m_FirstLoginTime(0), m_SevenLoginGotCount(0),m_LastGetTime(0),m_LoginTime(0),m_LogoutTime(0),m_onlieFinishTime(0),m_TimeAwardRefreshTime(0),m_LastLeaveTime(0){}		
 
 	  //成长基金
 	   UInt32 m_GrowFoundBuyFlag;//1已经购买，0未购买
@@ -844,6 +1003,8 @@ namespace Lynx
 	   //在线时长奖励
 	   UInt32 m_OnlineWelFareOnlineTime;//在线时长
 	   List<UInt32> m_OnlineWelFareGotList;//已领取的奖励
+	    UInt32 m_onlieFinishTime;//完成时间
+		UInt32  m_LastLeaveTime;//完成时间
 
 	   //全民福利奖励
 	   UInt32 m_PeopleWelfareRechargeNum ;//充值人数
@@ -863,12 +1024,15 @@ namespace Lynx
 
 	   //登录
 	   UInt32 m_LoginTime;//登陆时间
+	   UInt32 m_LogoutTime;//离线时间
+
+	  
 
 
-	   LYNX_S11N_16(PlayerInlineActivityData,UInt32, m_GrowFoundBuyFlag,List<UInt32>, m_GrowFoundGotList, UInt32, m_MonthSignCount, UInt32, m_MonthSignTime,
+	   LYNX_S11N_19(PlayerInlineActivityData,UInt32, m_GrowFoundBuyFlag,List<UInt32>, m_GrowFoundGotList, UInt32, m_MonthSignCount, UInt32, m_MonthSignTime,
 		   UInt32, m_OnlineWelFareOnlineTime,List<UInt32>, m_OnlineWelFareGotList,UInt32, m_PeopleWelfareRechargeNum,List<UInt32>, m_PeopleWelfareGotList,
 		   UInt32, m_FirstLoginTime,UInt32, m_LastGetTime, UInt32, m_SevenLoginGotCount, List<KeyValue>, m_SevenDayTaskGotList, UInt32, m_TimeAwardRefreshTime,
-		    List<UInt32>, m_TimeAwardGotList,UInt32, m_LoginTime,List<KeyList>, m_SevenDayTaskFinishList);
+		    List<UInt32>, m_TimeAwardGotList,UInt32, m_LoginTime,UInt32, m_LogoutTime,UInt32,m_onlieFinishTime,List<KeyList>, m_SevenDayTaskFinishList,UInt32,m_LastLeaveTime);
    };
 
 	struct PlayerAchieveData
@@ -894,6 +1058,84 @@ namespace Lynx
 
 		UInt64 lastRestTime;
 		LYNX_S11N_3(PlayerDailyActiveData, List<UInt32>, flags, UInt32, curActive, UInt64, lastRestTime);	
+	};
+
+	struct XingxiaTask
+	{
+		XingxiaTask():m_nTaskId(0), m_nGettime(0){}
+		UInt32 m_nTaskId;
+		UInt64 m_nGettime;
+		LYNX_S11N_2(XingxiaTask,UInt32 ,m_nTaskId,UInt64, m_nGettime);	
+	};
+
+	struct TicketAward
+	{
+		TicketAward():m_nTicketId(0),m_nAwardId(0),m_nPeapleCnt(0),m_nActiveTime(0){}
+			UInt32 m_nTicketId;
+		    UInt64 m_nAwardId;
+			UInt32 m_nPeapleCnt;
+			UInt64 m_nActiveTime;
+		LYNX_S11N_4(TicketAward,UInt32, m_nTicketId,UInt64 ,m_nAwardId, UInt32 ,m_nPeapleCnt,UInt64, m_nActiveTime);	
+	};
+
+	
+
+
+	struct PlayerConsortData
+	{
+		PlayerConsortData():m_nConsortId(0),m_nCurContribute(0), m_nTotalContribute(0), m_nConsortJob(0),m_nSign(0), m_nLeaveTime(0),
+		  m_nRefreshTimes(0),m_nBusinessCatTimes(0), m_nKitchenTimes(0),m_nEyeSightTimes(0), m_nTicketTimes(0),
+		   m_nEloquenceTimes(0), m_nWoodCatTimes(0), m_nWoodCatFlag(0){}
+		UInt64 m_nConsortId;
+		//内部存储军团id
+		List<UInt64> m_nApplyList;
+		UInt32 m_nCurContribute;
+		UInt32 m_nTotalContribute;
+        UInt32 m_nConsortJob;
+		UInt64 m_nLeaveTime;
+
+
+		//玩家签到相关内容
+		List<UInt32> m_nSignAwards;
+		UInt32 m_nSign;
+
+		//行侠仗义内容
+		List<XingxiaTask>  m_listXingxiaTasks; 
+		//行侠刷新的次数
+		UInt32 m_nRefreshTimes;
+
+		//厨房玩法进行次数
+		UInt32 m_nKitchenTimes;
+		//眼力训练进行次数
+		UInt32 m_nEyeSightTimes;
+
+		//行商猫重置次数
+		UInt32 m_nBusinessCatTimes;
+
+		//票友集会进行次数
+		UInt32 m_nTicketTimes;
+		
+		//口才训练次数
+		UInt32 m_nEloquenceTimes;
+
+		List<UInt32> m_nBuyList;
+		
+		List<TicketAward> m_nTicketAwardList;
+
+		//木猫阵法次数
+		UInt32 m_nWoodCatTimes;
+
+		//木猫阵法奖励标记0/1
+		UInt32 m_nWoodCatFlag;
+
+	  
+
+		LYNX_S11N_19(PlayerConsortData,UInt64 ,m_nConsortId,List<UInt64>, m_nApplyList,UInt32, m_nCurContribute,
+			UInt32, m_nTotalContribute, UInt32, m_nConsortJob, List<UInt32> ,m_nSignAwards, UInt32, m_nSign, UInt64, m_nLeaveTime,
+			List<XingxiaTask>,  m_listXingxiaTasks, UInt32, m_nRefreshTimes, UInt32 ,m_nKitchenTimes, UInt32, m_nBusinessCatTimes,
+			List<UInt32> ,m_nBuyList,	UInt32, m_nEyeSightTimes,UInt32, m_nTicketTimes, List<TicketAward>, m_nTicketAwardList,
+			UInt32, m_nEloquenceTimes, UInt32, m_nWoodCatTimes, UInt32, m_nWoodCatFlag);	
+
 	};
 
     struct PlayerData 
@@ -963,7 +1205,14 @@ namespace Lynx
 
 		 PlayerDailyActiveData mDailyAcvData;
 
-		 LYNX_S11N_31(PlayerData,  PlayerBaseData, mBaseData,PlayerDailyResetData, mDailyRestData,PlayerBuffListData,mBuffListData,
+		 PlayerConsortData mConsortData;
+
+		 PlayerRankGameData mRankGameData;
+
+		 PlayerBuyCoinData mPlayerBuyCoinData;
+		 PlayerOnlineDay mPlayerOnlineDay;
+
+		 LYNX_S11N_35(PlayerData,  PlayerBaseData, mBaseData,PlayerDailyResetData, mDailyRestData,PlayerBuffListData,mBuffListData,
 			 PlayerFashionData,mFashionData,PlayerSkillListData,mSkillListData, PlayerItemListData, mItemListData,
 			 PlayerChapterList, mChapterListData,PlayerFireConfirmData,mFireConfirmData,PlayerRhymeData,mRhymeData,
 			 PlayerCounterData, mCounterData,PlayerFoodsData, mFoodsData,PlayerStrengthData, mStrengthData,PlayerHoarStoneData,mHoarStoneData,PlayerEquipData, mEquipData,
@@ -971,7 +1220,8 @@ namespace Lynx
 			 PlayerServantData, mServantData,PlayerChatData, mChatData,PlayerTowerData, mTowerData,RecordsData,mRecordsData, FriendData, mFriendData,
 			 PlayerEmailData, mEmailData,PlayerShopData, mPlayerShopData, PlayerCharactorData, mPlayerCharactorData, PlayerCourageChallengeData, mCourageChallengeData,
 			 PlayerInlineActivityData, mInlineActivityData,  PlayerAchieveData, mAchieveData, PlayerDailyTaskData, mDailyTaskData,
-			  PlayerDailyActiveData, mDailyAcvData
+			  PlayerDailyActiveData, mDailyAcvData,  PlayerConsortData ,mConsortData,PlayerRankGameData, mRankGameData,PlayerBuyCoinData,mPlayerBuyCoinData,
+			   PlayerOnlineDay, mPlayerOnlineDay
 			 );
 		
     };

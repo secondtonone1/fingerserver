@@ -114,6 +114,10 @@ namespace Lynx
         // 取数字格式星期(0-6, 0为周日), -1表示无效值
         static Int32 getDayNum(time_t _t = -1);
 
+		// 取数字格式星期(1-7), -1表示无效值
+		static Int32
+		getSevenDayNum(time_t _t/* = -1*/);
+
         // 取四位数字格式日期(年月), -1表示无效值
         static Int32 getDate(time_t _t = -1);
 
@@ -125,6 +129,16 @@ namespace Lynx
         static void sleep(UInt64 millisec);
 
 		static Int32 getSecOfToday();
+		//王戊辰，将秒数转化为当天的秒数
+
+		static	Int32 getSecOfToThatday(UInt32 timeSec);
+		static Int32 convertSecToTodaySec(time_t  seconds);
+
+		//王戊辰, 将秒数转化为当天的小时
+		static Int32 convertSecToTodayHour(time_t  seconds);
+
+		//获得时间字符串
+		static bool getTimeStr(char* buf, Int32 size, UInt64 ms);
 
 #if defined (_WIN32)
         static UInt32 getTickCount();

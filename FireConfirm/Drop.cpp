@@ -34,6 +34,11 @@ UInt32 DropManager::runPath(Guid playerID)
 
 	Character mCharacter;
 	Player* player = LogicSystem::getSingleton().getPlayerByGuid(playerID);
+	if (player == NULL)
+	{
+		LOG_WARN("player not found!!");
+		return 1;
+	}
 	// 	mCharacter = player->GetCharacter();
 	nowPos = mCharacter.getPos();
 	Pos controlPos1;

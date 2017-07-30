@@ -11,7 +11,6 @@
 
 using namespace Lynx;
 
-static UInt32 playerNum =0;//for test
 
 void SceneManager::addPlayer(Guid playerID,UInt32 sceneID)
 {
@@ -23,17 +22,10 @@ void SceneManager::addPlayer(Guid playerID,UInt32 sceneID)
 	CharacterPool.pop();
 
 	character->initCharacter(playerID);
-	playerNum++;
-	if (playerNum % 2 == 0)//todo:test
-	{
-		m_SceneTempelete->playerPool.insertTail(1002);
-		m_SceneTempelete->sceneCharacter.CharacterMap.insert(1002,character);
-	}
-	else
-	{
-		m_SceneTempelete->playerPool.insertTail(playerID);
-		m_SceneTempelete->sceneCharacter.CharacterMap.insert(playerID,character);
-	}
+
+	m_SceneTempelete->playerPool.insertTail(playerID);
+	m_SceneTempelete->sceneCharacter.CharacterMap.insert(playerID,character);
+
 	
 
 	player = LogicSystem::getSingleton().getPlayerByGuid(playerID);
@@ -156,6 +148,11 @@ void SceneManager::onEvent(PVPTreadReq& msg )//这里的PVPTreadReq是传参过来，不是
 		return;
 	}
 	Player *player = LogicSystem::getSingleton().getPlayerByConnId(msg.connId);
+	if (player == NULL)
+	{
+		LOG_WARN("player not found!!");
+		return;
+	}
 	Character *character;
 	SkillBaseTemplate *currSkill;
 

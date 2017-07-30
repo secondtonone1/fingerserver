@@ -48,6 +48,11 @@ namespace Lynx
 
 	static const UInt16 sInLineActivityBase     = 31000;
 
+	static const UInt16 sConsortBase = 9000;
+
+	static const UInt16 sRankGameBase     = 31500;
+	static const UInt16 sPVPBase = 32000;
+
 
 	
 } // namespace Lynx

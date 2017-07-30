@@ -321,11 +321,75 @@ void ServantMsgHandler::onServantSwitch(const ConnId & connId, CGServantSwitchRe
 	if(reader.parse(msg.mReqJsonStr,root))
 	{
 		UInt64 servantid = root["servantid"].asUInt64();
-		UInt32 count = root["piececount"].asUInt();
-		player->getServantManager().servantSwitch(servantid, count);
+	//	UInt32 count = root["piececount"].asUInt();
+	//	player->getServantManager().servantSwitch(servantid, count);
+		player->getServantManager().servantSwitch(servantid);
 	}
 	else
 	{
 		LOG_INFO("empty message servantswitch!");
+	}
+}
+
+void ServantMsgHandler::onServantEquipOnce(const ConnId & connId, CGServantEquipOnceReq & msg)
+{
+	Player* player = LogicSystem::getSingleton().getPlayerByConnId(connId);
+	if (!player)
+	{
+		LOG_WARN("Failed to get Player by ConnId: %llu", connId);
+		return;
+	}
+
+	Json::Value root;
+
+	Json::Reader reader;
+
+	if(reader.parse(msg.mReqJsonStr,root))
+	{
+		UInt64 treasureId = root["servantId"].asUInt64();
+		
+		Vector<UInt64> equipTreaures;
+
+		for(UInt32 i = 0; i < root["equipTreasures"].size(); i++)
+		{
+			UInt64 treasureId = root["equipTreasures"][i].asUInt64();
+			equipTreaures.push_back(treasureId);
+		}
+		
+		
+
+		player->getServantManager().treasureEquipOnce(treasureId);
+
+	}
+	else
+	{
+		LOG_INFO("empty message servantTreasureEquip!");
+	}
+}
+
+void ServantMsgHandler::onServantInfoLock(const ConnId & connId, CGServantInfoLockReq & msg)
+{
+	Player* player = LogicSystem::getSingleton().getPlayerByConnId(connId);
+	if (!player)
+	{
+		LOG_WARN("Failed to get Player by ConnId: %llu", connId);
+		return;
+	}
+
+	Json::Value root;
+
+	Json::Reader reader;
+
+	if(reader.parse(msg.mReqJsonStr,root))
+	{
+		UInt64 treasureId = root["servantid"].asUInt64();
+		UInt64 index = root["index"].asUInt();
+
+		player->getServantManager().infolock(treasureId,index);
+
+	}
+	else
+	{
+		LOG_INFO("empty message servantTreasureEquip!");
 	}
 }

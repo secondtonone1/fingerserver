@@ -126,21 +126,26 @@ RobotTable::loadFromCsv(const String& filePath)
 			LOG_WARN("Failed to load robotTable.csv for [skill3]");
 			return false;
 		}
-		if (!csvReader.bind("rhymeskill1", robotTabletemplate.rhymeskill1))
+		if (!csvReader.bind("rhymeCount", robotTabletemplate.rhymeCount))
 		{
-			LOG_WARN("Failed to load robotTable.csv for [rhymeskill1]");
+			LOG_WARN("Failed to load robotTable.csv for [rhymeCount]");
 			return false;
 		}
-		if (!csvReader.bind("rhymeskill2", robotTabletemplate.rhymeskill2))
-		{
-			LOG_WARN("Failed to load robotTable.csv for [rhymeskill2]");
-			return false;
-		}
-		if (!csvReader.bind("rhymeskill3", robotTabletemplate.rhymeskill3))
-		{
-			LOG_WARN("Failed to load robotTable.csv for [rhymeskill3]");
-			return false;
-		}
+// 		if (!csvReader.bind("rhymeskill1", robotTabletemplate.rhymeskill1))
+// 		{
+// 			LOG_WARN("Failed to load robotTable.csv for [rhymeskill1]");
+// 			return false;
+// 		}
+// 		if (!csvReader.bind("rhymeskill2", robotTabletemplate.rhymeskill2))
+// 		{
+// 			LOG_WARN("Failed to load robotTable.csv for [rhymeskill2]");
+// 			return false;
+// 		}
+// 		if (!csvReader.bind("rhymeskill3", robotTabletemplate.rhymeskill3))
+// 		{
+// 			LOG_WARN("Failed to load robotTable.csv for [rhymeskill3]");
+// 			return false;
+// 		}
 		if (!csvReader.bind("onstation1", robotTabletemplate.onstation1))
 		{
 			LOG_WARN("Failed to load robotTable.csv for [onstation1]");
@@ -332,12 +337,30 @@ RobotTable::loadFromCsv(const String& filePath)
 			LOG_WARN("Failed to load robotTable.csv for [FloatVal]");
 			return false;
 		}
+		if (!csvReader.bind("FloatDef", robotTabletemplate.levelGrow.mFloatDef))
+		{
+			LOG_WARN("Failed to load robotTable.csv for [FloatDef]");
+			return false;
+		}
 		if (!csvReader.bind("Fall", robotTabletemplate.levelGrow.mFall))
 		{
 			LOG_WARN("Failed to load robotTable.csv for [Fall]");
 			return false;
 		}	
-		mMap.insert(robotTabletemplate.roleID,robotTabletemplate);
+		if (!csvReader.bind("FallDef", robotTabletemplate.levelGrow.mFallDef))
+		{
+			LOG_WARN("Failed to load robotTable.csv for [FallDef]");
+			return false;
+		}
+		if (!csvReader.bind("score", robotTabletemplate.score))
+		{
+			LOG_WARN("Failed to load robotTable.csv for [score]");
+			return false;
+		}
+
+
+
+		mMap.insert(robotTabletemplate.roleID,robotTabletemplate);		
 	}
 	fileStream.close();
 	return true;

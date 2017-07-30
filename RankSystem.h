@@ -24,11 +24,18 @@ namespace Lynx
 
 		void getOnlinePlayers(UInt32 srcLv, Player * selfPlayer,  List<BaseInfoData>&getList);
 
+		void getLvSimilarPlayers(UInt32 srcLv, Player * selfPlayer,  List<BaseInfoData>&getList);
+
+
+		
+
 		void clearPowerRank();
 
 		void creatPowerRank(UInt64 playerUid, UInt32 rank);
 
 		std::string sendPowerRankJson(UInt64 playerUid);
+
+		void initPlayerPowerRank(UInt64 playerUid);
 
 	private:
 		void getPlayerFromSet(const Set<UInt64> &playerSet, UInt32 count, Player * selfPlayer,   List<BaseInfoData> &getList);

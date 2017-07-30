@@ -60,7 +60,7 @@ namespace Lynx
 							UInt32 challengeTimes = stageIter->mValue.m_nChallengTimes;
 							UInt64 lastChallengeTime = stageIter->mValue.m_nLastChallengTime;
 							UInt32 stageID = stageIter->mValue.m_nStageID;
-							UInt8 getStar = stageIter->mValue.m_nGetStar;
+							UInt32 getStar = stageIter->mValue.m_nGetStar;
 							mystream.clear();
 							mystream.str("");
 							mystream << stageID;
@@ -197,7 +197,7 @@ namespace Lynx
 						UInt32 challengeTimes = stageIter->mValue.m_nChallengTimes;
 						UInt64 lastChallengeTime = stageIter->mValue.m_nLastChallengTime;
 						UInt32 stageID = stageIter->mValue.m_nStageID;
-						UInt8 getStar = stageIter->mValue.m_nGetStar;
+						UInt32 getStar = stageIter->mValue.m_nGetStar;
 						mystream.clear();
 						mystream.str("");
 						mystream << stageID;

@@ -215,9 +215,18 @@ void HoarStoneManager::hoarStoneActive(UInt64 playerUid, UInt64 hoarstoneIdx)
 
 			mapHoarStoneIter->mValue->mStoneLv = 1;
 
-			m_pPlayer->setPlayerCoin(nowCoin);
 
-			m_pPlayer->getPersistManager().setDirtyBit(HOARSTONEDATABIT|BASEDATABIT);
+			Goods goods;
+			List<Goods> itemList;
+
+			goods.resourcestype =AWARD_BASE;
+			goods.subtype = AWARD_BASE_COIN;
+			goods.num = 0 - hoarStoneLvTemp->mCostCoin;
+			itemList.insertTail(goods);
+			GiftManager::getSingleton().addToPlayer(m_pPlayer->getPlayerGuid(),REFLASH_AWARD,itemList,MiniLog30);
+
+
+			m_pPlayer->getPersistManager().setDirtyBit(HOARSTONEDATABIT);
 
 			//更新界石成就
 			m_pPlayer->getAchieveManager().updateAchieveData(HONORSTONEACTIVE, 1);
@@ -306,10 +315,43 @@ bool HoarStoneManager::addHoarStonePiece(UInt64 hoarStoneId, UInt32 pieceCount)
 {
 	Map<UInt64, HoarStoneData*>::Iter * mapHoarStoneIter = mHoarStoneMap.find(hoarStoneId);
 
+	
+
 	if(mapHoarStoneIter)
 	{
-		mapHoarStoneIter->mValue->mPieceCount += pieceCount;
+		UInt32 lv = mapHoarStoneIter->mValue->mStoneLv;
+		UInt32 pCount = mapHoarStoneIter->mValue->mPieceCount;
+		HoarstoneLvTemplate * stonelvTemp = HOARSTONELV_TABLE().reverseGet(hoarStoneId, lv);
+
+		if(stonelvTemp == NULL)
+		{
+			LOG_WARN("stonelvTemp not found!!");
+			return false;
+		}
+
+
+		//if(pCount + pieceCount > stonelvTemp->mToMax)
+		//{
+		//	//多余碎片变为铜钱
+		//	mapHoarStoneIter->mValue->mPieceCount = stonelvTemp->mToMax;
+		//	UInt32 more = pCount + pieceCount - stonelvTemp->mToMax;
+		//	HoarstoneBaseTemplate * hoarBaseTemp = HOARSTONEBASE_TABLE().get(hoarStoneId);
+
+		//	UInt64 curCoin = m_pPlayer->getPlayerCoin();
+		//	curCoin += hoarBaseTemp->mExchange * more;
+		//
+		//	
+		//}
+		//else
+		//{
+					mapHoarStoneIter->mValue->mPieceCount += pieceCount;
+		/*}*/
+	
 		m_pPlayer->getPersistManager().setDirtyBit(HOARSTONEDATABIT);
+
+
+
+
 		return true;
 	}
 	else
@@ -477,9 +519,16 @@ void HoarStoneManager::hoarStoneLvUp(UInt64 hoarStoneLvUpId)
 
 	mapHoarStoneIter->mValue->mStoneLv += addLvel;
 
-	m_pPlayer->setPlayerCoin(nowCoin);
+	Goods goods;
+	List<Goods> itemList;
 
-	m_pPlayer->getPersistManager().setDirtyBit(HOARSTONEDATABIT|BASEDATABIT);
+	goods.resourcestype =AWARD_BASE;
+	goods.subtype = AWARD_BASE_COIN;
+	goods.num = 0 - hoarStoneCurLvTemp->mCostCoin;
+	itemList.insertTail(goods);
+	GiftManager::getSingleton().addToPlayer(m_pPlayer->getPlayerGuid(),REFLASH_AWARD,itemList,MiniLog31);
+
+	m_pPlayer->getPersistManager().setDirtyBit(HOARSTONEDATABIT);
 
 	GCHoarStoneLvUpResp lvUpResp;
 	lvUpResp.mPacketID = BOC_PLAYER_HOARSTONE_LVUP_RESP;
@@ -523,8 +572,11 @@ void HoarStoneManager::sendStarResp(errorId errorId,const ConnId& connId)
 void HoarStoneManager::hoarStoneStarUp(UInt64 hoarStoneId)
 {
 	Map<UInt64, HoarStoneData*>::Iter * mapHoarStoneIter = mHoarStoneMap.find(hoarStoneId);
-	UInt32 nextStarLv = mapHoarStoneIter->mValue->mStoneStar + 1;
+	UInt32 starLv = mapHoarStoneIter->mValue->mStoneStar;
+	UInt32 nextStarLv = starLv + 1;
 	HoarstoneStarTemplate * nextHoarStoneTemp = HOARSTONESTAR_TABLE().reverseGet(hoarStoneId, nextStarLv);
+	HoarstoneStarTemplate * hoarStoneTemp = HOARSTONESTAR_TABLE().reverseGet(hoarStoneId, starLv);
+
 	const ConnId& connId = m_pPlayer->getConnId();
 
 	if(nextHoarStoneTemp)
@@ -533,7 +585,7 @@ void HoarStoneManager::hoarStoneStarUp(UInt64 hoarStoneId)
 		List<UInt64> &runeList = mapHoarStoneIter->mValue->mEquipList;
 		
 		List<UInt64>::Iter * runeIter1 = runeList.getn(0); 
-		if(runeIter1->mValue != nextHoarStoneTemp->needEquipId1)
+		if(runeIter1->mValue != hoarStoneTemp->needEquipId1)
 		{
 			//提示玩家符文不足，不满足升星条件
 			sendStarResp(LynxErrno::HoarStoneCondition,connId);
@@ -542,35 +594,35 @@ void HoarStoneManager::hoarStoneStarUp(UInt64 hoarStoneId)
 		}
 
 		List<UInt64>::Iter * runeIter2 = runeList.getn(1); 
-		if(runeIter2->mValue != nextHoarStoneTemp->needEquipId2)
+		if(runeIter2->mValue != hoarStoneTemp->needEquipId2)
 		{
 			sendStarResp(LynxErrno::HoarStoneCondition,connId);
 			return ;
 		}
 
 		List<UInt64>::Iter * runeIter3 = runeList.getn(2); 
-		if(runeIter3->mValue != nextHoarStoneTemp->needEquipId3)
+		if(runeIter3->mValue != hoarStoneTemp->needEquipId3)
 		{
 			sendStarResp(LynxErrno::HoarStoneCondition,connId);
 			return ;
 		}
 
 		List<UInt64>::Iter * runeIter4 = runeList.getn(3); 
-		if(runeIter4->mValue != nextHoarStoneTemp->needEquipId4)
+		if(runeIter4->mValue != hoarStoneTemp->needEquipId4)
 		{
 			sendStarResp(LynxErrno::HoarStoneCondition,connId);
 			return ;
 		}
 
 		List<UInt64>::Iter * runeIter5 = runeList.getn(4); 
-		if(runeIter5->mValue != nextHoarStoneTemp->needEquipId5)
+		if(runeIter5->mValue != hoarStoneTemp->needEquipId5)
 		{
 			sendStarResp(LynxErrno::HoarStoneCondition,connId);
 			return ;
 		}
 
 		List<UInt64>::Iter * runeIter6 = runeList.getn(5); 
-		if(runeIter6->mValue != nextHoarStoneTemp->needEquipId6)
+		if(runeIter6->mValue != hoarStoneTemp->needEquipId6)
 		{
 			sendStarResp(LynxErrno::HoarStoneCondition,connId);
 			return ;
@@ -606,9 +658,103 @@ void HoarStoneManager::hoarStoneStarUp(UInt64 hoarStoneId)
 	else
 	{
 		//提示玩家当前星级已经满级
+		sendStarResp(LynxErrno::HoarStoneLvMax,connId);
+			return ;
 	}
 	
 }
+
+//原来升星逻辑，保留
+//
+//void HoarStoneManager::hoarStoneStarUp(UInt64 hoarStoneId)
+//{
+//	Map<UInt64, HoarStoneData*>::Iter * mapHoarStoneIter = mHoarStoneMap.find(hoarStoneId);
+//	UInt32 nextStarLv = mapHoarStoneIter->mValue->mStoneStar + 1;
+//	HoarstoneStarTemplate * nextHoarStoneTemp = HOARSTONESTAR_TABLE().reverseGet(hoarStoneId, nextStarLv);
+//	const ConnId& connId = m_pPlayer->getConnId();
+//
+//	if(nextHoarStoneTemp)
+//	{
+//		//判断界石装备的符文是否满足条件
+//		List<UInt64> &runeList = mapHoarStoneIter->mValue->mEquipList;
+//		
+//		List<UInt64>::Iter * runeIter1 = runeList.getn(0); 
+//		if(runeIter1->mValue != nextHoarStoneTemp->needEquipId1)
+//		{
+//			//提示玩家符文不足，不满足升星条件
+//			sendStarResp(LynxErrno::HoarStoneCondition,connId);
+//	
+//			return ;
+//		}
+//
+//		List<UInt64>::Iter * runeIter2 = runeList.getn(1); 
+//		if(runeIter2->mValue != nextHoarStoneTemp->needEquipId2)
+//		{
+//			sendStarResp(LynxErrno::HoarStoneCondition,connId);
+//			return ;
+//		}
+//
+//		List<UInt64>::Iter * runeIter3 = runeList.getn(2); 
+//		if(runeIter3->mValue != nextHoarStoneTemp->needEquipId3)
+//		{
+//			sendStarResp(LynxErrno::HoarStoneCondition,connId);
+//			return ;
+//		}
+//
+//		List<UInt64>::Iter * runeIter4 = runeList.getn(3); 
+//		if(runeIter4->mValue != nextHoarStoneTemp->needEquipId4)
+//		{
+//			sendStarResp(LynxErrno::HoarStoneCondition,connId);
+//			return ;
+//		}
+//
+//		List<UInt64>::Iter * runeIter5 = runeList.getn(4); 
+//		if(runeIter5->mValue != nextHoarStoneTemp->needEquipId5)
+//		{
+//			sendStarResp(LynxErrno::HoarStoneCondition,connId);
+//			return ;
+//		}
+//
+//		List<UInt64>::Iter * runeIter6 = runeList.getn(5); 
+//		if(runeIter6->mValue != nextHoarStoneTemp->needEquipId6)
+//		{
+//			sendStarResp(LynxErrno::HoarStoneCondition,connId);
+//			return ;
+//		}
+//
+//		for(List<UInt64>::Iter * runeDataIter = runeList.begin(); runeDataIter != NULL; runeDataIter = runeList.next(runeDataIter))
+//		{
+//			runeDataIter->mValue = 0;
+//		}
+//
+//		mapHoarStoneIter->mValue->mStoneStar++;
+//
+//		m_pPlayer->getPersistManager().setDirtyBit(HOARSTONEDATABIT);
+//
+//		//提示玩家升星成功
+//
+//		GCHoarStoneStarResp starResp;
+//		starResp.mPacketID = BOC_PLAYER_HOARSTONE_STARUP_RESP;
+//		Json::Value root;
+//		root["errorId"] = LynxErrno::None;
+//		root["hoarstoneIdx"] = mapHoarStoneIter->mValue->mHoarStoneId;
+//		root["targetStar"] = mapHoarStoneIter->mValue->mStoneStar;
+//		root["coin"] = m_pPlayer->mPlayerData.mBaseData.m_nCoin;
+//
+//		Json::StyledWriter writer;
+//
+//		starResp.mRespJsonStr = writer.write(root);
+//		NetworkSystem::getSingleton().sendMsg(starResp,connId);
+//		cout << starResp.mRespJsonStr;
+//		return;
+//
+//	}
+//	else
+//	{
+//		//提示玩家当前星级已经满级
+//	}
+//	
+//}
 
 void HoarStoneManager::addHoarStoneRune(UInt64 runeId, UInt32 count)
 {
@@ -687,7 +833,7 @@ void HoarStoneManager::equipHoarStoneRune(List<runePosData> runeDataList, UInt64
 			Json::Value root;
 			root["errorId"] = LynxErrno::InvalidParameter;
 
-			Json::StyledWriter writer;
+			Json::StyledWriter writer; 
 
 			equipResp.mRespJsonStr = writer.write(root);
 
@@ -726,6 +872,11 @@ void HoarStoneManager::equipHoarStoneRune(List<runePosData> runeDataList, UInt64
 		
 		List<UInt64>::Iter * equipIter = equipList.getn(runePosIter->mValue.runePos);
 		equipIter->mValue = runePosIter->mValue.runeID;
+
+		char dest[1024]={0};
+		snprintf(dest,sizeof(dest),"%d,%d",runePosIter->mValue.runePos,runePosIter->mValue.runeID);
+		LogicSystem::getSingleton().write_log(LogType93,m_pPlayer->getPlayerGuid(), dest,LogInfo);
+
 	}
 
 	m_pPlayer->getPersistManager().setDirtyBit(HOARSTONEDATABIT);
@@ -766,6 +917,8 @@ void HoarStoneManager::equipHoarStoneRune(List<runePosData> runeDataList, UInt64
 			runeRoot["runeId"] = runemapIter->mKey;
 			runeRoot["runeCount"] = runemapIter->mValue;
 			root["runeList"].append(runeRoot);
+
+			
 		}
 		else
 		{
@@ -795,7 +948,12 @@ void HoarStoneManager::equipHoarStoneRune(List<runePosData> runeDataList, UInt64
 bool HoarStoneManager::checkCondition(UInt64 hoarStoneIndex)
 {
 	HoarstoneBaseTemplate * hoarStoneBaseTemp = HOARSTONEBASE_TABLE().get(hoarStoneIndex);
-
+	if (hoarStoneBaseTemp == NULL)
+	{
+		LOG_WARN("hoarStoneBaseTemp not found!!");
+		return false;
+	}
+ 
 	if(hoarStoneBaseTemp->mActiveConditionType1)
 	{
 		 
@@ -893,6 +1051,11 @@ bool HoarStoneManager::checkCondition(UInt64 hoarStoneIndex)
 void HoarStoneManager::combinHoarStoneRune(UInt64 dstRuneId,UInt32 dstRuneCount, UInt32 transferId)
 {
 	HoarstoneRuneTemplate *hoarStoneRuneTemp = HOARSTONERUNE_TABLE().get(dstRuneId);
+	if (hoarStoneRuneTemp == NULL)
+	{
+		LOG_WARN("hoarStoneRuneTemp not found!!");
+		return;
+	}
 	const ConnId& connId = m_pPlayer->getConnId();
 
 	if(hoarStoneRuneTemp)
@@ -1065,7 +1228,7 @@ void HoarStoneManager::combinHoarStoneRune(UInt64 dstRuneId,UInt32 dstRuneCount,
 		
 		root["coin"] = m_pPlayer->getPlayerCoin();
 
-		addHoarStoneRune(dstRuneId,1);
+		addHoarStoneRune(dstRuneId,dstRuneCount);
 		RuneDataMap::Iter *runeDataIterNew = m_pRuneDataMap->find(dstRuneId);
 		mystream.clear();
 		mystream.str("");

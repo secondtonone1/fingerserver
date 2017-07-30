@@ -3,7 +3,7 @@
 
 
 #include "MainThread.h"
-#include "DBInterface.h"
+
 
 namespace Lynx
 {
@@ -59,6 +59,8 @@ namespace Lynx
 
 		void GMEmailSend(UInt64 tempid, UInt64 toPlayer, std::string des, std::string contant);
 
+		void GMMsgNotify(std::string msg, UInt64 endtime, UInt32 term);
+
 		//Ê®¶þ×Ú¹¬ÖØÖÃ
 		void dealTwelvePalaceChange(UInt64 type, UInt64 count);
 
@@ -71,6 +73,11 @@ namespace Lynx
 		void dealStageChange(UInt64 type, UInt64 count);
 
 		void dealClimbTowerChange(UInt64 type, UInt64 count);
+
+		void dealDbcReload(std::string dbcname);
+
+// 		void dealAllAdd(UInt64 resType, UInt64 subType, std::string count);
+
 
 		
 		

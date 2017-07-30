@@ -119,6 +119,11 @@ ServantStarTable::loadFromCsv(const String& filePath)
 			return false;
 		}
 
+		if (!csvReader.bind("costcoin", servantStarTemp.mCostCoin))
+		{
+			LOG_WARN("Failed to load servantstar.csv for [costcoin]");
+			return false;
+		}
 		
 		mMap.insert(servantStarTemp.mId, servantStarTemp);
 		ServantStarReverseMap::Iter *  starMapIter = mReverseMap.find(servantStarTemp.mServantId);

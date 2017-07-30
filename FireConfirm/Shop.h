@@ -12,10 +12,15 @@ namespace Lynx
 	class Player;
 	enum Shop
 	{
+		ShopItemCount = 8,
+
 		RefreshMaxTimes = 20,
 		MysticalShop = 26,//神秘商店
 		ServantShop = 27,//佣兵商店
 		GiftShop = 28,//礼包商店
+		CourageShop = 29,//勇气商店
+		RankGameShop = 30,//排位赛商店
+		CoinShop = 31,//铜钱商店
 	};
 
 
@@ -144,14 +149,14 @@ namespace Lynx
 				root["awards"].append(son);
 			}
 
-			for(List<Goods>::Iter * iter = ends.begin(); iter != NULL; iter = ends.next(iter))
-			{
-				Json::Value son;	
-				son.append(iter->mValue.resourcestype);
-				son.append(iter->mValue.subtype);
-				son.append(iter->mValue.num);
-				root["ends"].append(son);
-			}
+// 			for(List<Goods>::Iter * iter = ends.begin(); iter != NULL; iter = ends.next(iter))
+// 			{
+// 				Json::Value son;	
+// 				son.append(iter->mValue.resourcestype);
+// 				son.append(iter->mValue.subtype);
+// 				son.append(iter->mValue.num);
+// 				root["ends"].append(son);
+// 			}
 			root["allAttr"] = Json::Value(allAttr);
 
 			Json::FastWriter writer;  
@@ -241,6 +246,7 @@ namespace Lynx
 		UInt32 buyNum;//
 		UInt32 freeTimes;//客户端不用了，在ends里
 		UInt32 maxBuyTimes;
+		List<UInt32> boxs;
 		Json::Value allAttr;//
 		List<Award> awards;
 		List<Goods> ends;
@@ -276,6 +282,11 @@ namespace Lynx
 				son.append(iter->mValue.subtype);
 				son.append(iter->mValue.num);
 				root["ends"].append(son);
+			}
+
+			for(List<UInt32>::Iter * item = boxs.begin(); item != NULL; item = boxs.next(item))
+			{
+				root["boxs"].append(item->mValue);
 			}
 			root["allAttr"] = Json::Value(allAttr);
 
@@ -314,9 +325,9 @@ namespace Lynx
 
 		UInt32 dealGiftshopbuy(Guid playerID,UInt32 shopType,UInt32 position,ShopBuyResp &resp);
 
-		UInt32 getMysticalShopInfo(Guid playerID,UInt32 refresh,ShopResp &resp);
+		UInt32 getShopInfo(Guid playerID,UInt32 refresh,UInt32 shopType,ShopResp &resp);
 
-		UInt32 getServantShopInfo(Guid playerID,UInt32 refresh,ShopResp &resp);
+// 		UInt32 getShopInfo(Guid playerID,UInt32 refresh,ShopResp &resp);
 
 		UInt32 getGiftShopInfo(Guid playerID,UInt32 refresh,ShopResp &resp);
 
@@ -328,15 +339,24 @@ namespace Lynx
 
 		UInt32 getServantShopID(UInt32 position,UInt32 level,UInt32 vipLevel,UInt32 refreshTimes,UInt32 refresh);
 
+
 		UInt32 getGiftShopID(UInt32 position,UInt32 level,UInt32 vipLevel,UInt32 refreshTimes,UInt32 refresh);
+
+		UInt32 getCoinShopID(UInt32 position,UInt32 level,UInt32 vipLevel,UInt32 refreshTimes,UInt32 refresh);
 
 		UInt32 checkRefreshTime(Guid playerID,UInt32 shopType,UInt32 &refreshNeedTime);
 
-		void getPremiumsContent(UInt32 nowBuyTimes,List<Goods>& itemList);
+		void getPremiumsContent(UInt32 openBoxType,List<Goods>& itemList);
+
+		UInt32 getPremiums(PlayerBuyCoinData &buyCoinData ,UInt32 openBoxType,List<Goods>& itemList);
+
+		 UInt32 checkBuyCoinBoxs(PlayerBuyCoinData &buyCoinData ,UInt32 buyTimes);
 
 		UInt32  getCoinBuyMaxTimes(UInt32 vipLevel);
 
 		UInt32  getStrengthBuyMaxTimes(UInt32 vipLevel);
+
+		 UInt32 checkBuyCoinBoxs(PlayerBuyCoinData &buyCoinData);
 
 	};
 

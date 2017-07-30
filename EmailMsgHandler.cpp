@@ -46,6 +46,10 @@ void EmailMsgHandler::onGMSendEmail(const ConnId&connId, GMSendReq&msg)
 			emailData.m_strDes = des.c_str();
 			emailData.m_strFrom = from.c_str();
 			emailData.m_strTittle = title.c_str();
+			if(contant.empty())
+			{
+				emailData.m_nGetState = 1;
+			}
 
 			addEmail.mEmailData = emailData;
 			PersistSystem::getSingleton().postThreadMsg(addEmail, sendType);
@@ -104,7 +108,12 @@ void EmailMsgHandler::onGMSendEmail(const ConnId&connId, GMSendReq&msg)
 			emailData.m_strDes = des.c_str();
 			emailData.m_strFrom = from.c_str();
 			emailData.m_strTittle = title.c_str();
+			if(contant.empty())
+			{
+				emailData.m_nGetState = 1;
+			}
 			addEmail.mEmailData = emailData;
+
 
 			PersistSystem::getSingleton().postThreadMsg(addEmail, addEmail.mEmailData.m_nPlayerUid);
 			Player * sendToPlayer = LogicSystem::getSingleton().getPlayerByAccountGuid(addEmail.mEmailData.m_nPlayerUid);
@@ -241,6 +250,8 @@ void EmailMsgHandler::onGetContantReq(const ConnId & connId, EmailGetContantReq&
 
 	if(reader.parse(msg.mReqJsonStr,root))
 	{
+
+	
 		UInt64 emailUid = root["emailuid"].asUInt64();
 		selfplayer->getEmailManager().getContant(emailUid);
 		

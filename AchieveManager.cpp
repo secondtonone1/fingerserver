@@ -431,8 +431,7 @@ void AchieveManager::updateAchieveData(UInt64 eventType, UInt32 change)
 			break;
 		}
 	}
-	//cqy
-	InlineActivityManager::getSingleton().updateSevenDayTaskData(m_nPlayerUid,eventType,change);
+	
 }
 
 
@@ -455,9 +454,7 @@ void AchieveManager::updateDailyTaskData(UInt64 eventType,   UInt32 change)
 		findDlyIter->mValue->m_nArg += change;
 		postUpdateDailyMsg(m_nPlayerUid, *(findDlyIter->mValue));
 
-		//cqy
-		InlineActivityManager::getSingleton().updateSevenDayTaskData(m_nPlayerUid,eventType,change);
-
+	
 }
 
 
@@ -507,14 +504,29 @@ void AchieveManager::getActiveAward(UInt64 index)
 		dailyacvMsg.playerUid = m_nPlayerUid;
 		dailyacvMsg.dailyacvData = m_pPlayer->mPlayerData.mDailyAcvData;
 		PersistSystem::getSingleton().postThreadMsg(dailyacvMsg, m_nPlayerUid);
-
+		
+		
 		DailyActiveTemplate * dailyActiveTemp = DAILYACTIVE_TABLE().get(index);
+		if (dailyActiveTemp == NULL)
+		{
+			LOG_WARN("dailyActiveTemp not found!!");
+			GCActiveAwardGetResp getResp;
+			getResp.mPacketID = BOC_ACTIVEAWARDGET_RESP;
+			Json::Value root;
+			Json::StyledWriter writer;
+			root["errorId"] = LynxErrno::ClienServerDataNotMatch;
+			getResp.mRespJsonStr = writer.write(root);
+			NetworkSystem::getSingleton().sendMsg(getResp, connId);
+			return;
+		}
+
 		//下发奖励
-		getContant(dailyActiveTemp->mItemList);
+		List<ReturnItemEle> rtItemList;
+		getContant(dailyActiveTemp->mItemList, rtItemList,MiniLog51);
 
 
 		//拼串发给客户端
-		sendDlyActiveResp(index, dailyActiveTemp->mItemList);
+		sendDlyActiveResp(index, rtItemList);
 
 }
 
@@ -538,6 +550,20 @@ void AchieveManager::finishDailyTask(UInt64 dailytaskId)
 	}
 
 	DailyTaskTemplate * dailyTaskTemp = DAILYTASK_TABLE().get(dailytaskId);
+	if (dailyTaskTemp == NULL)
+	{
+		LOG_WARN("dailyTaskTemp not found!!");
+		GCDailyTaskFinishResp finishResp;
+		finishResp.mPacketID = BOC_DAILYTASKFINISH_RESP;
+		Json::Value root;
+		root["errorId"] = LynxErrno::ClienServerDataNotMatch;
+		Json::StyledWriter writer;
+		finishResp.mRespJsonStr = writer.write(root);
+		cout << finishResp.mRespJsonStr;
+		NetworkSystem::getSingleton().sendMsg(finishResp, connId);
+
+		return;
+	}
 	if(findDailyIter->mValue->m_nArg < dailyTaskTemp->mArg)
 	{
 
@@ -566,7 +592,8 @@ void AchieveManager::finishDailyTask(UInt64 dailytaskId)
 	PersistSystem::getSingleton().postThreadMsg(dailyacvMsg, m_nPlayerUid);
 
 	//下发奖励
-	getContant(dailyTaskTemp->mItemList);
+	List<ReturnItemEle> rtItemList;
+	getContant(dailyTaskTemp->mItemList,rtItemList,MiniLog50);
 
 	//日常任务完成存盘
 	postUpdateDailyMsg(m_nPlayerUid, *(findDailyIter->mValue));
@@ -574,7 +601,7 @@ void AchieveManager::finishDailyTask(UInt64 dailytaskId)
 	
 
 	//拼串发给客户端
-	sendDlyResp2Client(dailytaskId,findDailyIter->mValue->m_nEventId, findDailyIter->mValue->m_nArg, findDailyIter->mValue->m_nFlag, dailyTaskTemp->mItemList);
+	sendDlyResp2Client(dailytaskId,findDailyIter->mValue->m_nEventId, findDailyIter->mValue->m_nArg, findDailyIter->mValue->m_nFlag, rtItemList);
 
 }
 
@@ -731,25 +758,25 @@ bool AchieveManager::finishAchieve(UInt64 eventType, UInt64 achId)
 				break;
 			case USERHYMESKILL:
 				{
-					
+					return dealAchRhymeSkillUse(eventType,achId, findIter->mValue);
 				}
 
 				break;
 			case USERHYMESPEED:
 				{
-					
+					return dealAchRhymeSpeed(eventType,achId, findIter->mValue);
 				}
 
 				break;
 			case CALLSERVANTCNT:
 				{
-					
+					return dealAchServantBattleCall(eventType,achId, findIter->mValue);
 				}
 
 				break;
 			case FRIENDCNT:
 				{
-						return dealAchFriendCnt(eventType,achId, findIter->mValue);
+					return	dealAchFriendCnt(eventType,achId, findIter->mValue);
 				}
 
 				break;
@@ -857,13 +884,14 @@ bool AchieveManager::dealAchPlayerLv(UInt64 eventType, UInt64 achId, AchieveData
 	}
 
 	//下发奖励
-	getContant(achieveTemp->mItemList);
+	List<ReturnItemEle> rtItemList;
+	getContant(achieveTemp->mItemList, rtItemList,MiniLog51);
 
 	//存盘
 	postUpdateAchMsg(m_nPlayerUid, *pAchData);
 
 	//拼串发给客户端
-	sendResp2Client(achId,pAchData->m_nAchieveId,eventType, pAchData->m_nArg, pAchData->m_nFlag, achieveTemp->mItemList);
+	sendResp2Client(achId,pAchData->m_nAchieveId,eventType, pAchData->m_nArg, pAchData->m_nFlag, rtItemList);
 	return true;
 
 }
@@ -934,6 +962,11 @@ bool AchieveManager::dealAchBarrier(UInt64 eventType, UInt64 achId, AchieveData 
 		///////////////
 		////////
 		AchievementTemplate*  newAchieve = ACHIEVEMENT_TABLE().get(pAchData->m_nAchieveId);
+		if (newAchieve == NULL)
+		{
+			LOG_WARN("newAchieve not found!!");
+			return false;
+		}
 		bool isPass = StageCalcManager::getSingleton().checkStageClearance(m_nPlayerUid,newAchieve->mArg);
 		if(isPass)
 		{
@@ -946,13 +979,14 @@ bool AchieveManager::dealAchBarrier(UInt64 eventType, UInt64 achId, AchieveData 
 	}
 
 	//下发奖励
-	getContant(achieveTemp->mItemList);
+	List<ReturnItemEle> rtItemList;
+	getContant(achieveTemp->mItemList, rtItemList,MiniLog51);
 
 	//存盘
 	postUpdateAchMsg(m_nPlayerUid, *pAchData);
 
 	//拼串发给客户端
-	sendResp2Client(achId,pAchData->m_nAchieveId,eventType, pAchData->m_nArg, pAchData->m_nFlag, achieveTemp->mItemList);
+	sendResp2Client(achId,pAchData->m_nAchieveId,eventType, pAchData->m_nArg, pAchData->m_nFlag, rtItemList);
 
 		return true;
 }
@@ -1024,6 +1058,11 @@ bool AchieveManager::dealAchEliteBarrier(UInt64 eventType, UInt64 achId, Achieve
 		////////
 
 		AchievementTemplate*  newAchieve = ACHIEVEMENT_TABLE().get(pAchData->m_nAchieveId);
+		if (newAchieve == NULL)
+		{
+			LOG_WARN("newAchieve not found!!");
+			return false;
+		}
 		bool isPass = StageCalcManager::getSingleton().checkStageClearance(m_nPlayerUid,newAchieve->mArg);
 		if(isPass)
 		{
@@ -1036,13 +1075,14 @@ bool AchieveManager::dealAchEliteBarrier(UInt64 eventType, UInt64 achId, Achieve
 	}
 
 	//下发奖励
-	getContant(achieveTemp->mItemList);
+	List<ReturnItemEle> rtItemList;
+	getContant(achieveTemp->mItemList, rtItemList,MiniLog51);
 
 	//存盘
 	postUpdateAchMsg(m_nPlayerUid, *pAchData);
 
 	//拼串发给客户端
-	sendResp2Client(achId,pAchData->m_nAchieveId,eventType, pAchData->m_nArg, pAchData->m_nFlag, achieveTemp->mItemList);
+	sendResp2Client(achId,pAchData->m_nAchieveId,eventType, pAchData->m_nArg, pAchData->m_nFlag, rtItemList);
 	
 	return true;
 }
@@ -1113,13 +1153,14 @@ bool AchieveManager::dealAchRhymeEnhance(UInt64 eventType, UInt64 achId, Achieve
 	}
 
 	//下发奖励
-	getContant(achieveTemp->mItemList);
+	List<ReturnItemEle> rtItemList;
+	getContant(achieveTemp->mItemList, rtItemList,MiniLog51);
 
 	//存盘
 	postUpdateAchMsg(m_nPlayerUid, *pAchData);
 
 	//拼串发给客户端
-	sendResp2Client(achId,pAchData->m_nAchieveId,eventType, pAchData->m_nArg, pAchData->m_nFlag, achieveTemp->mItemList);
+	sendResp2Client(achId,pAchData->m_nAchieveId,eventType, pAchData->m_nArg, pAchData->m_nFlag, rtItemList);
 
 	return true;
 }
@@ -1190,13 +1231,14 @@ bool AchieveManager::dealAchHonStoneActive(UInt64 eventType, UInt64 achId, Achie
 	}
 
 	//下发奖励
-	getContant(achieveTemp->mItemList);
+	List<ReturnItemEle> rtItemList;
+	getContant(achieveTemp->mItemList, rtItemList,MiniLog51);
 
 	//存盘
 	postUpdateAchMsg(m_nPlayerUid, *pAchData);
 
 	//拼串发给客户端
-	sendResp2Client(achId,pAchData->m_nAchieveId,eventType, pAchData->m_nArg, pAchData->m_nFlag, achieveTemp->mItemList);
+	sendResp2Client(achId,pAchData->m_nAchieveId,eventType, pAchData->m_nArg, pAchData->m_nFlag, rtItemList);
 
 	return true;
 }
@@ -1267,13 +1309,14 @@ bool AchieveManager::dealgetAchServant(UInt64 eventType, UInt64 achId, AchieveDa
 	}
 
 	//下发奖励
-	getContant(achieveTemp->mItemList);
+	List<ReturnItemEle> rtItemList;
+	getContant(achieveTemp->mItemList, rtItemList,MiniLog51);
 
 	//存盘
 	postUpdateAchMsg(m_nPlayerUid, *pAchData);
 
 	//拼串发给客户端
-	sendResp2Client(achId,pAchData->m_nAchieveId,eventType, pAchData->m_nArg, pAchData->m_nFlag, achieveTemp->mItemList);
+	sendResp2Client(achId,pAchData->m_nAchieveId,eventType, pAchData->m_nArg, pAchData->m_nFlag, rtItemList);
 
 	return true;
 }
@@ -1344,13 +1387,14 @@ bool AchieveManager::dealAchVipLv(UInt64 eventType, UInt64 achId, AchieveData * 
 	}
 
 	//下发奖励
-	getContant(achieveTemp->mItemList);
+	List<ReturnItemEle> rtItemList;
+	getContant(achieveTemp->mItemList, rtItemList,MiniLog51);
 
 	//存盘
 	postUpdateAchMsg(m_nPlayerUid, *pAchData);
 
 	//拼串发给客户端
-	sendResp2Client(achId,pAchData->m_nAchieveId,eventType, pAchData->m_nArg, pAchData->m_nFlag, achieveTemp->mItemList);
+	sendResp2Client(achId,pAchData->m_nAchieveId,eventType, pAchData->m_nArg, pAchData->m_nFlag, rtItemList);
 
 	return true;
 }
@@ -1407,13 +1451,14 @@ bool AchieveManager::dealAchPower(UInt64 eventType, UInt64 achId, AchieveData * 
 	}
 
 	//下发奖励
-	getContant(achieveTemp->mItemList);
+	List<ReturnItemEle> rtItemList;
+	getContant(achieveTemp->mItemList, rtItemList,MiniLog51);
 
 	//存盘
 	postUpdateAchMsg(m_nPlayerUid, *pAchData);
 
 	//拼串发给客户端
-	sendResp2Client(achId,pAchData->m_nAchieveId,eventType, pAchData->m_nArg, pAchData->m_nFlag, achieveTemp->mItemList);
+	sendResp2Client(achId,pAchData->m_nAchieveId,eventType, pAchData->m_nArg, pAchData->m_nFlag, rtItemList);
 
 	return true;
 }
@@ -1484,13 +1529,14 @@ bool AchieveManager::dealAch4StarServant(UInt64 eventType, UInt64 achId, Achieve
 	}
 
 	//下发奖励
-	getContant(achieveTemp->mItemList);
+	List<ReturnItemEle> rtItemList;
+	getContant(achieveTemp->mItemList, rtItemList,MiniLog51);
 
 	//存盘
 	postUpdateAchMsg(m_nPlayerUid, *pAchData);
 
 	//拼串发给客户端
-	sendResp2Client(achId,pAchData->m_nAchieveId,eventType, pAchData->m_nArg, pAchData->m_nFlag, achieveTemp->mItemList);
+	sendResp2Client(achId,pAchData->m_nAchieveId,eventType, pAchData->m_nArg, pAchData->m_nFlag, rtItemList);
 
 	return true;
 }
@@ -1561,13 +1607,14 @@ bool AchieveManager::dealAchPurpleServant(UInt64 eventType, UInt64 achId, Achiev
 	}
 
 	//下发奖励
-	getContant(achieveTemp->mItemList);
+		List<ReturnItemEle> rtItemList;
+	getContant(achieveTemp->mItemList, rtItemList,MiniLog51);
 
 	//存盘
 	postUpdateAchMsg(m_nPlayerUid, *pAchData);
 
 	//拼串发给客户端
-	sendResp2Client(achId,pAchData->m_nAchieveId,eventType, pAchData->m_nArg, pAchData->m_nFlag, achieveTemp->mItemList);
+	sendResp2Client(achId,pAchData->m_nAchieveId,eventType, pAchData->m_nArg, pAchData->m_nFlag, rtItemList);
 
 	return true;
 }
@@ -1638,13 +1685,14 @@ bool AchieveManager::dealAchAssistOpen(UInt64 eventType, UInt64 achId, AchieveDa
 	}
 
 	//下发奖励
-	getContant(achieveTemp->mItemList);
+	List<ReturnItemEle> rtItemList;
+	getContant(achieveTemp->mItemList,rtItemList,MiniLog51);
 
 	//存盘
 	postUpdateAchMsg(m_nPlayerUid, *pAchData);
 
 	//拼串发给客户端
-	sendResp2Client(achId,pAchData->m_nAchieveId,eventType, pAchData->m_nArg, pAchData->m_nFlag, achieveTemp->mItemList);
+	sendResp2Client(achId,pAchData->m_nAchieveId,eventType, pAchData->m_nArg, pAchData->m_nFlag, rtItemList);
 
 	return true;
 }
@@ -1715,13 +1763,14 @@ bool AchieveManager::dealAchPurpleAssist(UInt64 eventType, UInt64 achId, Achieve
 	}
 
 	//下发奖励
-	getContant(achieveTemp->mItemList);
+		List<ReturnItemEle> rtItemList;
+	getContant(achieveTemp->mItemList, rtItemList,MiniLog51);
 
 	//存盘
 	postUpdateAchMsg(m_nPlayerUid, *pAchData);
 
 	//拼串发给客户端
-	sendResp2Client(achId,pAchData->m_nAchieveId,eventType, pAchData->m_nArg, pAchData->m_nFlag, achieveTemp->mItemList);
+	sendResp2Client(achId,pAchData->m_nAchieveId,eventType, pAchData->m_nArg, pAchData->m_nFlag, rtItemList);
 
 	return true;
 }
@@ -1792,13 +1841,14 @@ bool AchieveManager::dealAchQualifySucCnt(UInt64 eventType, UInt64 achId, Achiev
 	}
 
 	//下发奖励
-	getContant(achieveTemp->mItemList);
+		List<ReturnItemEle> rtItemList;
+	getContant(achieveTemp->mItemList, rtItemList,MiniLog51);
 
 	//存盘
 	postUpdateAchMsg(m_nPlayerUid, *pAchData);
 
 	//拼串发给客户端
-	sendResp2Client(achId,pAchData->m_nAchieveId,eventType, pAchData->m_nArg, pAchData->m_nFlag, achieveTemp->mItemList);
+	sendResp2Client(achId,pAchData->m_nAchieveId,eventType, pAchData->m_nArg, pAchData->m_nFlag, rtItemList);
 
 	return true;
 }
@@ -1869,13 +1919,14 @@ bool AchieveManager::dealAchAreaSucCnt(UInt64 eventType, UInt64 achId, AchieveDa
 	}
 
 	//下发奖励
-	getContant(achieveTemp->mItemList);
+	List<ReturnItemEle> rtItemList;
+	getContant(achieveTemp->mItemList, rtItemList,MiniLog51);
 
 	//存盘
 	postUpdateAchMsg(m_nPlayerUid, *pAchData);
 
 	//拼串发给客户端
-	sendResp2Client(achId,pAchData->m_nAchieveId,eventType, pAchData->m_nArg, pAchData->m_nFlag, achieveTemp->mItemList);
+	sendResp2Client(achId,pAchData->m_nAchieveId,eventType, pAchData->m_nArg, pAchData->m_nFlag, rtItemList);
 
 	return true;
 }
@@ -1946,13 +1997,14 @@ bool AchieveManager::dealAchBuyCharactorCnt(UInt64 eventType, UInt64 achId, Achi
 	}
 
 	//下发奖励
-	getContant(achieveTemp->mItemList);
+	List<ReturnItemEle> rtItemList;
+	getContant(achieveTemp->mItemList, rtItemList,MiniLog51);
 
 	//存盘
 	postUpdateAchMsg(m_nPlayerUid, *pAchData);
 
 	//拼串发给客户端
-	sendResp2Client(achId,pAchData->m_nAchieveId,eventType, pAchData->m_nArg, pAchData->m_nFlag, achieveTemp->mItemList);
+	sendResp2Client(achId,pAchData->m_nAchieveId,eventType, pAchData->m_nArg, pAchData->m_nFlag, rtItemList);
 
 	return true;
 }
@@ -2023,13 +2075,14 @@ bool AchieveManager::dealCourageSucCnt(UInt64 eventType, UInt64 achId, AchieveDa
 	}
 
 	//下发奖励
-	getContant(achieveTemp->mItemList);
+	List<ReturnItemEle> rtItemList;
+	getContant(achieveTemp->mItemList, rtItemList,MiniLog51);
 
 	//存盘
 	postUpdateAchMsg(m_nPlayerUid, *pAchData);
 
 	//拼串发给客户端
-	sendResp2Client(achId,pAchData->m_nAchieveId,eventType, pAchData->m_nArg, pAchData->m_nFlag, achieveTemp->mItemList);
+	sendResp2Client(achId,pAchData->m_nAchieveId,eventType, pAchData->m_nArg, pAchData->m_nFlag, rtItemList);
 
 	return true;
 }
@@ -2100,13 +2153,14 @@ bool AchieveManager::dealWXChallengeCnt(UInt64 eventType, UInt64 achId, AchieveD
 	}
 
 	//下发奖励
-	getContant(achieveTemp->mItemList);
+	List<ReturnItemEle> rtItemList;
+	getContant(achieveTemp->mItemList, rtItemList,MiniLog51);
 
 	//存盘
 	postUpdateAchMsg(m_nPlayerUid, *pAchData);
 
 	//拼串发给客户端
-	sendResp2Client(achId,pAchData->m_nAchieveId,eventType, pAchData->m_nArg, pAchData->m_nFlag, achieveTemp->mItemList);
+	sendResp2Client(achId,pAchData->m_nAchieveId,eventType, pAchData->m_nArg, pAchData->m_nFlag, rtItemList);
 
 	return true;
 }
@@ -2177,13 +2231,14 @@ bool AchieveManager::dealAchFriendCnt(UInt64 eventType, UInt64 achId, AchieveDat
 	}
 
 	//下发奖励
-	getContant(achieveTemp->mItemList);
+	List<ReturnItemEle> rtItemList;
+	getContant(achieveTemp->mItemList, rtItemList,MiniLog51);
 
 	//存盘
 	postUpdateAchMsg(m_nPlayerUid, *pAchData);
 
 	//拼串发给客户端
-	sendResp2Client(achId,pAchData->m_nAchieveId,eventType, pAchData->m_nArg, pAchData->m_nFlag, achieveTemp->mItemList);
+	sendResp2Client(achId,pAchData->m_nAchieveId,eventType, pAchData->m_nArg, pAchData->m_nFlag, rtItemList);
 
 	return true;
 }
@@ -2254,13 +2309,14 @@ bool AchieveManager::dealAchGemMaxLv(UInt64 eventType, UInt64 achId, AchieveData
 	}
 
 	//下发奖励
-	getContant(achieveTemp->mItemList);
+		List<ReturnItemEle> rtItemList;
+	getContant(achieveTemp->mItemList, rtItemList,MiniLog51);
 
 	//存盘
 	postUpdateAchMsg(m_nPlayerUid, *pAchData);
 
 	//拼串发给客户端
-	sendResp2Client(achId,pAchData->m_nAchieveId,eventType, pAchData->m_nArg, pAchData->m_nFlag, achieveTemp->mItemList);
+	sendResp2Client(achId,pAchData->m_nAchieveId,eventType, pAchData->m_nArg, pAchData->m_nFlag, rtItemList);
 
 	return true;
 }
@@ -2331,13 +2387,14 @@ bool AchieveManager::dealAchLingRenCall(UInt64 eventType, UInt64 achId, AchieveD
 	}
 
 	//下发奖励
-	getContant(achieveTemp->mItemList);
+	List<ReturnItemEle> rtItemList;
+	getContant(achieveTemp->mItemList, rtItemList,MiniLog51);
 
 	//存盘
 	postUpdateAchMsg(m_nPlayerUid, *pAchData);
 
 	//拼串发给客户端
-	sendResp2Client(achId,pAchData->m_nAchieveId,eventType, pAchData->m_nArg, pAchData->m_nFlag, achieveTemp->mItemList);
+	sendResp2Client(achId,pAchData->m_nAchieveId,eventType, pAchData->m_nArg, pAchData->m_nFlag, rtItemList);
 
 	return true;
 }
@@ -2408,13 +2465,14 @@ bool AchieveManager::dealAchXibanCall(UInt64 eventType, UInt64 achId, AchieveDat
 	}
 
 	//下发奖励
-	getContant(achieveTemp->mItemList);
+	List<ReturnItemEle> rtItemList;
+	getContant(achieveTemp->mItemList, rtItemList,MiniLog51);
 
 	//存盘
 	postUpdateAchMsg(m_nPlayerUid, *pAchData);
 
 	//拼串发给客户端
-	sendResp2Client(achId,pAchData->m_nAchieveId,eventType, pAchData->m_nArg, pAchData->m_nFlag, achieveTemp->mItemList);
+	sendResp2Client(achId,pAchData->m_nAchieveId,eventType, pAchData->m_nArg, pAchData->m_nFlag, rtItemList);
 
 	return true;
 }
@@ -2485,29 +2543,298 @@ bool AchieveManager::dealAchMingLingCall(UInt64 eventType, UInt64 achId, Achieve
 	}
 
 	//下发奖励
-	getContant(achieveTemp->mItemList);
+	List<ReturnItemEle> rtItemList;
+	getContant(achieveTemp->mItemList,rtItemList,MiniLog51);
 
 	//存盘
 	postUpdateAchMsg(m_nPlayerUid, *pAchData);
 
 	//拼串发给客户端
-	sendResp2Client(achId,pAchData->m_nAchieveId,eventType, pAchData->m_nArg, pAchData->m_nFlag, achieveTemp->mItemList);
+	sendResp2Client(achId,pAchData->m_nAchieveId,eventType, pAchData->m_nArg, pAchData->m_nFlag, rtItemList);
 
 	return true;
 }
 
 
-void AchieveManager::getContant(const List<AllItemEle> &contantList)
+
+bool AchieveManager::dealAchRhymeSkillUse(UInt64 eventType, UInt64 achId, AchieveData * pAchData)
+{
+	const ConnId & connId = m_pPlayer->getConnId();
+
+	if(achId != pAchData->m_nAchieveId)
+	{
+		//任务id不匹配
+
+		GCAchieveFinishResp finishResp;
+		finishResp.mPacketID = BOC_ACHIEVEFINISH_RESP;
+		Json::Value root;
+		root["errorId"] = LynxErrno::AchIdNotMatch;
+		Json::StyledWriter writer;
+		finishResp.mRespJsonStr =  writer.write(root);
+
+		NetworkSystem::getSingleton().sendMsg(finishResp, connId);
+
+		return false;
+	}
+
+	AchievementTemplate*  achieveTemp =  ACHIEVEMENT_TABLE().get(achId);
+	if(!achieveTemp)
+	{
+		//任务id不匹配
+
+		GCAchieveFinishResp finishResp;
+		finishResp.mPacketID = BOC_ACHIEVEFINISH_RESP;
+		Json::Value root;
+		root["errorId"] = LynxErrno::AchIdNotExist;
+		Json::StyledWriter writer;
+		finishResp.mRespJsonStr =  writer.write(root);
+
+		NetworkSystem::getSingleton().sendMsg(finishResp, connId);
+		return false;
+	}
+
+	//判断韵文技能使用次数是否满足
+	if(pAchData->m_nArg  <  achieveTemp->mArg)
+	{
+		GCAchieveFinishResp finishResp;
+		finishResp.mPacketID = BOC_ACHIEVEFINISH_RESP;
+		Json::Value root;
+		root["errorId"] = LynxErrno::ConditionNotReach;
+		Json::StyledWriter writer;
+		finishResp.mRespJsonStr =  writer.write(root);
+
+		NetworkSystem::getSingleton().sendMsg(finishResp, connId);
+		return false;
+	}
+
+	//判断该成就是否达到最后一步，
+	//最后一步只需要将领取标记设置为1
+	if(!(achieveTemp-> mNextId))
+	{
+		pAchData-> m_nFlag = 1;
+	}
+	else
+	{
+		//更新到下一个任务id
+		pAchData->m_nAchieveId = achieveTemp-> mNextId;
+		//下一个任务id对应的完成标记为0；
+		pAchData-> m_nFlag = 0;
+
+	}
+
+	//下发奖励
+	List<ReturnItemEle> rtItemList;
+	getContant(achieveTemp->mItemList,rtItemList,MiniLog51);
+
+	//存盘
+	postUpdateAchMsg(m_nPlayerUid, *pAchData);
+
+	//拼串发给客户端
+	sendResp2Client(achId,pAchData->m_nAchieveId,eventType, pAchData->m_nArg, pAchData->m_nFlag, rtItemList);
+
+	return true;
+}
+
+bool AchieveManager::dealAchRhymeSpeed(UInt64 eventType, UInt64 achId, AchieveData * pAchData)
+{
+	const ConnId & connId = m_pPlayer->getConnId();
+
+	if(achId != pAchData->m_nAchieveId)
+	{
+		//任务id不匹配
+
+		GCAchieveFinishResp finishResp;
+		finishResp.mPacketID = BOC_ACHIEVEFINISH_RESP;
+		Json::Value root;
+		root["errorId"] = LynxErrno::AchIdNotMatch;
+		Json::StyledWriter writer;
+		finishResp.mRespJsonStr =  writer.write(root);
+
+		NetworkSystem::getSingleton().sendMsg(finishResp, connId);
+
+		return false;
+	}
+
+	AchievementTemplate*  achieveTemp =  ACHIEVEMENT_TABLE().get(achId);
+	if(!achieveTemp)
+	{
+		//任务id不匹配
+
+		GCAchieveFinishResp finishResp;
+		finishResp.mPacketID = BOC_ACHIEVEFINISH_RESP;
+		Json::Value root;
+		root["errorId"] = LynxErrno::AchIdNotExist;
+		Json::StyledWriter writer;
+		finishResp.mRespJsonStr =  writer.write(root);
+
+		NetworkSystem::getSingleton().sendMsg(finishResp, connId);
+		return false;
+	}
+
+	//判断韵力激发使用次数是否满足
+	if(pAchData->m_nArg  <  achieveTemp->mArg)
+	{
+		GCAchieveFinishResp finishResp;
+		finishResp.mPacketID = BOC_ACHIEVEFINISH_RESP;
+		Json::Value root;
+		root["errorId"] = LynxErrno::ConditionNotReach;
+		Json::StyledWriter writer;
+		finishResp.mRespJsonStr =  writer.write(root);
+
+		NetworkSystem::getSingleton().sendMsg(finishResp, connId);
+		return false;
+	}
+
+	//判断该成就是否达到最后一步，
+	//最后一步只需要将领取标记设置为1
+	if(!(achieveTemp-> mNextId))
+	{
+		pAchData-> m_nFlag = 1;
+	}
+	else
+	{
+		//更新到下一个任务id
+		pAchData->m_nAchieveId = achieveTemp-> mNextId;
+		//下一个任务id对应的完成标记为0；
+		pAchData-> m_nFlag = 0;
+
+	}
+
+	//下发奖励
+	List<ReturnItemEle> rtItemList;
+	getContant(achieveTemp->mItemList,rtItemList,MiniLog51);
+
+	//存盘
+	postUpdateAchMsg(m_nPlayerUid, *pAchData);
+
+	//拼串发给客户端
+	sendResp2Client(achId,pAchData->m_nAchieveId,eventType, pAchData->m_nArg, pAchData->m_nFlag, rtItemList);
+
+	return true;
+}
+
+bool AchieveManager::dealAchServantBattleCall(UInt64 eventType, UInt64 achId, AchieveData * pAchData)
+{
+	const ConnId & connId = m_pPlayer->getConnId();
+
+	if(achId != pAchData->m_nAchieveId)
+	{
+		//任务id不匹配
+
+		GCAchieveFinishResp finishResp;
+		finishResp.mPacketID = BOC_ACHIEVEFINISH_RESP;
+		Json::Value root;
+		root["errorId"] = LynxErrno::AchIdNotMatch;
+		Json::StyledWriter writer;
+		finishResp.mRespJsonStr =  writer.write(root);
+
+		NetworkSystem::getSingleton().sendMsg(finishResp, connId);
+
+		return false;
+	}
+
+	AchievementTemplate*  achieveTemp =  ACHIEVEMENT_TABLE().get(achId);
+	if(!achieveTemp)
+	{
+		//任务id不匹配
+
+		GCAchieveFinishResp finishResp;
+		finishResp.mPacketID = BOC_ACHIEVEFINISH_RESP;
+		Json::Value root;
+		root["errorId"] = LynxErrno::AchIdNotExist;
+		Json::StyledWriter writer;
+		finishResp.mRespJsonStr =  writer.write(root);
+
+		NetworkSystem::getSingleton().sendMsg(finishResp, connId);
+		return false;
+	}
+
+	//判断战斗中召唤佣兵使用次数是否满足
+	if(pAchData->m_nArg  <  achieveTemp->mArg)
+	{
+		GCAchieveFinishResp finishResp;
+		finishResp.mPacketID = BOC_ACHIEVEFINISH_RESP;
+		Json::Value root;
+		root["errorId"] = LynxErrno::ConditionNotReach;
+		Json::StyledWriter writer;
+		finishResp.mRespJsonStr =  writer.write(root);
+
+		NetworkSystem::getSingleton().sendMsg(finishResp, connId);
+		return false;
+	}
+
+	//判断该成就是否达到最后一步，
+	//最后一步只需要将领取标记设置为1
+	if(!(achieveTemp-> mNextId))
+	{
+		pAchData-> m_nFlag = 1;
+	}
+	else
+	{
+		//更新到下一个任务id
+		pAchData->m_nAchieveId = achieveTemp-> mNextId;
+		//下一个任务id对应的完成标记为0；
+		pAchData-> m_nFlag = 0;
+
+	}
+
+	//下发奖励
+	List<ReturnItemEle> rtItemList;
+	getContant(achieveTemp->mItemList,rtItemList,MiniLog51);
+
+	//存盘
+	postUpdateAchMsg(m_nPlayerUid, *pAchData);
+
+	//拼串发给客户端
+	sendResp2Client(achId,pAchData->m_nAchieveId,eventType, pAchData->m_nArg, pAchData->m_nFlag, rtItemList);
+
+	return true;
+}
+
+
+
+void AchieveManager::getContant(const List<AllItemEle> &contantList, List<ReturnItemEle> &rtItemList,UInt32 systemID)
 {
 	for(List<AllItemEle>::Iter * contantIter = contantList.begin();  contantIter != NULL; 
 		contantIter = contantList.next(contantIter))
 	{
-		m_pPlayer->getAllItemManager().addAwardMaterial(contantIter->mValue.resType,contantIter->mValue.subType,
-			contantIter->mValue.count);
+		if(contantIter->mValue.resType == AWARD_JEWELRY)
+		{
+			for(UInt32 i = 0; i < contantIter->mValue.count; i ++)
+			{
+				ReturnItemEle rtItemEle;
+				m_pPlayer->getAllItemManager().addAwardMaterial(contantIter->mValue.resType,contantIter->mValue.subType, 1, rtItemEle,systemID);
+				rtItemList.insertTail(rtItemEle);
+
+			}
+		}
+		else if(contantIter->mValue.resType == AWARD_SERVANT)
+		{
+			for(UInt32 i = 0; i < contantIter->mValue.count; i ++)
+			{
+				ReturnItemEle rtItemEle;
+				m_pPlayer->getAllItemManager().addAwardMaterial(contantIter->mValue.resType,contantIter->mValue.subType, 1, rtItemEle,systemID);
+				rtItemList.insertTail(rtItemEle);
+
+			}
+		}
+		else
+		{
+				ReturnItemEle rtItemEle;
+			m_pPlayer->getAllItemManager().addAwardMaterial(contantIter->mValue.resType,contantIter->mValue.subType,
+			contantIter->mValue.count, rtItemEle,systemID);
+			rtItemList.insertTail(rtItemEle);
+		}
+
+	
 	}
 		
 }
 
+
+
+//此功能暂时注释，有更好的接口使用，此接口留作以后使用
+/*
 void AchieveManager::sendResp2Client(UInt64 oldAchId, UInt64 newAchId,  UInt64 eventId, UInt32 arg, UInt32 flag,
 									 const List<AllItemEle> &contantList)
 {
@@ -2554,12 +2881,16 @@ void AchieveManager::sendResp2Client(UInt64 oldAchId, UInt64 newAchId,  UInt64 e
 		{
 			
 				UInt32 count = m_pPlayer->getAllItemManager().getAwardCount(contantIter->mValue.resType, contantIter->mValue.subType);
-				Json::Value itemRoot;
-				itemRoot["resType"] = contantIter->mValue.resType;
-				itemRoot["subType"] = contantIter->mValue.subType;
-				itemRoot["count"] = count;
+				if(count != -1)
+				{
+					Json::Value itemRoot;
+					itemRoot["resType"] = contantIter->mValue.resType;
+					itemRoot["subType"] = contantIter->mValue.subType;
+					itemRoot["count"] = count;
 
-				root["contant"].append(itemRoot);
+					root["contant"].append(itemRoot);
+				}
+				
 			
 
 			}//else
@@ -2578,7 +2909,86 @@ void AchieveManager::sendResp2Client(UInt64 oldAchId, UInt64 newAchId,  UInt64 e
 
 	}
 
+	*/
 
+void AchieveManager::sendResp2Client(UInt64 oldAchId, UInt64 newAchId,  UInt64 eventId, UInt32 arg, UInt32 flag,
+			const List<ReturnItemEle> &contantList)
+{
+		Json::Value root;
+	root["errorId"] = LynxErrno::None;
+	root["oldachieveid"] = oldAchId;
+	root["newachieveid"] = newAchId;
+	root["event"] = eventId;
+	root["arg"] = arg;
+	root["flag"] = flag;
+
+	for(List<ReturnItemEle>::Iter * contantIter = contantList.begin();  contantIter != NULL;
+		contantIter = contantList.next(contantIter) )
+	{
+		if(contantIter->mValue.resType == AWARD_SERVANT ||  contantIter->mValue.resType == AWARD_SERVANTPIECE)
+		{
+			ServantData * servantData = m_pPlayer->getServantManager().getServantById(contantIter->mValue.subType);
+			Json::Value itemRoot;
+			itemRoot["resType"] = contantIter->mValue.resType;
+			itemRoot["subType"] = contantIter->mValue.subType;
+			itemRoot["addCount1"] = contantIter->mValue.addCount1;
+			itemRoot["addCount2"] = contantIter->mValue.addCount2;
+			itemRoot["count"] = servantData->pieceCount;
+				
+
+				////////////////////////////////////////////////////////////////////////
+				
+			itemRoot["attr"]["servantUid"] = servantData->servantUid;
+			itemRoot["attr"]["servantId"] = servantData->servantId;
+			itemRoot["attr"]["pieceCount"] = servantData->pieceCount;
+			itemRoot["attr"]["level"] = servantData->level;
+			itemRoot["attr"]["lvexp"] = servantData->lvexp;
+			itemRoot["attr"]["star"] = servantData->star;
+			itemRoot["attr"]["floor"] = servantData->floor;
+
+			for(List<UInt64>::Iter * treasureIter = servantData->equipTreasures.begin(); treasureIter != NULL;
+					treasureIter = servantData->equipTreasures.next(treasureIter))
+				{
+					itemRoot["attr"]["equipTreasures"].append(treasureIter->mValue);
+				}
+
+				root["contant"].append(itemRoot);
+		} //if
+		else
+		{
+			
+				UInt32 count = m_pPlayer->getAllItemManager().getAwardCount(contantIter->mValue.resType, contantIter->mValue.subType);
+				if(count != -1)
+				{
+					Json::Value itemRoot;
+					itemRoot["resType"] = contantIter->mValue.resType;
+					itemRoot["subType"] = contantIter->mValue.subType;
+					itemRoot["addCount1"] = contantIter->mValue.addCount1;
+					itemRoot["addCount2"] = contantIter->mValue.addCount2;
+					itemRoot["count"] = count;
+
+					root["contant"].append(itemRoot);
+				}
+				
+			
+
+			}//else
+
+		}//for
+
+		GCAchieveFinishResp finishResp;
+		finishResp.mPacketID = BOC_ACHIEVEFINISH_RESP;
+	
+		Json::StyledWriter writer;
+		finishResp.mRespJsonStr =  writer.write(root);
+		const ConnId & connId = m_pPlayer->getConnId();
+
+		NetworkSystem::getSingleton().sendMsg(finishResp, connId);
+}
+
+
+//该接口保留，先注释
+/*
 void AchieveManager::sendDlyResp2Client(UInt64 dlyId , UInt64 eventId, UInt32 arg, UInt32 flag,
 						const List<AllItemEle> &contantList)
 {
@@ -2650,8 +3060,88 @@ void AchieveManager::sendDlyResp2Client(UInt64 dlyId , UInt64 eventId, UInt32 ar
 
 }
 
+*/
 
-void AchieveManager::sendDlyActiveResp(UInt32 index, const List<AllItemEle> &contantList)
+
+void AchieveManager::sendDlyResp2Client(UInt64 dlyId , UInt64 eventId, UInt32 arg, UInt32 flag,
+			const List<ReturnItemEle> &contantList)
+{
+	Json::Value root;
+	root["errorId"] = LynxErrno::None;
+	root["dailyid"] = dlyId;
+	root["event"] = eventId;
+	root["arg"] = arg;
+	root["flag"] = flag;
+	root["curactive"] = m_pPlayer->mPlayerData.mDailyAcvData.curActive;
+
+	for(List<ReturnItemEle>::Iter * contantIter = contantList.begin();  contantIter != NULL;
+		contantIter = contantList.next(contantIter) )
+	{
+		if(contantIter->mValue.resType == AWARD_SERVANT ||  contantIter->mValue.resType == AWARD_SERVANTPIECE)
+		{
+			ServantData * servantData = m_pPlayer->getServantManager().getServantById(contantIter->mValue.subType);
+			Json::Value itemRoot;
+			itemRoot["resType"] = contantIter->mValue.resType;
+			itemRoot["subType"] = contantIter->mValue.subType;
+			itemRoot["addCount1"] = contantIter->mValue.addCount1;
+			itemRoot["addCount2"] = contantIter->mValue.addCount2;
+
+			itemRoot["count"] = servantData->pieceCount;
+
+
+			////////////////////////////////////////////////////////////////////////
+
+			itemRoot["attr"]["servantUid"] = servantData->servantUid;
+			itemRoot["attr"]["servantId"] = servantData->servantId;
+			itemRoot["attr"]["pieceCount"] = servantData->pieceCount;
+			itemRoot["attr"]["level"] = servantData->level;
+			itemRoot["attr"]["lvexp"] = servantData->lvexp;
+			itemRoot["attr"]["star"] = servantData->star;
+			itemRoot["attr"]["floor"] = servantData->floor;
+
+			for(List<UInt64>::Iter * treasureIter = servantData->equipTreasures.begin(); treasureIter != NULL;
+				treasureIter = servantData->equipTreasures.next(treasureIter))
+			{
+				itemRoot["attr"]["equipTreasures"].append(treasureIter->mValue);
+			}
+
+			root["contant"].append(itemRoot);
+		} //if
+		else
+		{
+
+			UInt32 count = m_pPlayer->getAllItemManager().getAwardCount(contantIter->mValue.resType, contantIter->mValue.subType);
+			if(count != -1)
+			{
+				Json::Value itemRoot;
+				itemRoot["resType"] = contantIter->mValue.resType;
+				itemRoot["subType"] = contantIter->mValue.subType;
+				itemRoot["addCount1"] = contantIter->mValue.addCount1;
+				itemRoot["addCount2"] = contantIter->mValue.addCount2;
+
+				itemRoot["count"] = count;
+
+				root["contant"].append(itemRoot);
+			}
+			
+
+
+		}//else
+
+	}//for
+
+	GCDailyTaskFinishResp finishResp;
+	finishResp.mPacketID = BOC_DAILYTASKFINISH_RESP;
+
+	Json::StyledWriter writer;
+	finishResp.mRespJsonStr =  writer.write(root);
+	const ConnId & connId = m_pPlayer->getConnId();
+
+	NetworkSystem::getSingleton().sendMsg(finishResp, connId);
+}
+
+
+void AchieveManager::sendDlyActiveResp(UInt32 index, const List<ReturnItemEle> &contantList)
 {
 	Json::Value root;
 	root["errorId"] = LynxErrno::None;
@@ -2664,7 +3154,7 @@ void AchieveManager::sendDlyActiveResp(UInt32 index, const List<AllItemEle> &con
 	root["curactive"] = m_pPlayer->mPlayerData.mDailyAcvData.curActive;
 
 
-	for(List<AllItemEle>::Iter * contantIter = contantList.begin();  contantIter != NULL;
+	for(List<ReturnItemEle>::Iter * contantIter = contantList.begin();  contantIter != NULL;
 		contantIter = contantList.next(contantIter) )
 	{
 		if(contantIter->mValue.resType == AWARD_SERVANT ||  contantIter->mValue.resType == AWARD_SERVANTPIECE)
@@ -2702,6 +3192,8 @@ void AchieveManager::sendDlyActiveResp(UInt32 index, const List<AllItemEle> &con
 			itemRoot["resType"] = contantIter->mValue.resType;
 			itemRoot["subType"] = contantIter->mValue.subType;
 			itemRoot["count"] = count;
+			itemRoot["addCount1"] = contantIter->mValue.addCount1;
+			itemRoot["addCount2"] = contantIter->mValue.addCount2;
 
 			root["contant"].append(itemRoot);
 
@@ -2715,7 +3207,6 @@ void AchieveManager::sendDlyActiveResp(UInt32 index, const List<AllItemEle> &con
 
 	Json::StyledWriter writer;
 	getResp.mRespJsonStr =  writer.write(root);
-	cout << getResp.mRespJsonStr; 
 	const ConnId & connId = m_pPlayer->getConnId();
 
 	NetworkSystem::getSingleton().sendMsg(getResp, connId);

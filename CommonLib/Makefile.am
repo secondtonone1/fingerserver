@@ -5,6 +5,9 @@ noinst_LIBRARIES = libcommon.a
 
 libcommon_a_SOURCES = \
 	CourageContentTable.cpp\
+	SystemInfoTable.cpp\
+	MonsterAward.cpp\
+	RankGameTable.cpp\
 	RobotTable.cpp\
 	EventTable.cpp\
 	DailyTaskTable.cpp\
@@ -21,6 +24,9 @@ libcommon_a_SOURCES = \
 	ServantLuckTable.cpp \
 	AttrPowerTable.cpp	\
 	ServantAssistBattleTable.cpp \
+	ConsortMsgTable.cpp\
+	ConsortLvTable.cpp\
+	ConsortSignTable.cpp\
 	ServantLuckTable.cpp \
 	TowerBoxTable.cpp \
 	TowerEventTable.cpp \
@@ -75,6 +81,14 @@ libcommon_a_SOURCES = \
 	AttrEnhanceTable.cpp \
 	AttrPolishTable.cpp \
 	AttrRandomTable.cpp \
+	BusinessCatTable.cpp \
 	Award.cpp \
-VariableDefine.cpp \
-Table.cpp
+	CatTaskTable.cpp \
+	KitchenQuestionTable.cpp \
+	VariableDefine.cpp \
+	SkillConvertTable.cpp \
+	Eyequestiongroup.cpp \
+	ServantLvUpTable.cpp \
+	TicketFriendTable.cpp \
+	ConsortWoodTable.cpp\
+	Table.cpp

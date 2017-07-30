@@ -206,34 +206,6 @@
 			</File>
 		</Filter>
 		<Filter
-			Name="Frame"
-			>
-			<File
-				RelativePath="..\..\TableExport\MainFrame.cpp"
-				>
-			</File>
-			<File
-				RelativePath="..\..\TableExport\MainFrame.h"
-				>
-			</File>
-			<File
-				RelativePath="..\..\TableExport\MainPanel.cpp"
-				>
-			</File>
-			<File
-				RelativePath="..\..\TableExport\MainPanel.h"
-				>
-			</File>
-			<File
-				RelativePath="..\..\TableExport\WXLib.h"
-				>
-			</File>
-			<File
-				RelativePath="..\..\TableExport\XLInc.h"
-				>
-			</File>
-		</Filter>
-		<Filter
 			Name="Main"
 			>
 			<File
@@ -308,6 +280,34 @@
 				RelativePath="..\..\TableExport\HelpHandler.h"
 				>
 			</File>
+			<Filter
+				Name="Frame"
+				>
+				<File
+					RelativePath="..\..\TableExport\MainFrame.cpp"
+					>
+				</File>
+				<File
+					RelativePath="..\..\TableExport\MainFrame.h"
+					>
+				</File>
+				<File
+					RelativePath="..\..\TableExport\MainPanel.cpp"
+					>
+				</File>
+				<File
+					RelativePath="..\..\TableExport\MainPanel.h"
+					>
+				</File>
+				<File
+					RelativePath="..\..\TableExport\WXLib.h"
+					>
+				</File>
+				<File
+					RelativePath="..\..\TableExport\XLInc.h"
+					>
+				</File>
+			</Filter>
 		</Filter>
 		<File
 			RelativePath=".\ClassDiagram21.cd"

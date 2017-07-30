@@ -75,6 +75,7 @@ ServantTable::loadFromCsv(const String& filePath)
 			LOG_WARN("Failed to load servant.csv for [id]");
 			return false;
 		}
+		servantTemp.mPieceType = servantTemp.mId;
 
 		if (!csvReader.bind("monsterid", servantTemp.mMonsterid))
 		{
@@ -88,17 +89,13 @@ ServantTable::loadFromCsv(const String& filePath)
 			return false;
 		}
 
-		if (!csvReader.bind("skillid1", servantTemp.mSkillID1))
+		if (!csvReader.bind("skillid", servantTemp.mSkillID1))
 		{
 			LOG_WARN("Failed to load servant.csv for [skillid1]");
 			return false;
 		}
 		
-		if (!csvReader.bind("skillid2", servantTemp.mSkillID2))
-		{
-			LOG_WARN("Failed to load servant.csv for [skillid2]");
-			return false;
-		}
+		
 
 		if (!csvReader.bind("rate", servantTemp.mRate))
 		{
@@ -106,18 +103,20 @@ ServantTable::loadFromCsv(const String& filePath)
 			return false;
 		}
 
-		if (!csvReader.bind("curstar", servantTemp.mCurStar))
-		{
-			LOG_WARN("Failed to load servant.csv for [curstar]");
-			return false;
-		}
+// 		if (!csvReader.bind("curstar", servantTemp.mCurStar))
+// 		{
+// 			LOG_WARN("Failed to load servant.csv for [curstar]");
+// 			return false;
+// 		}
+// 
+// 		if (!csvReader.bind("curflor", servantTemp.mCurFloor))
+// 		{
+// 			LOG_WARN("Failed to load servant.csv for [curflor]");
+// 			return false;
+// 		}
 
-		if (!csvReader.bind("curflor", servantTemp.mCurFloor))
-		{
-			LOG_WARN("Failed to load servant.csv for [curflor]");
-			return false;
-		}
-
+		servantTemp.mCurStar = 1;
+		servantTemp.mCurFloor = 0;
 		if (!csvReader.bind("maxstar", servantTemp.mMaxStar))
 		{
 			LOG_WARN("Failed to load servant.csv for [maxstar]");
@@ -130,11 +129,11 @@ ServantTable::loadFromCsv(const String& filePath)
 			return false;
 		}
 
-		if (!csvReader.bind("piece", servantTemp.mPieceType))
-		{
-			LOG_WARN("Failed to load servant.csv for [piece]");
-			return false;
-		}
+// 		if (!csvReader.bind("piece", servantTemp.mPieceType))
+// 		{
+// 			LOG_WARN("Failed to load servant.csv for [piece]");
+// 			return false;
+// 		}
 		
 		if (!csvReader.bind("count", servantTemp.mPieceCount))
 		{
@@ -149,11 +148,19 @@ ServantTable::loadFromCsv(const String& filePath)
 		}
 
 		
-			if (!csvReader.bind("lifelight", servantTemp.mServantSwitch))
-			{
+		if (!csvReader.bind("lifelight", servantTemp.mServantSwitch))
+		{
 				LOG_WARN("Failed to load servant.csv for [lifelight]");
 				return false;
-			}
+		}
+
+		if (!csvReader.bind("sex", servantTemp.mSex))
+		{
+				LOG_WARN("Failed to load servant.csv for [sex]");
+				return false;
+		}
+
+		
 
 
 		std::string luckyStr;

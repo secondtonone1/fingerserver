@@ -9,8 +9,7 @@ namespace Lynx
 	{
 		BOC_CHAPTER_LIST_REQ					= sStageMsgBase + 1,
 		BOC_CHAPTER_LIST_RESP					= sStageMsgBase + 2,
-		BOC_CHAPTER_LIST_CHANG_REQ				= sStageMsgBase + 3,
-		BOC_CHAPTER_LIST_CHANG_RESP				= sStageMsgBase + 4,
+
 
 		TWELVE_PALACE_LIST_REQ					= sStageMsgBase + 5,//十二宗宫列表
 		TWELVE_PALACE_LIST_RESP					= sStageMsgBase + 6,//十二宗宫列表

@@ -26,6 +26,10 @@ namespace Lynx
 
 		void changeCharactor(UInt64 charactor);
 
+		void syncCharactor(UInt64 charactor);
+
+	
+
 	private:
 
 		Player* m_pPlayer;

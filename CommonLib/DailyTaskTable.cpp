@@ -228,7 +228,7 @@ SevenDayTrainningTable::loadFromDbc(const String& fileName)
 bool 
 SevenDayTrainningTable::reloadFromDbc(const String& fileName)
 {
-	DailyTaskTempMap tmpMap = mMap;
+	SevenDayTrainningTempMap tmpMap = mMap;
 
 	clear();
 	if (!loadFromDbc(fileName))
@@ -270,130 +270,40 @@ SevenDayTrainningTable::loadFromCsv(const String& filePath)
 	csvReader.initTitle();
 	while (csvReader.readLine())
 	{
-		DailyTaskTemplate dailyTaskTemp;
+		SevenDayTrainningTemplate sevenDayTrainningTemplate;
 		// 公用
-		if (!csvReader.bind("id", dailyTaskTemp.mId))
+		if (!csvReader.bind("id", sevenDayTrainningTemplate.id))
 		{
-			LOG_WARN("Failed to load dailytask.csv for [id]");
+			LOG_WARN("Failed to load sevenDayTrainning.csv for [id]");
 			return false;
 		}
 
-		if (!csvReader.bind("needevent", dailyTaskTemp.mEvent))
+		if (!csvReader.bind("link", sevenDayTrainningTemplate.link))
 		{
-			LOG_WARN("Failed to load dailytask.csv for [needevent]");
+			LOG_WARN("Failed to load sevenDayTrainning.csv for [link]");
 			return false;
 		}
 
-		if (!csvReader.bind("needarg", dailyTaskTemp.mArg))
+		if (!csvReader.bind("needevent", sevenDayTrainningTemplate.needevent))
 		{
-			LOG_WARN("Failed to load dailytask.csv for [needarg]");
+			LOG_WARN("Failed to load sevenDayTrainning.csv for [needevent]");
 			return false;
 		}
 
-		if (!csvReader.bind("award", dailyTaskTemp.mAward))
+		if (!csvReader.bind("needarg", sevenDayTrainningTemplate.needarg))
 		{
-			LOG_WARN("Failed to load dailytask.csv for [award]");
+			LOG_WARN("Failed to load sevenDayTrainning.csv for [needarg]");
 			return false;
 		}
 
-// 		if (!csvReader.bind("active", dailyTaskTemp.mActive))
-// 		{
-// 			LOG_WARN("Failed to load dailytask.csv for [active]");
-// 			return false;
-// 		}
-// 
-// 		if (!csvReader.bind("needlv", dailyTaskTemp.mNeedLv))
-// 		{
-// 			LOG_WARN("Failed to load dailytask.csv for [needlv]");
-// 			return false;
-// 		}
-
-
-
-		std::string ::size_type findIndex = dailyTaskTemp.mAward.find(';');
-		std::string awardTotalStr = dailyTaskTemp.mAward.c_str();
-		std::stringstream mystream;
-		while(findIndex != std::string::npos)
+		if (!csvReader.bind("award", sevenDayTrainningTemplate.award))
 		{
-			//;号之前的全部截取，放入到列表里
-			std::string awardEleStr = awardTotalStr.substr(0,findIndex);
-			std::string ::size_type typeIndex = awardEleStr.find(',');
-			std::string typeStr = awardEleStr.substr(0,typeIndex);
-
-			AllItemEle allItemEle;
-
-			mystream.clear();
-			mystream.str("");
-
-			mystream << typeStr;
-			mystream >> allItemEle.resType;
-
-
-			awardEleStr = awardEleStr.substr(typeIndex+1);
-			std::string::size_type subTypeIndex = awardEleStr.find(',');
-			std::string subTypeStr = awardEleStr.substr(0,subTypeIndex);
-
-			mystream.clear();
-			mystream.str("");
-
-			mystream << subTypeStr;
-			mystream >> allItemEle.subType;
-
-			std::string countStr = awardEleStr.substr(subTypeIndex+1);
-
-			mystream.clear();
-			mystream.str("");
-
-			mystream << countStr;
-			mystream >> allItemEle.count;
-
-			dailyTaskTemp.mItemList.insertTail(allItemEle);
-
-			awardTotalStr = awardTotalStr.substr(findIndex + 1);
-
-			findIndex = awardTotalStr.find(';');
-
-		}
-
-		if(awardTotalStr != "")
-		{
-			std::string awardEleStr = awardTotalStr;
-			std::string ::size_type typeIndex = awardEleStr.find(',');
-			std::string typeStr = awardEleStr.substr(0,typeIndex);
-
-			AllItemEle allItemEle;
-
-			mystream.clear();
-			mystream.str("");
-
-			mystream << typeStr;
-			mystream >> allItemEle.resType;
-
-
-			awardEleStr = awardEleStr.substr(typeIndex+1);
-			std::string::size_type subTypeIndex = awardEleStr.find(',');
-			std::string subTypeStr = awardEleStr.substr(0,subTypeIndex);
-
-			mystream.clear();
-			mystream.str("");
-
-			mystream << subTypeStr;
-			mystream >> allItemEle.subType;
-
-			std::string countStr = awardEleStr.substr(subTypeIndex+1);
-
-			mystream.clear();
-			mystream.str("");
-
-			mystream << countStr;
-			mystream >> allItemEle.count;
-
-			dailyTaskTemp.mItemList.insertTail(allItemEle);
-
+			LOG_WARN("Failed to load sevenDayTrainning.csv for [award]");
+			return false;
 		}
 
 
-		mMap.insert(dailyTaskTemp.mId, dailyTaskTemp);
+		mMap.insert(sevenDayTrainningTemplate.id, sevenDayTrainningTemplate);
 
 
 

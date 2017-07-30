@@ -2,6 +2,7 @@
 #include "Player.h"
 #include "LogicSystem.h"
 #include "PersistSystem.h"
+#include "FireConfirm/Gift.h"
 using namespace Lynx;
 
 
@@ -65,7 +66,7 @@ std::string CharactorManager::convertCharactorDataToJson()
 
 	Json::StyledWriter writer;
 	std::string strWrite = writer.write(root);
-	cout << strWrite;
+	LOG_INFO("convertCharactorDataToJson = %s",strWrite.c_str());
 	return strWrite;
 
 }
@@ -89,6 +90,20 @@ void CharactorManager::buyCharactor(UInt64 charactorId)
 	}
 
 	HeroTemplate * heroTemp = HERO_TABLE().get(charactorId);
+	if (heroTemp == NULL)
+	{
+		LOG_WARN("heroTemp not found!!");
+		GCCharactorBuyResp buyResp;
+		buyResp.mPacketID = BOC_CHARACTORBUY_RESP;
+		Json::Value root;
+		root["errorId"] = LynxErrno::ClienServerDataNotMatch;
+		Json::StyledWriter writer;
+
+		buyResp.mRespJsonStr = writer.write(root);
+		cout <<buyResp.mRespJsonStr;
+		NetworkSystem::getSingleton().sendMsg(buyResp, connId	);
+		return;
+	}
 	UInt64 currentGold = m_pPlayer->getPlayerGold();
 	UInt32 currentLv = m_pPlayer->getPlayerLeval();
 	UInt32 curVipLv = m_pPlayer->getVipLevel();
@@ -122,11 +137,33 @@ void CharactorManager::buyCharactor(UInt64 charactorId)
 	}
 
 	//扣钱
-	m_pPlayer->setPlayerGold(currentGold-heroTemp->mCost);
+
+	Goods goods;
+	List<Goods> itemList;
+
+	goods.resourcestype =AWARD_BASE;
+	goods.subtype = AWARD_BASE_GOLD;
+	goods.num = 0 - heroTemp->mCost;
+	itemList.insertTail(goods);
+	GiftManager::getSingleton().addToPlayer(m_pPlayer->getPlayerGuid(),REFLASH_AWARD,itemList,MiniLog11);
 
 	//获得角色，角色会穿戴默认时装，所以时装表需要添加对应时装
 
 	HeroFashionTemplate * heroFashionTemp = HEROFASHION_TABLE().get(charactorId);
+	if (heroFashionTemp == NULL)
+	{
+		LOG_WARN("player not found!!");
+		GCCharactorBuyResp buyResp;
+		buyResp.mPacketID = BOC_CHARACTORBUY_RESP;
+		Json::Value root;
+		root["errorId"] = LynxErrno::ClienServerDataNotMatch;
+		Json::StyledWriter writer;
+
+		buyResp.mRespJsonStr = writer.write(root);
+		cout <<buyResp.mRespJsonStr;
+		NetworkSystem::getSingleton().sendMsg(buyResp, connId	);
+		return;
+	}
 	m_pPlayer->getFashionManager().addFashion(heroFashionTemp->mFashionId, connId);
 
 
@@ -135,7 +172,7 @@ void CharactorManager::buyCharactor(UInt64 charactorId)
 	CharactorData charactorData;
 	charactorData.m_nCharactorId = charactorId;
 	charactorData.m_nEquipFashion = heroFashionTemp->mFashionId;
-	charactorData.m_nCharactorUid = charactorUid;
+	
 
 	List<CharactorData>::Iter * insertIter = m_pCharactorList->insertTail(charactorData);
 	m_mapCharactor.insert(charactorId, &(insertIter->mValue));
@@ -143,12 +180,17 @@ void CharactorManager::buyCharactor(UInt64 charactorId)
 	
 	CharactorAdd charactorAdd;
 	charactorAdd.charactorId = charactorId;
-	charactorAdd.charactorUid = charactorUid;
+	
 	charactorAdd.fashionId = heroFashionTemp->mFashionId;
 	charactorAdd.playerUid = m_pPlayer->getPlayerGuid();
 	PersistSystem::getSingleton().postThreadMsg(charactorAdd, charactorAdd.playerUid);
 
 	m_pPlayer ->getAchieveManager().updateAchieveData(BUYCHARACTOR,1);
+
+	//购买角色公告
+
+	LogicSystem::getSingleton().sendSystemMsg(9, m_pPlayer->getPlayerName(), charactorId);
+	
 
 	//回复正确包
 	
@@ -163,7 +205,7 @@ void CharactorManager::buyCharactor(UInt64 charactorId)
 	Json::StyledWriter writer;
 
 	buyResp.mRespJsonStr = writer.write(root);
-	cout <<buyResp.mRespJsonStr;
+//	cout <<buyResp.mRespJsonStr;
 	NetworkSystem::getSingleton().sendMsg(buyResp, connId	);
 	return;
 
@@ -191,11 +233,29 @@ void CharactorManager::equipFashion(UInt32 modelId, UInt64 fashionId)
 
 	Map<UInt64, CharactorData*>::Iter * findIter = m_mapCharactor.find(modelId);
 
+	if (findIter == NULL)
+	{
+		LOG_ERROR("Failed not found findIter modelId = %d",modelId);
+		return;
+	}
 	CharactorData* pCharactorData = findIter->mValue;
+	if (pCharactorData == NULL)
+	{
+		LOG_ERROR("Failed not found pCharactorData ");
+		return;
+	}
+	UInt32 oldCount = pCharactorData->m_nEquipFashion;
+
 	pCharactorData->m_nEquipFashion = fashionId;
 
+	UInt32 nowCount = fashionId;
+	char dest[1024]={0};
+	nowCount = pCharactorData->m_nEquipFashion;
+	snprintf(dest,sizeof(dest),"%d,%d",oldCount,nowCount);
+	LogicSystem::getSingleton().write_log(LogType87,m_pPlayer->getPlayerGuid(), dest,LogInfo);
+
 	CharactorUpdate charactorUpdate;
-	charactorUpdate.charactorUid = pCharactorData->m_nCharactorUid;
+	
 	charactorUpdate.fashionId = pCharactorData->m_nEquipFashion;
 
 	UInt64 playerUid = m_pPlayer->getPlayerGuid();
@@ -208,10 +268,10 @@ void CharactorManager::equipFashion(UInt32 modelId, UInt64 fashionId)
 
 	Json::StyledWriter writer;
 	GCFashionEquipResp equipResp;
-		equipResp.mPacketID = BOC_PLAYER_FASHION_EQUIP_RESP;
-		equipResp.mRespJsonStr = writer.write(root);
+	equipResp.mPacketID = BOC_PLAYER_FASHION_EQUIP_RESP;
+	equipResp.mRespJsonStr = writer.write(root);
 
-		NetworkSystem::getSingleton().sendMsg(equipResp, connId);
+	NetworkSystem::getSingleton().sendMsg(equipResp, connId);
 }
 
 
@@ -233,10 +293,19 @@ void CharactorManager::changeCharactor(UInt64 charactor)
 
 		return;
 	}
+	UInt32 oldCount = m_pPlayer->getPlayerModelID();
 
 	m_pPlayer->setPlayerModelID(charactor);
 	m_pPlayer->getSkillManager().changeCharactorSkill(charactor);
+	m_pPlayer->getPersistManager().setDirtyBit(BASEDATABIT|SKILLDATABIT|HEROEQUIPDATABIT);
 	UInt64 weapon = m_pPlayer->getHeroEquipManager().changeCharacterEquip(charactor);
+
+
+	UInt32 nowCount = m_pPlayer->getPlayerModelID();
+	char dest[1024]={0};
+	nowCount = m_pPlayer->getPlayerModelID();
+	snprintf(dest,sizeof(dest),"%d,%d",oldCount,nowCount);
+	LogicSystem::getSingleton().write_log(LogType88,m_pPlayer->getPlayerGuid(), dest,LogInfo);
 
 
 	GCCharactorSwitchResp switchResp;
@@ -248,12 +317,51 @@ void CharactorManager::changeCharactor(UInt64 charactor)
 	root["equipfashion"] = findIter->mValue->m_nEquipFashion;
 	root["weapon"] = weapon;
 
+	Map<UInt64, SkillData*> * skillmap = m_pPlayer->getSkillManager().getSkillMap();
+	for(Map<UInt64, SkillData*>::Iter * iter = skillmap->begin(); iter != NULL; iter = skillmap->next(iter))
+	{
+			Json::Value skillNode;
+				skillNode["id"] = Json::Value(iter->mValue->m_nID);
+				skillNode["cd"] = Json::Value(iter->mValue->m_nCD);
+				skillNode["level"] = Json::Value(iter->mValue->m_nLevel);
+				skillNode["equip"] = Json::Value(iter->mValue->m_nEquipPos);
+
+				root["skilllist"].append(skillNode);
+				
+	}
+
+
 
 	Json::StyledWriter writer;
 	switchResp.mRespJsonStr = writer.write(root);
 	//cout << switchResp.mRespJsonStr; 
 	NetworkSystem::getSingleton().sendMsg(switchResp, connId);
 }
+
+void CharactorManager::syncCharactor(UInt64 charactor)
+{
+	Map<UInt64, CharactorData*>::Iter * findIter = m_mapCharactor.find(charactor);
+	const ConnId & connId = m_pPlayer->getConnId();
+
+	if(!findIter)
+	{
+		
+		return;
+	}
+
+	m_pPlayer->setPlayerModelID(charactor);
+	m_pPlayer->getSkillManager().changeCharactorSkill(charactor);
+	m_pPlayer->getPersistManager().setDirtyBit(BASEDATABIT|SKILLDATABIT|HEROEQUIPDATABIT);
+	UInt64 weapon = m_pPlayer->getHeroEquipManager().changeCharacterEquip(charactor);
+
+
+	
+}
+
+
+
+
+
 
 
 

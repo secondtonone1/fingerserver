@@ -6,6 +6,9 @@
 #include "../CommonLib/CopyFinishTime.h"
 #include "../PassportSystem.h"
 #include "../ItemManager.h"
+#include "StageCalc.h"
+#include "CourageChallenge.h"
+#include "GlobalValue.h"
 
 using namespace Lynx;
 
@@ -189,6 +192,11 @@ void GiftManager::getAwardByID(UInt32 itemID,UInt32 num,List<Goods> &ItemList)
 UInt32 GiftManager::PlayerItemChangeResult(Guid playerID,UInt32 reFlashType, List<Goods> &itemList)
 {
 	Player * player = LogicSystem::getSingleton().getPlayerByGuid(playerID);
+	if (player == NULL)
+	{
+		LOG_WARN("player not found!!");
+		return 1;
+	}
 	List<UInt64> newItemUids;
 	List<Goods> goodsList;
 	List<Goods> resultList;
@@ -234,7 +242,7 @@ UInt32 GiftManager::PlayerItemChangeResult(Guid playerID,UInt32 reFlashType, Lis
 			{
 				goods.resourcestype =AWARD_BASE;
 				goods.subtype =AWARD_BASE_COMPETITIVE_POINT;
-// 				goods.num = player->getPlayerPower();
+ 				goods.num =  player->getRankGameData().m_MaskNum;
 				resultList.insertTail(goods);
 				continue;
 			}
@@ -246,14 +254,33 @@ UInt32 GiftManager::PlayerItemChangeResult(Guid playerID,UInt32 reFlashType, Lis
 				resultList.insertTail(goods);
 				continue;
 			}
+			else if (iter->mValue.subtype == AWARD_BASE_RANKEDSCORE)
+			{
+				goods.resourcestype =AWARD_BASE;
+				goods.subtype =AWARD_BASE_RANKEDSCORE;
+				goods.num =  player->getRankGameData().m_Score;
+				resultList.insertTail(goods);
+				continue;
+			}	
+
 			else if (iter->mValue.subtype == AWARD_BASE_SCORE)
 			{
 				goods.resourcestype =AWARD_BASE;
-				goods.subtype =AWARD_BASE_SCORE;
-				goods.num = player->getPlayerScore();				
+				goods.subtype =AWARD_BASE_RANKEDSCORE;
+				goods.num =  player->getPlayerScore();
 				resultList.insertTail(goods);
 				continue;
-			}			
+			}
+			else if (iter->mValue.subtype == AWARD_BASE_VIP_EXP)
+			{
+				goods.resourcestype =AWARD_BASE;
+				goods.subtype =AWARD_BASE_VIP_EXP;
+				goods.num = player->getPlayerVIPExp();
+				resultList.insertTail(goods);
+				continue;
+			}
+
+			
 		}
 		else if (iter->mValue.resourcestype == AWARD_GRASS )
 		{
@@ -302,6 +329,10 @@ UInt32 GiftManager::PlayerItemChangeResult(Guid playerID,UInt32 reFlashType, Lis
 		}
 		else if (iter->mValue.resourcestype == AWARD_SERVANTTREASURE )
 		{
+			goods.resourcestype =AWARD_SERVANTTREASURE;
+			goods.subtype = iter->mValue.subtype;
+			goods.num = player->getServantManager().getTreasure(iter->mValue.subtype)->count;
+			resultList.insertTail(goods);
 			continue;
 		}
 		else if (iter->mValue.resourcestype == AWARD_SERVANTSWITCH )
@@ -333,17 +364,17 @@ UInt32 GiftManager::PlayerItemChangeResult(Guid playerID,UInt32 reFlashType, Lis
 		{
 			continue;
 		}
-		else if (iter->mValue.resourcestype == 15)
-		{
-			continue;
-		}
+
 		else if (iter->mValue.resourcestype == AWARD_HOARSTONEEQUIP )
 		{
+			goods.resourcestype =AWARD_HOARSTONEEQUIP;
+			goods.subtype = iter->mValue.subtype;
+			goods.num = player->getHoarStoneManager().getHoarStoneRune(iter->mValue.subtype);
+			resultList.insertTail(goods);
 			continue;
 		}
 		else if (iter->mValue.resourcestype == AWARD_STAGEDATA)
 		{
-			// 			StageManager::getSingleton().addStageData(player->getPlayerGuid(),iter->mValue.subtype,iter->mValue.num);
 			continue;
 		}
 		else if (iter->mValue.resourcestype == AWARD_COUNTER)
@@ -356,11 +387,78 @@ UInt32 GiftManager::PlayerItemChangeResult(Guid playerID,UInt32 reFlashType, Lis
 			// 			updateRewardCounter(player->getPlayerGuid(),iter->mValue.subtype,iter->mValue.num);
 			continue;
 		}
-		else if (iter->mValue.resourcestype == AWARD_FOODDATA)
+		else if (iter->mValue.resourcestype == AWARD_FOOD)
 		{
-			// 			updateFood(player->getPlayerGuid(),iter->mValue.subtype,iter->mValue.num);//美食屋存档
+			
+			PlayerFoodsData foodsData = player->getFoodsData();
+			if (iter->mValue.subtype == FOODTYPE1)
+			{				
+				goods.resourcestype =iter->mValue.resourcestype;
+				goods.subtype = iter->mValue.subtype;
+				goods.num = foodsData.food11;			
+				resultList.insertTail(goods);
+				continue;
+			}
+			else if (iter->mValue.subtype == FOODTYPE2)
+			{				
+				goods.resourcestype =iter->mValue.resourcestype;
+				goods.subtype = iter->mValue.subtype;
+				goods.num = foodsData.food12;			
+				resultList.insertTail(goods);
+				continue;
+			}
+			else if (iter->mValue.subtype == FOODTYPE3)
+			{				
+				goods.resourcestype =iter->mValue.resourcestype;
+				goods.subtype = iter->mValue.subtype;
+				goods.num = foodsData.food13;			
+				resultList.insertTail(goods);
+				continue;
+			}
 			continue;
 		}
+		else if (iter->mValue.resourcestype == AWARD_CATCOIN)
+		{
+			goods.resourcestype = iter->mValue.subtype;
+			goods.subtype = iter->mValue.subtype;
+			goods.num = CourageChallengeManager::getSingleton().getCatCoinNum(playerID,iter->mValue.subtype);			
+			resultList.insertTail(goods);
+			continue;
+
+		}
+		
+		else if (iter->mValue.resourcestype == AWARD_CURRENCY)
+		{
+			goods.resourcestype =iter->mValue.resourcestype;
+			goods.subtype = iter->mValue.subtype;
+			PlayerCourageChallengeData courageChallengeData = player->getCourageChallengeData();
+			goods.num =courageChallengeData.m_LightOfLife;		
+			resultList.insertTail(goods);
+			continue;
+
+		}
+
+		else if (iter->mValue.resourcestype == AWARD_FREETICKET)
+		{
+			PlayerCounterData counterData = player->GetPlayerCounterData();
+			if (iter->mValue.subtype == ONCEFREELOTTERYTICKET)
+			{
+				goods.resourcestype =iter->mValue.resourcestype;
+				goods.subtype = iter->mValue.subtype;
+				goods.num =counterData.m_RewardLotteryOnceFreeCount;		
+				resultList.insertTail(goods);
+				continue;
+			}
+			else	if (iter->mValue.subtype == TENFREELOTTERYTICKET)
+			{
+				goods.resourcestype =iter->mValue.resourcestype;
+				goods.subtype = iter->mValue.subtype;
+				goods.num =counterData.m_RewardLotteryOnceFreeCount;		
+				resultList.insertTail(goods);
+				continue;
+			}	
+		}
+
 
 
 	}
@@ -375,7 +473,42 @@ UInt32 GiftManager::PlayerItemChangeResult(Guid playerID,UInt32 reFlashType, Lis
 	return 1;
 }
 
-UInt32 GiftManager::addToPlayer(Guid playerID,UInt32 reFlashType, List<Goods> itemList)
+UInt32 GiftManager::addToPlayer(Guid playerID,UInt32 reFlashType, List<Goods> itemList,UInt32 systemID)
+{
+	List<AwardData>  awardList;
+	List<AwardData>  costList;
+
+	for(List<Goods>::Iter *iter = itemList.begin();iter != NULL ;iter =itemList.next(iter))
+	{
+		AwardData awardData;
+		if (iter->mValue.num >= 0)
+		{
+			awardData.resType = iter->mValue.resourcestype;
+			awardData.resID = iter->mValue.subtype;
+			awardData.resCount = iter->mValue.num;
+			awardList.insertTail(awardData);
+		}
+		else
+		{
+			awardData.resType = iter->mValue.resourcestype;
+			awardData.resID = iter->mValue.subtype;
+			awardData.resCount = 0 - iter->mValue.num;
+			costList.insertTail(awardData);
+		}
+
+	}
+
+	Player * player = LogicSystem::getSingleton().getPlayerByGuid(playerID);
+
+	player->getAllItemManager().costMaterialsList(costList,systemID);
+
+	player->getAllItemManager().addAwardGetSendJson(awardList,systemID);
+
+	return 1;
+}
+
+
+UInt32 GiftManager::addToPlayerAttr(Guid playerID,List<ReturnItemEle> &rtItemList,Json::Value &root, List<Goods> itemList,UInt32 systemID =0)
 {
 	List<AwardData>  awardList;
 	List<AwardData>  costList;
@@ -395,16 +528,49 @@ UInt32 GiftManager::addToPlayer(Guid playerID,UInt32 reFlashType, List<Goods> it
 			awardData.resType = iter->mValue.resourcestype;
 			awardData.resID = iter->mValue.subtype;
 			awardData.resCount = -iter->mValue.num;
+			iter->mValue.num = 0;
 			costList.insertTail(awardData);
 		}
 
 	}
 
 	Player * player = LogicSystem::getSingleton().getPlayerByGuid(playerID);
+	if (player == NULL)
+	{
+		LOG_WARN("player not found!! addToPlayerAttr");
+		return 0;
+	}
 
-	player->getAllItemManager().costMaterialsList(costList);
+	player->getAllItemManager().costMaterialsList(costList,systemID);
 
-	player->getAllItemManager().addAwardGetSendJson(awardList);
+// 	player->getAllItemManager().addAwardGetSendJson(awardList);
+
+
+// 	List<ReturnItemEle> rtItemList;
+
+	for(List<Goods>::Iter * awardIter = itemList.begin();  awardIter != NULL;  awardIter = itemList.next(awardIter) )
+	{
+		
+		if(awardIter->mValue.resourcestype == AWARD_SERVANT || awardIter->mValue.resourcestype == AWARD_JEWELRY)
+			{
+				for(UInt32 i = 0; i < awardIter->mValue.num; i++)
+				{
+						ReturnItemEle rtIemEle;
+						player->getAllItemManager().addAwardMaterial(awardIter->mValue.resourcestype,  awardIter->mValue.subtype, 1 , rtIemEle,systemID);
+						rtItemList.insertTail(rtIemEle);
+				}
+			}
+			else
+			{
+				ReturnItemEle rtIemEle;
+				player->getAllItemManager().addAwardMaterial(awardIter->mValue.resourcestype,  awardIter->mValue.subtype,  awardIter->mValue.num,rtIemEle,systemID);
+				rtItemList.insertTail(rtIemEle);
+			}
+
+	}
+	player->getAllItemManager().convertItemListToStr(rtItemList, root);
+	
+
 
 	return 1;
 }
@@ -416,7 +582,7 @@ void GiftManager::splitKind( List<Goods> &goodsList, List<Goods> &kindgoodsList,
 	for( List<Goods>::Iter * iter = goodsList.begin();iter != NULL;iter = goodsList.next(iter))
 	{
 		if (iter->mValue.resourcestype == AWARD_BASE || iter->mValue.resourcestype == AWARD_GRASS/* ||iter->mValue.resourcestype == AWARD_HOARSTONEPIECE*/			
-			||(iter->mValue.resourcestype == AWARD_SERVANTMATERIAL && iter->mValue.subtype == 6) /*|| iter->mValue.resourcestype == AWARD_SERVANTPIECE */
+			||(iter->mValue.resourcestype == AWARD_SERVANTMATERIAL && iter->mValue.subtype == AWARD_SERVANTMATERIAL) /*|| iter->mValue.resourcestype == AWARD_SERVANTPIECE */
 			||iter->mValue.resourcestype == AWARD_SERVANTSWITCH
 			)
 		{
@@ -445,17 +611,17 @@ void GiftManager::combineSame( List<Goods> &goodsList)
 }
 
 
-void GiftManager::sendToPlayer( Guid playerID,UInt32 type,List<Goods> itemList,List<UInt64> newItemUids)
-{
-	PropertysChange resp;
-	Player * player = LogicSystem::getSingleton().getPlayerByGuid(playerID);
-
-	resp.type = type;
-	resp.goodsList = itemList;
-	std::string jsonStr = resp.convertDataToJson();
-	NetworkSystem::getSingleton().sender( player->getConnId(),PROPERTYS_CHAGE_RESP,jsonStr);
-	sendItemListChange( playerID, newItemUids);
-}
+// void GiftManager::sendToPlayer( Guid playerID,UInt32 type,List<Goods> itemList,List<UInt64> newItemUids)
+// {
+// 	PropertysChange resp;
+// 	Player * player = LogicSystem::getSingleton().getPlayerByGuid(playerID);
+// 
+// 	resp.type = type;
+// 	resp.goodsList = itemList;
+// 	std::string jsonStr = resp.convertDataToJson();
+// 	NetworkSystem::getSingleton().sender( player->getConnId(),PROPERTYS_CHAGE_RESP,jsonStr);
+// 	sendItemListChange( playerID, newItemUids);
+// }
 
 UInt32 GiftManager::subFromPlayer(Guid playerID,Goods goods)
 {
@@ -471,7 +637,6 @@ void GiftManager::getChapterAward(const  ConnId& connId,List<AwardMonsterDamage>
 	UInt32 flag = 0;
 	UInt32 firstContentID = 0;
 	UInt32 contentID = 0;
-	ItemTemplate mItem;
 	UInt32 bigID;
 	UInt32 chapterID;
 	UInt32 firstFinish =0 ;
@@ -486,13 +651,11 @@ void GiftManager::getChapterAward(const  ConnId& connId,List<AwardMonsterDamage>
 	List<Goods> fixedList;
 	List<Goods> itemList;
 	List<Goods> tmpItemList;
-	List<Goods> awardCardList;
-	List<Goods> monsterAwardList;
-	List<Goods> tmpMonsterAwardList;
+	List<Goods> awardCardList;	
+	List<Goods> newOpenChapterStageIDList;
 	List<KeyValue> counter;
 	List<Counter> counterList;
 	List<StepContent> stepContent;
-	List<AwardMonsterDamage> awardMonsterDropList;
 	PlayerBaseData baseData;
 	PlayerFireConfirmData fireConfirmData;
 
@@ -513,6 +676,11 @@ void GiftManager::getChapterAward(const  ConnId& connId,List<AwardMonsterDamage>
 	chapterID = fireConfirmData.m_CopyID;
 	StageTemplate *stageTemplate = gStageTable->get(chapterID);
 	// 	stageTemplate->mType STAGE_TWELVEPALACE
+	if (stageTemplate == NULL)
+	{
+		LOG_WARN("stageTemplate not found!!");
+		return;
+	}
 
 
 	bigID = StageManager::getSingleton().getChapterID(chapterID);
@@ -559,6 +727,9 @@ void GiftManager::getChapterAward(const  ConnId& connId,List<AwardMonsterDamage>
 			goods.subtype = chapterID;
 			goods.num = 1;
 			itemList.insertTail(goods);
+			
+			StageManager::getSingleton().getOpenChapter(player->getPlayerGuid(),chapterID,0,newOpenChapterStageIDList);
+			itemList += newOpenChapterStageIDList;
 
 
 			goods.resourcestype = AWARD_BASE;
@@ -590,27 +761,8 @@ void GiftManager::getChapterAward(const  ConnId& connId,List<AwardMonsterDamage>
 					goods.num = atoi(strVector[2].c_str()) * fireConfirmData.m_Gain/10000;
 					fixedList.insertTail(goods);
 				}
-			}
+			}	
 
-
-			strVector.clear();//哥布林掉落
-			lynxStrSplit(item->mValue.monsterAward, ";", strVector, true);
-			for(UInt32 i=0;i<strVector.size();i++)
-			{
-				Vector<String> subStrVector;
-				lynxStrSplit(strVector[i], "_", subStrVector, true);
-				if (subStrVector.size()!=3)
-				{
-					break;
-				}
-				for(List<AwardMonsterDamage>::Iter *it = awardMonsterList.begin();it!=NULL;it = awardMonsterList.next(it))
-				{
-					if (atoi(subStrVector[0].c_str()) == it->mValue.ID && atoi(subStrVector[1].c_str()) == it->mValue.damageType)
-					{						
-						getAwardByID(it->mValue.ID,it->mValue.times, tmpMonsterAwardList);
-					}
-				}	
-			}
 			break;
 		}		
 	}
@@ -651,11 +803,17 @@ void GiftManager::getChapterAward(const  ConnId& connId,List<AwardMonsterDamage>
 
 	fireConfirmData.m_CardsList.insertTail(tmpCard);
 
-	for(List<Goods>::Iter *it = tmpMonsterAwardList.begin();it!= NULL;it = tmpMonsterAwardList.next(it))
+	
+	//哥布林掉落
+	itemList.clear();
+	StageCalcManager::getSingleton().getMonsterAward(chapterID,itemList,awardMonsterList,fireConfirmData.m_IsMopUp);
+	tmpAward.award = itemList;
+	checkJewelry(itemList,fireConfirmData,isFull);
+	if (itemList.size() != 0)
 	{
-		getContentByID(it->mValue.subtype,monsterAwardList);
+		fireConfirmData.m_MonsterAwardList.insertTail(tmpAward);
 	}
-	fireConfirmData.m_MonsterAwardList = monsterAwardList;
+	
 
 	player->SetFireConfirmData(fireConfirmData);
 }
@@ -692,81 +850,6 @@ void GiftManager::checkJewelry(List<Goods> &itemList,PlayerFireConfirmData &fire
 
 }
 
-void GiftManager::onOpenGiftReq(const ConnId& connId ,GiftReq & msg )
-{
-
-	bool bFlag = false;
-	Goods goods;
-	UInt32 isCounted = 0;
-	UInt32 countNum = 1;
-	UInt32 flag = 0;
-	List<Goods> ItemList;
-	List<KeyValue> counter;
-	List<BoxTemplate> counterList;
-	List<KeyValue> stepContent;	
-	UInt32 contentID ;
-	mAwardList mList = gAwardTable->mList;
-	ItemTemplate mItem;
-	Guid uID ;
-	KeyValue keyValue;
-
-	Player *player = LogicSystem::getSingleton().getPlayerByConnId(connId);
-	msg.convertJsonToData(msg.strReceive);	
-
-	uID = msg.giftID;
-
-	contentID = msg.giftID;
-
-	counterList = gBoxCounterTable->mContentList;
-	counter = player->GetBoxCounter();
-	for (List<BoxTemplate>::Iter * iter = counterList.begin();iter != NULL;iter= counterList.next(iter))//需要计数
-	{
-		if (msg.giftID == iter->mValue.id)
-		{
-			isCounted = 1;
-			for(List<KeyValue>::Iter * it = counter.begin();it != NULL;it = counter.next(it))//已经计数过
-			{
-				if (msg.giftID == it->mValue.key)
-				{
-					isCounted = 2;
-					isCounted = true;
-					countNum = ++(it->mValue.value) ;
-					stepContent = iter->mValue.ContentList;
-
-					for (List<KeyValue>::Iter * it2 = stepContent.end();it2 != NULL; it2 = stepContent.prev(it2))
-					{
-						if (it->mValue.key == it2->mValue.key && it->mValue.value >0)
-						{
-							contentID = it2->mValue.value;
-							break;
-						}
-					}
-				}
-			}
-		}	
-	}	
-
-	GiftManager::getSingleton().getContentByID( contentID,ItemList);
-
-
-	if (flag ==0)//这时候才能判断是否加，发送的是失败还是成功
-	{
-
-		if (isCounted == 1)
-		{
-			keyValue.key = msg.giftID;
-			keyValue.value = countNum;
-			counter.insertTail(keyValue);		
-			player->setBoxCounter(counter);
-		}		
-		GiftManager::getSingleton().updateCounter(player->getPlayerGuid(),msg.giftID,countNum);
-
-		GiftManager::getSingleton().combineSame(ItemList);
-		GiftManager::getSingleton().addToPlayer(player->getPlayerGuid(),REFLASH_GIFT,ItemList);
-	}
-
-
-}
 
 void GiftManager::getGift(const ConnId& connId ,UInt32 id,ChapterEndResp &resp)
 {
@@ -777,6 +860,7 @@ void GiftManager::getGift(const ConnId& connId ,UInt32 id,ChapterEndResp &resp)
 	UInt32 countNum = 1;
 	UInt32 flag = 0;
 	List<Goods> ItemList;
+	List<Goods> tmpItemList;
 	List<KeyValue> counter;
 	List<BoxTemplate> counterList;
 	List<KeyValue> stepContent;	
@@ -818,7 +902,13 @@ void GiftManager::getGift(const ConnId& connId ,UInt32 id,ChapterEndResp &resp)
 		}	
 	}	
 
-	GiftManager::getSingleton().getContentByID(contentID,ItemList);
+	//awardcontent改为award
+	tmpItemList.clear();
+	GiftManager::getSingleton().getAwardByID(contentID,0, tmpItemList);	
+	for(List<Goods>::Iter *it = tmpItemList.begin();it!= NULL;it = tmpItemList.next(it))
+	{
+		GiftManager::getSingleton().getContentByID(it->mValue.subtype,ItemList);
+	}
 
 
 	if (flag ==0)//这时候才能判断是否加，发送的是失败还是成功
@@ -883,11 +973,19 @@ void GiftManager::onOpenBoxReq(const ConnId& connId ,BoxReq & msg )
 	KeyValue keyValue;
 
 	Player *player = LogicSystem::getSingleton().getPlayerByConnId(connId);
+	if (player == NULL)
+	{
+		LOG_WARN("player not found!!");
+		return;
+	}
 	msg.convertJsonToData(msg.strReceive);	
 
 	item =  player->getItemManager().getItemByGuid(msg.boxID);
 	if (item == NULL)
 	{
+// 		resp.result = LynxErrno::ClienServerDataNotMatch;
+		std::string sendStr = resp.convertDataToJson();
+		NetworkSystem::getSingleton().sender( connId,OPEN_BOX_RESP,sendStr);
 		return;
 	}
 	msg.boxID = item->m_nItemId;
@@ -957,7 +1055,7 @@ void GiftManager::onOpenBoxReq(const ConnId& connId ,BoxReq & msg )
 		goods.subtype = uID;
 		goods.num = -1;
 		ItemList.insertTail(goods);
-		GiftManager::getSingleton().addToPlayer(player->getPlayerGuid(),REFLASH_BOX,ItemList);
+		GiftManager::getSingleton().addToPlayer(player->getPlayerGuid(),REFLASH_BOX,ItemList,MiniLog54);
 		resp.ID = msg.boxID;
 		resp.goodsList = ItemList;
 	}
@@ -971,129 +1069,6 @@ void GiftManager::onOpenBoxReq(const ConnId& connId ,BoxReq & msg )
 	NetworkSystem::getSingleton().sender( connId,OPEN_BOX_RESP,jsonStr);
 }
 
-//
-void GiftManager::onqiyongReq(const  ConnId& connId ,LotteryDrawReq & msg )
-{
-	LotteryDrawResp resp;
-	UInt32 contentID;
-	UInt32 maxTimes = 1;
-	bool bFlag = false;
-	Goods goods;
-	bool isCounted = false;
-	UInt32 countNum = 1;
-	UInt32 flag = 0;
-	List<Goods> ItemList;
-	List<KeyValue> counter;
-	List<LotteryTemplate> counterList;
-	List<TypeNumValue> stepContent;
-	KeyValue keyValue;
-	Player * player = LogicSystem::getSingleton().getPlayerByConnId(connId);
-
-	msg.convertJsonToData(msg.strReceive);
-
-	counterList =gLotteryTable ->mContentList;
-	counter = player->GetBoxCounter();
-
-	resp.drawType = msg.drawType;
-	contentID = 0;
-	UInt32 rightType = 0;
-	UInt32 counterID;
-
-	if(msg.drawType == 1)
-	{
-		counterID = LOTTERY_TYPE_TO_ID1;
-	}
-	if(msg.drawType == 2)
-	{
-		counterID = LOTTERY_TYPE_TO_ID2;
-		maxTimes = LOTTERY_MAX_DRAW;
-	}
-	if(msg.drawType == 3)
-	{
-		counterID = LOTTERY_TYPE_TO_ID3;
-	}
-
-	for(int i =0;i< maxTimes;i++)
-	{
-		for (List<LotteryTemplate>::Iter * iter = counterList.begin();iter != NULL;iter= counterList.next(iter))//类型
-		{
-			if (msg.drawType == iter->mValue.id)
-			{
-				contentID = iter->mValue.firstAward;
-				for(List<KeyValue>::Iter * it = counter.begin();it != NULL;it = counter.next(it))//已经计数过
-				{
-					if (counterID == it->mValue.key)
-					{
-						isCounted = true;
-						countNum = ++(it->mValue.value) ;
-						if (msg.drawType ==3)
-						{
-							if (it->mValue.value -  TimeUtil::getTimeSec() < LOTTERY_INTERVAL)
-							{
-								resp.drawType = 4;
-								std::string jsonStr = resp.convertDataToJson();
-								NetworkSystem::getSingleton().sender( connId,OPEN_LOTTERY_DRAW_RESP,jsonStr);
-								return ;
-							}
-							countNum =  TimeUtil::getTimeSec();
-						}
-
-						stepContent = iter->mValue.ContentList;
-
-						for (List<TypeNumValue>::Iter * it2 = stepContent.end();it2 != NULL; it2 = stepContent.prev(it2))
-						{
-							if (it2->mValue.uType ==1)
-							{
-								if (it2->mValue.num == it->mValue.value)
-								{
-									contentID = it2->mValue.uValue;
-									rightType =1;
-									break;
-								}
-							}							
-						}
-						if (rightType >0)
-						{
-							break;
-						}
-						for (List<TypeNumValue>::Iter * it2 = stepContent.end();it2 != NULL; it2 = stepContent.prev(it2))
-						{
-							if (it2->mValue.uType ==2)
-							{
-								if (it2->mValue.num == 0)
-								{
-									break;
-								}
-								if ((it->mValue.value % it2->mValue.num  ) ==0)
-								{
-									contentID = it2->mValue.uValue;
-									rightType =2;
-									break;
-								}
-							}
-						}					
-					}				
-				}							
-			}	
-		}	
-		if (msg.drawType == 3)
-		{
-			countNum = TimeUtil::getTimeSec();
-		}
-		GiftManager::getSingleton().updateCounter(player->getPlayerGuid(),counterID,countNum);
-		keyValue.key = counterID;
-		keyValue.value = countNum;
-		counter.insertTail(keyValue);		
-		player->setBoxCounter(counter);
-		GiftManager::getSingleton().getContentByID(contentID, ItemList);	
-	}
-
-	resp.goodsList = ItemList;
-	GiftManager::getSingleton().addToPlayer(player->getPlayerGuid(),REFLASH_LOTTERY,ItemList);
-
-	std::string jsonStr = resp.convertDataToJson();
-	NetworkSystem::getSingleton().sender( connId,OPEN_LOTTERY_DRAW_RESP,jsonStr);
-}
 void GiftManager::onRewardLotteryMsgReq(const  ConnId& connId ,RewardLotteryMsgReq & msg )
 {
 
@@ -1102,22 +1077,51 @@ void GiftManager::onRewardLotteryMsgReq(const  ConnId& connId ,RewardLotteryMsgR
 	RewardLotteryTemplate rewardLotteryTemplate4;
 	RewardLotteryMsgResp resp;
 	Player * player = LogicSystem::getSingleton().getPlayerByConnId(connId);
-
-
+	
 	if(player == NULL)
 	{
 		return;
 	}
 	PlayerCounterData counterData = player->GetPlayerCounterData();
 	
-	UInt32 onceTime = 0;
-	UInt32 tenTime = 0;
+	int onceTime = 0;
+	int tenTime = 0;
 	GiftManager::getSingleton().getLotteryLeftTime(player->getPlayerGuid(),onceTime,tenTime);
+
+
+	List<UInt32> idList;
+	idList = GiftManager::getSingleton().getRewardLotteryIDs(RL_ONCE);
+	for (List<UInt32>::Iter * iter = idList.begin();iter !=NULL;iter = idList.next(iter))
+	{
+		resp.awardId1 = iter->mValue;
+		break;
+	}
+
+	idList = GiftManager::getSingleton().getRewardLotteryIDs(RL_TEN);
+	for (List<UInt32>::Iter * iter = idList.begin();iter !=NULL;iter = idList.next(iter))
+	{
+		resp.awardId2 = iter->mValue;
+		break;
+	}
+
+	idList = GiftManager::getSingleton().getRewardLotteryIDs(RL_VIP);
+	for (List<UInt32>::Iter * iter = idList.begin();iter !=NULL;iter = idList.next(iter))
+	{
+		resp.awardId3 = iter->mValue;
+		break;
+	}
+	GlobalValue globalValue = GlobalValueManager::getSingleton().getGlobalValue();
+
+
+	PlayerDailyResetData dailyResetData = player->getPlayerDailyResetData();
 
 	resp.onceLeftTime = onceTime;
 	resp.tenLeftTime = tenTime;
+	resp.freeOnceLeftTimes = globalValue.uRewardLotteryFreeOnceMaxTimes - dailyResetData.m_RewardLotteryDailyOnceFreeCount;
 	resp.couponOnceNum = counterData.m_RewardLotteryOnceTicket;
 	resp.couponTenNum = counterData.m_RewardLotteryTenTicket;
+
+
 
 	std::string jsonStr = resp.convertDataToJson();
 	NetworkSystem::getSingleton().sender( connId,OPEN_LOTTERY_MSG_RESP,jsonStr); 
@@ -1172,14 +1176,62 @@ List<UInt32> GiftManager::getRewardLotteryIDs(UInt32 typeID)
 	return IDList;
 }
 
+UInt32 GiftManager::getUpDownOne( UInt32 &nowCount,UInt32 maxKey, RewardLotteryTemplate *rewardLotteryTemplate)
+{
+	UInt32 awardID = 0;
+	UInt32 overMaxKeyTimes =  (nowCount - maxKey)% (rewardLotteryTemplate->nextbestneedtimes + 1);
+
+	if ( overMaxKeyTimes>= rewardLotteryTemplate->nextbestneedtimes )
+	{
+		nowCount = maxKey-1 ;
+		awardID = rewardLotteryTemplate->bestaward;
+	}
+	else if ( overMaxKeyTimes== (rewardLotteryTemplate->nextbestneedtimes -2))
+	{
+		if((rand()%10000) >= 6666)
+		{
+			nowCount = maxKey-1 ;
+			awardID = rewardLotteryTemplate->bestaward;
+		}
+		else
+		{
+			awardID = rewardLotteryTemplate->normalaward;
+		}
+	}
+	else if(overMaxKeyTimes == (rewardLotteryTemplate->nextbestneedtimes-1))
+	{
+		if((rand()%10000) >= 5000)
+		{
+			nowCount = maxKey-1 ;
+			awardID = rewardLotteryTemplate->bestaward;
+		}
+		else
+		{
+			awardID = rewardLotteryTemplate->normalaward;
+		}
+	}			 
+	else
+	{				 
+		awardID = rewardLotteryTemplate->normalaward;
+	}	
+	return awardID;
+}
+
 UInt32 GiftManager::getRewardLotteryAwardID(Guid playerID,UInt32 id,UInt32 &awardID)
 {
 
 	UInt32 getIt = 0;
 	UInt32 maxKey = 0;
 	UInt32 nowTime = TimeUtil::getTimeSec();	
+	Goods goods;
+	List<Goods> itemList;
+
 	Player * player  = LogicSystem::getSingleton().getPlayerByGuid(playerID);		  
 	RewardLotteryTemplate *rewardLotteryTemplate = gRewardLotteryTable->get(id);
+	if (rewardLotteryTemplate == NULL)
+	{
+		return 0;
+	}
 	PlayerCounterData counterData = player->GetPlayerCounterData();
 
 	if (rewardLotteryTemplate->refreshtime > 0)
@@ -1193,11 +1245,7 @@ UInt32 GiftManager::getRewardLotteryAwardID(Guid playerID,UInt32 id,UInt32 &awar
 		}		
 	}
 
-	if (player->getPlayerGold() < rewardLotteryTemplate->cost)
-	{
-		return LynxErrno::RmbNotEnough;
-	}
-
+	
 	if (rewardLotteryTemplate->vipneed > player->getVipLevel())
 	{		
 		return LynxErrno::VipLevelNotEnough;		
@@ -1214,10 +1262,10 @@ UInt32 GiftManager::getRewardLotteryAwardID(Guid playerID,UInt32 id,UInt32 &awar
 
 	if (rewardLotteryTemplate->type == 1)//免费单抽
 	{
-		UInt32 onceTime = 0;
-		UInt32 tenTime = 0;
+		int onceTime = 0;
+		int tenTime = 0;
 		GiftManager::getSingleton().getLotteryLeftTime(player->getPlayerGuid(),onceTime,tenTime);
-		if (onceTime > 0)
+		if (onceTime != 0)
 		{
 			return LynxErrno::TimeNotRight;
 		}	
@@ -1245,32 +1293,17 @@ UInt32 GiftManager::getRewardLotteryAwardID(Guid playerID,UInt32 id,UInt32 &awar
 			{
 				return LynxErrno::NotFound;
 			}
-			//第6个直接给最好的并重置
-			if ( (counterData.m_RewardLotteryOnceFreeCount - maxKey)% (rewardLotteryTemplate->nextbestneedtimes + 1)>= rewardLotteryTemplate->nextbestneedtimes )
-			{
-				counterData.m_RewardLotteryOnceFreeCount = maxKey-1 ;
-				awardID = rewardLotteryTemplate->bestaward;
-			}
-			else if ( (counterData.m_RewardLotteryOnceFreeCount - maxKey)% (rewardLotteryTemplate->nextbestneedtimes + 1)>= (rewardLotteryTemplate->nextbestneedtimes -2)&&
-				(counterData.m_RewardLotteryOnceFreeCount - maxKey)% (rewardLotteryTemplate->nextbestneedtimes + 1)< (rewardLotteryTemplate->nextbestneedtimes))
-			{
-				if((rand()%10000) >6666)
-				{
-					counterData.m_RewardLotteryOnceFreeCount = maxKey-1 ;
-					awardID = rewardLotteryTemplate->bestaward;
-				}
-				else
-				{
-					awardID = rewardLotteryTemplate->normalaward;
-				}
-			}			 
-			else
-			{				 
-				awardID = rewardLotteryTemplate->normalaward;
-			}		
+
+			awardID =  getUpDownOne(counterData.m_RewardLotteryOnceFreeCount, maxKey,rewardLotteryTemplate);
 		}
 		counterData.m_RewardLotteryOnceTime = nowTime;
 		counterData.m_RewardLotteryOnceFreeCount ++;
+		PlayerDailyResetData dailyResetData = player->getPlayerDailyResetData();
+		dailyResetData.m_RewardLotteryDailyOnceFreeCount++;
+		player->setPlayerDailyResetData(dailyResetData);
+		player->getPersistManager().setDirtyBit(DAILYRESETBIT);
+
+
 	}
 	else if (rewardLotteryTemplate->type == 2)//单抽券
 	{
@@ -1301,29 +1334,7 @@ UInt32 GiftManager::getRewardLotteryAwardID(Guid playerID,UInt32 id,UInt32 &awar
 			{
 				return LynxErrno::NotFound;
 			}
-			//第6个直接给最好的并重置
-			if ( (counterData.m_RewardLotteryOnceTicketCount - maxKey)% (rewardLotteryTemplate->nextbestneedtimes + 1)>= rewardLotteryTemplate->nextbestneedtimes )
-			{
-				counterData.m_RewardLotteryOnceTicketCount = maxKey-1 ;
-				awardID = rewardLotteryTemplate->bestaward;
-			}
-			else if ( (counterData.m_RewardLotteryOnceTicketCount - maxKey)% (rewardLotteryTemplate->nextbestneedtimes + 1)>= (rewardLotteryTemplate->nextbestneedtimes -2)&&
-				(counterData.m_RewardLotteryOnceTicketCount - maxKey)% (rewardLotteryTemplate->nextbestneedtimes + 1)< (rewardLotteryTemplate->nextbestneedtimes))
-			{
-				if((rand()%10000) >6666)
-				{
-					counterData.m_RewardLotteryOnceTicketCount = maxKey-1 ;
-					awardID = rewardLotteryTemplate->bestaward;
-				}
-				else
-				{
-					awardID = rewardLotteryTemplate->normalaward;
-				}
-			}			 
-			else
-			{				 
-				awardID = rewardLotteryTemplate->normalaward;
-			}		
+			awardID =  getUpDownOne(counterData.m_RewardLotteryOnceTicketCount, maxKey,rewardLotteryTemplate);
 		}
 		counterData.m_RewardLotteryOnceTicket --;
 		counterData.m_RewardLotteryOnceTicketCount ++;
@@ -1358,35 +1369,16 @@ UInt32 GiftManager::getRewardLotteryAwardID(Guid playerID,UInt32 id,UInt32 &awar
 			{
 				return LynxErrno::NotFound;
 			}
-			UInt32 tmp = (counterData.m_RewardLotteryOnceCount - maxKey)% (rewardLotteryTemplate->nextbestneedtimes + 1);
-			//第6个直接给最好的并重置
-			if ( (counterData.m_RewardLotteryOnceCount - maxKey)% (rewardLotteryTemplate->nextbestneedtimes + 1) >= rewardLotteryTemplate->nextbestneedtimes )
-			{
-				counterData.m_RewardLotteryOnceCount = maxKey-1 ;
-				awardID = rewardLotteryTemplate->bestaward;
-			}
-			else if ( (counterData.m_RewardLotteryOnceCount - maxKey)% (rewardLotteryTemplate->nextbestneedtimes + 1)>= (rewardLotteryTemplate->nextbestneedtimes -2)&&
-				(counterData.m_RewardLotteryOnceCount - maxKey)% (rewardLotteryTemplate->nextbestneedtimes + 1)< (rewardLotteryTemplate->nextbestneedtimes))
-			{
-				if((rand()%10000) >6666)
-				{
-					counterData.m_RewardLotteryOnceCount = maxKey-1 ;
-					awardID = rewardLotteryTemplate->bestaward;
-				}
-				else
-				{
-					awardID = rewardLotteryTemplate->normalaward;
-				}
-			}			 
-			else
-			{				 
-				awardID = rewardLotteryTemplate->normalaward;
-			}		
+			awardID =  getUpDownOne(counterData.m_RewardLotteryOnceCount, maxKey,rewardLotteryTemplate);
 		}
-		PlayerBaseData baseData = player->getPlayerBaseData();
-		baseData.m_nGold -= rewardLotteryTemplate->cost;
-		player->setPlayerBaseData(baseData);
-		player->getPersistManager().setDirtyBit(BASEDATABIT);
+		
+
+		goods.resourcestype =AWARD_BASE;
+		goods.subtype = AWARD_BASE_GOLD;
+		goods.num = 0 - rewardLotteryTemplate->cost;
+		itemList.insertTail(goods);
+		GiftManager::getSingleton().addToPlayer(player->getPlayerGuid(),REFLASH_AWARD,itemList,MiniLog91);
+
 
 		counterData.m_RewardLotteryOnceCount ++;
 	}
@@ -1455,7 +1447,7 @@ UInt32 GiftManager::getRewardLotteryAwardID(Guid playerID,UInt32 id,UInt32 &awar
 			{
 				return LynxErrno::NotFound;
 			}
-			//第6个直接给最好的并重置
+			//第maxKey+1个直接给最好的并重置
 			if(counterData.m_RewardLotteryTenCount == maxKey + rewardLotteryTemplate->nextbestneedtimes + 1)
 			{
 				awardID = rewardLotteryTemplate->bestaward;
@@ -1465,10 +1457,13 @@ UInt32 GiftManager::getRewardLotteryAwardID(Guid playerID,UInt32 id,UInt32 &awar
 				awardID = rewardLotteryTemplate->normalaward;
 			}	
 		}
-		PlayerBaseData baseData = player->getPlayerBaseData();
-		baseData.m_nGold -= rewardLotteryTemplate->cost;
-		player->setPlayerBaseData(baseData);
-		player->getPersistManager().setDirtyBit(BASEDATABIT);
+		
+		goods.resourcestype =AWARD_BASE;
+		goods.subtype = AWARD_BASE_GOLD;
+		goods.num = 0 - rewardLotteryTemplate->cost;
+		itemList.insertTail(goods);
+		GiftManager::getSingleton().addToPlayer(player->getPlayerGuid(),REFLASH_AWARD,itemList,MiniLog93);
+
 	}
 	else if (rewardLotteryTemplate->type == 6)//vip抽
 	{
@@ -1526,35 +1521,19 @@ UInt32 GiftManager::getRewardLotteryAwardID(Guid playerID,UInt32 id,UInt32 &awar
 		}
 		else
 		{
+			if (rewardLotteryTemplate->nextbestneedtimes == 0)
+			{
+				return LynxErrno::NotFound;
+			}			
 			
-			//第6个直接给最好的并重置
-			if ( (count - maxKey)>= rewardLotteryTemplate->nextbestneedtimes )
-			{
-				count = maxKey-1 ;
-				awardID = rewardLotteryTemplate->bestaward;
-			}
-			else if ( (count - maxKey)>= (rewardLotteryTemplate->nextbestneedtimes -2)&&
-				(count - maxKey) < (rewardLotteryTemplate->nextbestneedtimes))
-			{
-				if((rand()%10000) >6666)
-				{
-					count = maxKey-1 ;
-					awardID = rewardLotteryTemplate->bestaward;
-				}
-				else
-				{
-					awardID = rewardLotteryTemplate->normalaward;
-				}
-			}			 
-			else
-			{				 
-				awardID = rewardLotteryTemplate->normalaward;
-			}		
+
+		awardID =  getUpDownOne(count, maxKey,rewardLotteryTemplate);
 		}
-		PlayerBaseData baseData = player->getPlayerBaseData();
-		baseData.m_nGold -= rewardLotteryTemplate->cost;
-		player->setPlayerBaseData(baseData);
-		player->getPersistManager().setDirtyBit(BASEDATABIT);
+		goods.resourcestype =AWARD_BASE;
+		goods.subtype = AWARD_BASE_GOLD;
+		goods.num = 0 - rewardLotteryTemplate->cost;
+		itemList.insertTail(goods);
+		GiftManager::getSingleton().addToPlayer(player->getPlayerGuid(),REFLASH_AWARD,itemList,MiniLog94);
 	
 		count ++;
 		if (rewardLotteryTemplate->id == tmpAwardID)
@@ -1566,7 +1545,7 @@ UInt32 GiftManager::getRewardLotteryAwardID(Guid playerID,UInt32 id,UInt32 &awar
 			counterData.m_RewardLotteryVipElseCount = count;
 		}
 	}
-	else if (rewardLotteryTemplate->type == 7)//单抽
+	else if (rewardLotteryTemplate->type == 7)//十连抽券
 	{
 		if (counterData.m_RewardLotteryTenTicketCount < maxKey)
 		{
@@ -1605,6 +1584,369 @@ UInt32 GiftManager::getRewardLotteryAwardID(Guid playerID,UInt32 id,UInt32 &awar
 
 }
 
+
+UInt32 GiftManager::onlyGetRewardLotteryAwardID(Guid playerID,UInt32 id,UInt32 &awardID)
+{
+
+	UInt32 getIt = 0;
+	UInt32 maxKey = 0;
+	UInt32 nowTime = TimeUtil::getTimeSec();	
+	Goods goods;
+	List<Goods> itemList;
+
+	Player * player  = LogicSystem::getSingleton().getPlayerByGuid(playerID);		  
+	RewardLotteryTemplate *rewardLotteryTemplate = gRewardLotteryTable->get(id);
+	if (rewardLotteryTemplate == NULL)
+	{
+		return 0;
+	}
+	PlayerCounterData counterData = player->GetPlayerCounterData();
+
+	if (rewardLotteryTemplate->refreshtime > 0)
+	{
+		if (rewardLotteryTemplate->type == 1)
+		{
+// 			if ((nowTime - counterData.m_RewardLotteryOnceTime) < rewardLotteryTemplate->refreshtime)
+// 			{
+// 				return LynxErrno::BeingCooled;
+// 			}			 
+		}		
+	}
+
+
+// 	if (rewardLotteryTemplate->vipneed > player->getVipLevel())
+// 	{		
+// 		return LynxErrno::VipLevelNotEnough;		
+// 	}
+
+	//找maxkey
+	for (List<KeyValue>::Iter * it = rewardLotteryTemplate->keyValues.begin();it !=NULL;it = rewardLotteryTemplate->keyValues.next(it))
+	{
+		if (it->mValue.key > maxKey)
+		{
+			maxKey = it->mValue.key;
+		}		
+	}
+
+	if (rewardLotteryTemplate->type == 1)//免费单抽
+	{
+// 		int onceTime = 0;
+// 		int tenTime = 0;
+// 		GiftManager::getSingleton().getLotteryLeftTime(player->getPlayerGuid(),onceTime,tenTime);
+// 		if (onceTime > 0)
+// 		{
+// 			return LynxErrno::TimeNotRight;
+// 		}	
+
+
+		if (counterData.m_RewardLotteryOnceFreeCount < maxKey)
+		{
+			for (List<KeyValue>::Iter * it = rewardLotteryTemplate->keyValues.begin();it !=NULL;it = rewardLotteryTemplate->keyValues.next(it))
+			{
+				if (it->mValue.key == (counterData.m_RewardLotteryOnceFreeCount+1))
+				{
+					getIt = 1;
+					awardID = it->mValue.value;
+					break;
+				}
+			}
+			if (getIt == 0)
+			{
+				awardID = rewardLotteryTemplate->normalaward;
+			}
+		}
+		else
+		{
+// 			if (rewardLotteryTemplate->nextbestneedtimes == 0)
+// 			{
+// 				return LynxErrno::NotFound;
+// 			}
+
+			awardID =  getUpDownOne(counterData.m_RewardLotteryOnceFreeCount, maxKey,rewardLotteryTemplate);
+		}
+// 		counterData.m_RewardLotteryOnceTime = nowTime;
+// 		counterData.m_RewardLotteryOnceFreeCount ++;
+	}
+	else if (rewardLotteryTemplate->type == 2)//单抽券
+	{
+// 		if (counterData.m_RewardLotteryOnceTicket < 1)
+// 		{
+// 			return LynxErrno::OnceTicketNotEnough;
+// 		}
+
+		if (counterData.m_RewardLotteryOnceTicketCount < maxKey)
+		{
+			for (List<KeyValue>::Iter * it = rewardLotteryTemplate->keyValues.begin();it !=NULL;it = rewardLotteryTemplate->keyValues.next(it))
+			{
+				if (it->mValue.key == (counterData.m_RewardLotteryOnceTicketCount+1))
+				{
+					getIt = 1;
+					awardID = it->mValue.value;
+					break;
+				}
+			}
+			if (getIt == 0)
+			{
+				awardID = rewardLotteryTemplate->normalaward;
+			}
+		}
+		else
+		{
+// 			if (rewardLotteryTemplate->nextbestneedtimes == 0)
+// 			{
+// 				return LynxErrno::NotFound;
+// 			}
+			awardID =  getUpDownOne(counterData.m_RewardLotteryOnceTicketCount, maxKey,rewardLotteryTemplate);
+		}
+// 		counterData.m_RewardLotteryOnceTicket --;
+// 		counterData.m_RewardLotteryOnceTicketCount ++;
+	}
+
+	else if (rewardLotteryTemplate->type == 3)//单抽
+	{
+// 		if (player->getPlayerGold() < rewardLotteryTemplate->cost)
+// 		{
+// 			return LynxErrno::RmbNotEnough;
+// 		}
+
+		if (counterData.m_RewardLotteryOnceCount < maxKey)
+		{
+			for (List<KeyValue>::Iter * it = rewardLotteryTemplate->keyValues.begin();it !=NULL;it = rewardLotteryTemplate->keyValues.next(it))
+			{
+				if (it->mValue.key == (counterData.m_RewardLotteryOnceCount+1))
+				{
+					getIt = 1;
+					awardID = it->mValue.value;
+					break;
+				}
+			}
+			if (getIt == 0)
+			{
+				awardID = rewardLotteryTemplate->normalaward;
+			}
+		}
+		else
+		{
+// 			if (rewardLotteryTemplate->nextbestneedtimes == 0)
+// 			{
+// 				return LynxErrno::NotFound;
+// 			}
+			awardID =  getUpDownOne(counterData.m_RewardLotteryOnceCount, maxKey,rewardLotteryTemplate);
+		}
+
+
+// 		goods.resourcestype =AWARD_BASE;
+// 		goods.subtype = AWARD_BASE_GOLD;
+// 		goods.num = 0 - rewardLotteryTemplate->cost;
+// 		itemList.insertTail(goods);
+// 		GiftManager::getSingleton().addToPlayer(player->getPlayerGuid(),REFLASH_AWARD,itemList,MiniLog91);
+
+
+// 		counterData.m_RewardLotteryOnceCount ++;
+	}
+	else if (rewardLotteryTemplate->type == 4)//免费十连抽
+	{
+		if (counterData.m_RewardLotteryTenFreeCount < maxKey)
+		{
+			for (List<KeyValue>::Iter * it = rewardLotteryTemplate->keyValues.begin();it !=NULL;it = rewardLotteryTemplate->keyValues.next(it))
+			{
+				if (it->mValue.key == (counterData.m_RewardLotteryTenFreeCount+1))
+				{
+					getIt = 1;
+					awardID = it->mValue.value;
+					break;
+				}
+			}
+			if (getIt == 0)
+			{
+				awardID = rewardLotteryTemplate->normalaward;
+			}
+		}
+		else
+		{
+// 			if (rewardLotteryTemplate->nextbestneedtimes == 0)
+// 			{
+// 				return LynxErrno::NotFound;
+// 			}
+			if(counterData.m_RewardLotteryTenFreeCount == maxKey + rewardLotteryTemplate->nextbestneedtimes + 1)
+			{
+				awardID = rewardLotteryTemplate->bestaward;
+			}
+			else
+			{
+				awardID = rewardLotteryTemplate->normalaward;
+			}				
+		}
+	}
+	else if (rewardLotteryTemplate->type == 5)//十连抽
+	{
+// 		if (player->getPlayerGold() < rewardLotteryTemplate->cost)
+// 		{
+// 			return LynxErrno::RmbNotEnough;
+// 		}
+
+
+		// 		counterData.m_RewardLotteryTenCount ++;//十连抽后面加
+		if (counterData.m_RewardLotteryTenCount < maxKey)
+		{
+			for (List<KeyValue>::Iter * it = rewardLotteryTemplate->keyValues.begin();it !=NULL;it = rewardLotteryTemplate->keyValues.next(it))
+			{
+				if (it->mValue.key == (counterData.m_RewardLotteryTenCount+1))
+				{
+					getIt = 1;
+					awardID = it->mValue.value;
+					break;
+				}
+			}
+			if (getIt == 0)
+			{
+				awardID = rewardLotteryTemplate->normalaward;
+			}
+		}
+		else
+		{
+// 			if (rewardLotteryTemplate->nextbestneedtimes == 0)
+// 			{
+// 				return LynxErrno::NotFound;
+// 			}
+			//第maxKey+1个直接给最好的并重置
+			if(counterData.m_RewardLotteryTenCount == maxKey + rewardLotteryTemplate->nextbestneedtimes + 1)
+			{
+				awardID = rewardLotteryTemplate->bestaward;
+			}
+			else
+			{
+				awardID = rewardLotteryTemplate->normalaward;
+			}	
+		}
+
+// 		goods.resourcestype =AWARD_BASE;
+// 		goods.subtype = AWARD_BASE_GOLD;
+// 		goods.num = 0 - rewardLotteryTemplate->cost;
+// 		itemList.insertTail(goods);
+// 		GiftManager::getSingleton().addToPlayer(player->getPlayerGuid(),REFLASH_AWARD,itemList,MiniLog93);
+
+	}
+	else if (rewardLotteryTemplate->type == 6)//vip抽
+	{
+// 		if(player->getVipLevel() < rewardLotteryTemplate->vipneed)
+// 		{
+// 			return LynxErrno::VipLevelNotEnough;
+// 
+// 		}
+// 		if (player->getPlayerGold() < rewardLotteryTemplate->cost)
+// 		{
+// 			return LynxErrno::RmbNotEnough;
+// 		}
+		UInt32 tmpAwardID = 0;
+		UInt32 count = 0;
+
+		for (Map<UInt32, LotteryActivityTemplate>::Iter*iter = gLotteryActivityTable->mMap.begin();iter != NULL;iter = gLotteryActivityTable->mMap.next(iter))
+		{
+			if (iter->mValue.id == 1)
+			{
+				tmpAwardID = iter->mValue.lotteryid;
+				break;
+			}
+		}
+
+		if (rewardLotteryTemplate->id == tmpAwardID)
+		{
+			count = counterData.m_RewardLotteryVipDefaultCount;			
+		}
+		else if (rewardLotteryTemplate->id == counterData.m_RewardLotteryVipAwardID)
+		{
+			count = counterData.m_RewardLotteryVipElseCount;
+		}
+		else
+		{
+			count = 0;			
+		}
+		counterData.m_RewardLotteryVipAwardID = rewardLotteryTemplate->id;
+
+
+		if (count < maxKey)
+		{
+			for (List<KeyValue>::Iter * it = rewardLotteryTemplate->keyValues.begin();it !=NULL;it = rewardLotteryTemplate->keyValues.next(it))
+			{
+				if (it->mValue.key == (count+1))
+				{
+					getIt = 1;
+					awardID = it->mValue.value;
+					break;
+				}
+			}
+			if (getIt == 0)
+			{
+				awardID = rewardLotteryTemplate->normalaward;
+			}
+		}
+		else
+		{
+// 			if (rewardLotteryTemplate->nextbestneedtimes == 0)
+// 			{
+// 				return LynxErrno::NotFound;
+// 			}			
+
+
+			awardID =  getUpDownOne(count, maxKey,rewardLotteryTemplate);
+		}
+// 		goods.resourcestype =AWARD_BASE;
+// 		goods.subtype = AWARD_BASE_GOLD;
+// 		goods.num = 0 - rewardLotteryTemplate->cost;
+// 		itemList.insertTail(goods);
+// 		GiftManager::getSingleton().addToPlayer(player->getPlayerGuid(),REFLASH_AWARD,itemList,MiniLog94);
+
+// 		count ++;
+// 		if (rewardLotteryTemplate->id == tmpAwardID)
+// 		{
+// 			counterData.m_RewardLotteryVipDefaultCount = count;
+// 		}
+// 		else
+// 		{
+// 			counterData.m_RewardLotteryVipElseCount = count;
+// 		}
+	}
+	else if (rewardLotteryTemplate->type == 7)//十连抽券
+	{
+		if (counterData.m_RewardLotteryTenTicketCount < maxKey)
+		{
+			for (List<KeyValue>::Iter * it = rewardLotteryTemplate->keyValues.begin();it !=NULL;it = rewardLotteryTemplate->keyValues.next(it))
+			{
+				if (it->mValue.key == (counterData.m_RewardLotteryTenTicketCount+1))
+				{
+					getIt = 1;
+					awardID = it->mValue.value;
+					break;
+				}
+			}
+			if (getIt == 0)
+			{
+				awardID = rewardLotteryTemplate->normalaward;
+			}
+		}
+		else
+		{			
+			if(counterData.m_RewardLotteryTenTicketCount == maxKey + rewardLotteryTemplate->nextbestneedtimes + 1)
+			{
+				awardID = rewardLotteryTemplate->bestaward;
+			}
+			else
+			{
+				awardID = rewardLotteryTemplate->normalaward;
+			}
+		}
+	}
+
+// 	player->setPlayerCounterData(counterData);
+// 	player->getPersistManager().setDirtyBit(COUNTERDATABIT);
+
+
+	return LynxErrno::None;
+
+}
+
+
 UInt32 GiftManager::checkRewardLotteryTenCount(Guid playerID,UInt32 typeID,UInt32 &count)
 {
 
@@ -1640,10 +1982,6 @@ UInt32 GiftManager::checkRewardLotteryTenCount(Guid playerID,UInt32 typeID,UInt3
 			maxKey = it->mValue.key;
 		}		
 	}
-	PlayerBaseData baseData = player->getPlayerBaseData();
-	player->setPlayerBaseData(baseData);
-	player->getPersistManager().setDirtyBit(BASEDATABIT);
-
 	
 	// 		counterData.m_RewardLotteryTenCount ++;//十连抽后面加
 	if (count < maxKey)
@@ -1682,8 +2020,8 @@ UInt32 GiftManager::checkRewardLotteryTenCount(Guid playerID,UInt32 typeID,UInt3
 UInt32 GiftManager::checkRewardLotteryTen(Guid playerID,UInt32 typeID)
 {
 
-	UInt32 onceTime = 0;
-	UInt32 tenTime = 0;
+	int onceTime = 0;
+	int tenTime = 0;
 	PlayerCounterData counterData;
 
 	Player * player = LogicSystem::getSingleton().getPlayerByGuid(playerID);
@@ -1732,6 +2070,68 @@ UInt32 GiftManager::checkRewardLotteryTen(Guid playerID,UInt32 typeID)
 	return LynxErrno::None;
 }
 
+void GiftManager::canRewardLotteryType(UInt64 playerID, UInt32 &reqType)
+{
+	int onceTime = 0;
+	int tenTime = 0;
+
+	Player * player = LogicSystem::getSingleton().getPlayerByGuid(playerID);
+	if (player == NULL)
+	{
+		LOG_WARN("player not found!!");
+		return;
+	}
+
+	PlayerCounterData counterData;
+	counterData = player->GetPlayerCounterData();//位置不能换
+
+	GiftManager::getSingleton().getLotteryLeftTime(playerID,onceTime,tenTime);
+	if (reqType == BIG_RL_ONCE)
+	{
+		if (onceTime == 0)
+		{
+			reqType = RL_ONCE_FREE;	
+			return;
+		}
+		else if (counterData.m_RewardLotteryOnceTicket > 0)
+		{
+			reqType = RL_ONCE_FREE;			
+			return;
+		}
+		else
+		{
+			reqType = RL_ONCE;
+			return;
+		}
+		return;
+
+	}
+	else if (reqType == BIG_RL_TEN)
+	{
+		if (tenTime == 0)
+		{
+			reqType = RL_TEN_FREE;	
+			return;
+		}
+		else if (counterData.m_RewardLotteryTenTicket > 0)
+		{
+			reqType = RL_TEN_TICKET;	
+			return;
+		}
+		else
+		{
+			reqType = RL_TEN;
+			return;
+		}
+		return;
+	}
+	else if (reqType == BIG_RL_VIP)
+	{
+		reqType = RL_VIP;
+		return;
+	}
+
+}
 void GiftManager::onRewardLotteryReq(const  ConnId& connId ,RewardLotteryReq & msg )
 {
 
@@ -1740,12 +2140,14 @@ void GiftManager::onRewardLotteryReq(const  ConnId& connId ,RewardLotteryReq & m
 	Goods goods;
 	UInt32 countNum = 1;
 	UInt32 flag = 0;
-	UInt32 onceTime = 0;
-	UInt32 tenTime = 0;
+	int onceTime = 0;
+	int tenTime = 0;
+	UInt32 reqType = 0;
 	UInt32 nowTime = TimeUtil::getTimeSec();	
 	List<UInt32> idList;
 	List<UInt32> awardIDList;	
 	List<Goods> itemList;
+	List<Goods> tmpItemList;	
 	RewardLotteryTemplate rewardLotteryTemplate3;
 	RewardLotteryTemplate rewardLotteryTemplate6;
 	PlayerCounterData counterData;
@@ -1754,13 +2156,19 @@ void GiftManager::onRewardLotteryReq(const  ConnId& connId ,RewardLotteryReq & m
 
 
 	Player * player = LogicSystem::getSingleton().getPlayerByConnId(connId);
-
+	if (player == NULL)
+	{
+		LOG_WARN("player not found!!");
+		return;
+	}
 	msg.convertJsonToData(msg.strReceive);
 	resp.reqType = msg.reqType;
+	reqType = msg.reqType;
 
+	GiftManager::getSingleton().canRewardLotteryType(player->getPlayerGuid(),reqType);
 	
 
-	resp.result = GiftManager::getSingleton().checkRewardLotteryTen(player->getPlayerGuid(),msg.reqType);
+	resp.result = GiftManager::getSingleton().checkRewardLotteryTen(player->getPlayerGuid(),reqType);
 	if ( resp.result != LynxErrno::None)
 	{
 		std::string jsonStr = resp.convertDataToJson();
@@ -1768,7 +2176,7 @@ void GiftManager::onRewardLotteryReq(const  ConnId& connId ,RewardLotteryReq & m
 		return;
 	}
 
-	idList = GiftManager::getSingleton().getRewardLotteryIDs(msg.reqType);
+	idList = GiftManager::getSingleton().getRewardLotteryIDs(reqType);
 
 
 	for (List<UInt32>::Iter * iter = idList.begin();iter !=NULL;iter = idList.next(iter))
@@ -1789,7 +2197,7 @@ void GiftManager::onRewardLotteryReq(const  ConnId& connId ,RewardLotteryReq & m
 
 	for( Map<UInt32, RewardLotteryTemplate>::Iter * iter = gRewardLotteryTable->mMap.begin();iter != NULL;iter = gRewardLotteryTable->mMap.next(iter))
 	{
-		if (iter->mValue.type == msg.reqType)
+		if (iter->mValue.type == reqType)
 		{
 			rewardLotteryTemplate = &iter->mValue;
 			break;
@@ -1805,7 +2213,7 @@ void GiftManager::onRewardLotteryReq(const  ConnId& connId ,RewardLotteryReq & m
 	}
 	counterData = player->GetPlayerCounterData();//位置不能换
 	//十连抽 vip ticket 加次数 减票数
-	if(msg.reqType == RL_TEN )
+	if(reqType == RL_TEN )
 	{
 		//元宝在里面扣
 		if (counterData.m_RewardLotteryTenCount >= maxKey + rewardLotteryTemplate->nextbestneedtimes +1)
@@ -1814,7 +2222,7 @@ void GiftManager::onRewardLotteryReq(const  ConnId& connId ,RewardLotteryReq & m
 		}
 		counterData.m_RewardLotteryTenCount ++;	
 	}
-	else if (msg.reqType == RL_TEN_TICKET )		
+	else if (reqType == RL_TEN_TICKET )		
 	{
 		counterData.m_RewardLotteryTenTicket --;
 		if (counterData.m_RewardLotteryTenTicketCount >= maxKey + rewardLotteryTemplate->nextbestneedtimes +1)
@@ -1823,7 +2231,7 @@ void GiftManager::onRewardLotteryReq(const  ConnId& connId ,RewardLotteryReq & m
 		}
 		counterData.m_RewardLotteryTenTicketCount ++;	
 	}
-	else if (msg.reqType == RL_TEN_FREE )		
+	else if (reqType == RL_TEN_FREE )		
 	{
 		counterData.m_RewardLotteryTenTime = nowTime;
 		
@@ -1837,14 +2245,27 @@ void GiftManager::onRewardLotteryReq(const  ConnId& connId ,RewardLotteryReq & m
 	player->getPersistManager().setDirtyBit(COUNTERDATABIT);
 	
 
-	for (List<UInt32>::Iter * it = awardIDList.begin();it !=NULL;it = awardIDList.next(it))
+	//awardcontent 改成award
+	for (List<UInt32>::Iter * awardIter = awardIDList.begin();awardIter !=NULL;awardIter = awardIDList.next(awardIter))
 	{
 		Award award;
-		GiftManager::getSingleton().getContentByID(it->mValue,award.award);
+		tmpItemList.clear();
+		GiftManager::getSingleton().getAwardByID(awardIter->mValue,0, tmpItemList);	
+	
+		LOG_INFO("RewardLottery awardid  = %d ",awardIter->mValue);
+		for(List<Goods>::Iter *contentIter = tmpItemList.begin();contentIter!= NULL;contentIter = tmpItemList.next(contentIter))
+		{
+			LOG_INFO("RewardLottery awardcontentid  = %d ",contentIter->mValue.subtype);
+			GiftManager::getSingleton().getContentByID(contentIter->mValue.subtype,award.award);
+		}
 		resp.awards.insertTail(award);
 	}
-	//判断是否已经有佣兵
-	GiftManager::getSingleton().servanNeedChangeToPiece(player->getPlayerGuid(),resp.awards,itemList);
+
+	for(List<Award>::Iter * item2 = resp.awards.begin();item2 != NULL; item2 = resp.awards.next(item2))
+	{
+		itemList += item2->mValue.award;
+	}
+	
 
 	UInt32 getIt = 0;
 	for(List<Award>::Iter * item = resp.awards.begin();item != NULL; item = resp.awards.next(item))
@@ -1870,60 +2291,148 @@ void GiftManager::onRewardLotteryReq(const  ConnId& connId ,RewardLotteryReq & m
 		}
 	}
 
-	GiftManager::getSingleton().combineSame(itemList);
 
-	GiftManager::getSingleton().addToPlayer(player->getPlayerGuid(),REFLASH_AWARD,itemList);
 
-	GiftManager::getSingleton().PlayerItemChangeResult(player->getPlayerGuid(),0,itemList);
+	Json::Value stages;
+	if (reqType == 1)
+	{
+		GiftManager::getSingleton().saveEndsAttrNotCombine(player->getPlayerGuid(),itemList,resp.allAttr,stages,MiniLog90);
+	}
+	else if (reqType == 2)
+	{
+		GiftManager::getSingleton().saveEndsAttrNotCombine(player->getPlayerGuid(),itemList,resp.allAttr,stages,MiniLog95);
+	}
+	else if (reqType == 3)
+	{
+		GiftManager::getSingleton().saveEndsAttrNotCombine(player->getPlayerGuid(),itemList,resp.allAttr,stages,MiniLog91);
+	}
+	else if (reqType == 4)
+	{
+		GiftManager::getSingleton().saveEndsAttrNotCombine(player->getPlayerGuid(),itemList,resp.allAttr,stages,MiniLog92);
+	}
+	else if (reqType == 5)
+	{
+		GiftManager::getSingleton().saveEndsAttrNotCombine(player->getPlayerGuid(),itemList,resp.allAttr,stages,	MiniLog93);
+	}
+	else if (reqType == 6)
+	{
+		GiftManager::getSingleton().saveEndsAttrNotCombine(player->getPlayerGuid(),itemList,resp.allAttr,stages,MiniLog94);
+	}
+	else if (reqType == 7)
+	{
+		GiftManager::getSingleton().saveEndsAttrNotCombine(player->getPlayerGuid(),itemList,resp.allAttr,stages,MiniLog96);
+	}
+	else
+	{
+		GiftManager::getSingleton().saveEndsAttrNotCombine(player->getPlayerGuid(),itemList,resp.allAttr,stages,MiniLog97);
+	}
+	
+
+// 	GiftManager::getSingleton().PlayerItemChangeResult(player->getPlayerGuid(),0,itemList);
 
 	counterData = player->GetPlayerCounterData();//位置不能换
 	
-	for(List<UInt32>::Iter * iter1 = resp.newServant.begin();iter1 != NULL;iter1 = resp.newServant.next(iter1))
+	//for(List<UInt32>::Iter * iter1 = resp.newServant.begin();iter1 != NULL;iter1 = resp.newServant.next(iter1))
+	//{
+	//	 ServantTemplate * servantTemp = SERVANT_TABLE().get(iter1->mValue);
+	//	 if (servantTemp->mQuality ==4)
+	//	 {			
+	//		 LogicSystem::getSingleton().sendSystemMsg(2, player->getPlayerName(), iter1->mValue);//紫色和橙色
+	//	 }
+	//	 if (servantTemp->mQuality ==5)
+	//	 {
+	//		 LogicSystem::getSingleton().sendSystemMsg(1, player->getPlayerName(), iter1->mValue);//紫色和橙色
+	//	 }
+ //	
+	//}
+	//
+	if (reqType == RL_TEN)
 	{
-		GiftManager::getSingleton().getAllAttr(player->getPlayerGuid(),AWARD_SERVANT,iter1->mValue,jsonValue);
+		assert(resp.awards.size()==10);
 	}
 	
+
 	GiftManager::getSingleton().getLotteryLeftTime(player->getPlayerGuid(),onceTime,tenTime);
-	
+	GlobalValue globalValue = GlobalValueManager::getSingleton().getGlobalValue();
+	PlayerDailyResetData dailyResetData = player->getPlayerDailyResetData();
+
 	resp.gold = player->getPlayerGold();
 	resp.onceLeftTime = onceTime;
 	resp.tenLeftTime = tenTime;
+	resp.freeOnceLeftTimes = globalValue.uRewardLotteryFreeOnceMaxTimes - dailyResetData.m_RewardLotteryDailyOnceFreeCount;
+
+	
 	resp.couponOnceNum = counterData.m_RewardLotteryOnceTicket;
 	resp.couponTenNum = counterData.m_RewardLotteryTenTicket;
 	resp.ends = itemList;
-	resp.allAttr = jsonValue;
+
+
+// 	//for test
+// 	resp.rlOnceFreeCount = counterData.m_RewardLotteryOnceFreeCount;
+// 	resp.rlOnceTicketCount = counterData.m_RewardLotteryOnceTicketCount;
+// 	resp.rlOnceCount = counterData.m_RewardLotteryOnceCount;
+// 	resp.rlTenFreeCount = counterData.m_RewardLotteryTenFreeCount;
+// 	resp.rlTenTicketCount = counterData.m_RewardLotteryTenTicketCount;
+// 	resp.rlTenCount = counterData.m_RewardLotteryTenCount;
+// 	resp.rlVipDefaultCount = counterData.m_RewardLotteryVipDefaultCount;
+// 	resp.rlVipAwardID = counterData.m_RewardLotteryVipAwardID;
+// 	resp.rlVipElseCount = counterData.m_RewardLotteryVipElseCount;
 
 	std::string jsonStr = resp.convertDataToJson();
 	NetworkSystem::getSingleton().sender( connId,OPEN_REWARD_LOTTERY_RESP,jsonStr);
+	LOG_INFO("RewardLottery resp  = %s ",jsonStr.c_str());
+
 	
+
 	//添加成就打点 wwc
-	if(resp.reqType == RL_ONCE_FREE || resp.reqType == RL_ONCE_TICKET || resp.reqType == RL_ONCE)	
+	if(reqType == RL_ONCE_FREE || reqType == RL_ONCE_TICKET || reqType == RL_ONCE)	
 	{
 		player->getAchieveManager().updateAchieveData(LINGRENCALLSERVANT,1);
 		//每日任务打点 wwc
 		player->getAchieveManager().updateDailyTaskData(DLYLINGRENCALLCNT, 1 );
 	}
-	else if(resp.reqType == RL_VIP)
+	else if(reqType == RL_VIP)
 	{
 		player->getAchieveManager().updateAchieveData(MINGLINGCALLSERVANT,1);
 	}
-	else if(resp.reqType == RL_TEN_FREE || resp.reqType == RL_TEN_TICKET || resp.reqType == RL_TEN)
+	else if(reqType == RL_TEN_FREE || reqType == RL_TEN_TICKET || reqType == RL_TEN)
 	{
 		player->getAchieveManager().updateAchieveData(XIBANCALLSERVANT,1);
 		//每日任务打点wwc
 		player->getAchieveManager().updateDailyTaskData(DLYXIBANCALLCNT, 1 );
 	}
-
+	if(reqType == RL_TEN_FREE || reqType == RL_TEN_TICKET || reqType == RL_TEN)
+	{
+		//更新七日训
+		LogicSystem::getSingleton().updateSevenDayTask(player->getPlayerGuid(),SDT08,10);
+	}
+	else
+	{
+		//更新七日训
+		LogicSystem::getSingleton().updateSevenDayTask(player->getPlayerGuid(),SDT08,1);
+	}
 	
 	
 }
+bool GiftManager::findValueExit(UInt32 id, List<UInt32> ids)
+{
+	for( List<UInt32>::Iter *iter = ids.begin();iter!=NULL;iter = ids.next(iter))
+	{		
+		if (id == iter->mValue)
+		{
+			return true;
+		}
+	}
+	return false;
 
+}
 
 void GiftManager::servanNeedChangeToPiece(Guid playerID, List<Award> &awards,List<Goods> &ends)
 {
-	bool servantExist = false;
 	Goods goods;	
 	Player * player = LogicSystem::getSingleton().getPlayerByGuid(playerID);
+	List<UInt32> newServantIds;
+
 	
 	for(List<Award>::Iter * item = awards.begin();item != NULL; item = awards.next(item))
 	{
@@ -1939,9 +2448,8 @@ void GiftManager::servanNeedChangeToPiece(Guid playerID, List<Award> &awards,Lis
 				 {
 					 continue;//todo 多个情况有问题
 				 }
-				if(player->getServantManager().isServantExist(iter->mValue.subtype) == true)
+				if(player->getServantManager().isServantExist(iter->mValue.subtype) == true ||findValueExit(iter->mValue.subtype,newServantIds) == true)
 				{
-					servantExist = true;
 					goods.resourcestype = AWARD_SERVANTPIECE;
 					goods.subtype = iter->mValue.subtype;
 					goods.num = iter->mValue.num * servantTemp->mPieceCount;
@@ -1950,26 +2458,16 @@ void GiftManager::servanNeedChangeToPiece(Guid playerID, List<Award> &awards,Lis
 				}
 				else
 				{
-					if (servantExist == false)
+					newServantIds.insertTail(iter->mValue.subtype);
+
+					goods.resourcestype = AWARD_SERVANTPIECE;
+					goods.subtype = iter->mValue.subtype;
+					goods.num = (iter->mValue.num - 1) * servantTemp->mPieceCount;
+					if (goods.num > 0)
 					{
-						goods.resourcestype = AWARD_SERVANTPIECE;
-						goods.subtype = iter->mValue.subtype;
-						goods.num = (iter->mValue.num - 1) * servantTemp->mPieceCount;
-						if (goods.num != 0)
-						{
-							item->mValue.award.insertTail(goods);
-						}						
-						iter->mValue.num = 1;						
-					}
-					else
-					{
-						goods.resourcestype = AWARD_SERVANTPIECE;
-						goods.subtype = iter->mValue.subtype;
-						goods.num = iter->mValue.num * servantTemp->mPieceCount;
 						item->mValue.award.insertTail(goods);
-						item->mValue.award.erase(iter);
-					}
-					servantExist = true;
+					}						
+					iter->mValue.num = 1;		
 
 				}
 			}
@@ -1985,6 +2483,54 @@ void GiftManager::servanNeedChangeToPiece(Guid playerID, List<Award> &awards,Lis
 		}
 	}
 }
+
+
+void GiftManager::servanNeedChangeToPieceEX(Guid playerID, List<Goods> &itemList,List<Goods> &ends)
+{
+	Goods goods;
+	List<UInt32> newServantIds;
+	Player * player = LogicSystem::getSingleton().getPlayerByGuid(playerID);
+
+
+	GiftManager::getSingleton().combineSame(itemList);
+
+	//先删除AWARD_SERVANT 在加到ends
+	for( List<Goods>::Iter * iter = itemList.begin();iter != NULL;iter = itemList.next(iter))
+	{
+		if (iter->mValue.resourcestype == AWARD_SERVANT)
+		{
+			ServantTemplate * servantTemp = SERVANT_TABLE().get(iter->mValue.subtype);
+			if (servantTemp == NULL)
+			{
+				continue;//todo 多个情况有问题
+			}
+			if(player->getServantManager().isServantExist(iter->mValue.subtype) == true||findValueExit(iter->mValue.subtype,newServantIds) == true)
+			{
+				goods.resourcestype = AWARD_SERVANTPIECE;
+				goods.subtype = iter->mValue.subtype;
+				goods.num = iter->mValue.num * servantTemp->mPieceCount;
+				itemList.insertTail(goods);
+				itemList.erase(iter);
+			}
+			else
+			{
+				goods.resourcestype = AWARD_SERVANTPIECE;
+				goods.subtype = iter->mValue.subtype;
+				goods.num = (iter->mValue.num - 1) * servantTemp->mPieceCount;
+				if (goods.num > 0)
+				{
+					itemList.insertTail(goods);
+				}						
+				iter->mValue.num = 1;	
+
+			}
+		}
+	}
+
+	ends += itemList;//先存储stage信息，再删除
+
+}
+
 void GiftManager::getAllAttr(Guid playerID,UInt32 resType,UInt32 subType,Json::Value &jsonValue)
 {
 	Json::Value son; 
@@ -2007,7 +2553,7 @@ void GiftManager::getAllAttr(Guid playerID,UInt32 resType,UInt32 subType,Json::V
 	jsonValue.append(root);
 
 }
-void GiftManager::getLotteryLeftTime(Guid playerID,UInt32 &onceTime,UInt32 &tenTime)//
+void GiftManager::getLotteryLeftTime(Guid playerID,int &onceTime,int &tenTime)//
 {
 	UInt32 nowTime = TimeUtil::getTimeSec();
 	RewardLotteryTemplate rewardLotteryTemplate1;
@@ -2036,36 +2582,44 @@ void GiftManager::getLotteryLeftTime(Guid playerID,UInt32 &onceTime,UInt32 &tenT
 		}
 	}
 
+	
+	if (nowTime < counterData.m_RewardLotteryOnceTime)
+	{
+		counterData.m_RewardLotteryOnceTime = nowTime;
+		player->setPlayerCounterData(counterData);
+		player->getPersistManager().setDirtyBit(COUNTERDATABIT);
+	}
 	int tmpOnceTime = rewardLotteryTemplate1.refreshtime - ( nowTime - counterData.m_RewardLotteryOnceTime);
 	if (tmpOnceTime <0)
 	{
 		tmpOnceTime = 0;
 	}
 
+	if (nowTime < counterData.m_RewardLotteryTenTime)
+	{
+		counterData.m_RewardLotteryTenTime = nowTime;
+		player->setPlayerCounterData(counterData);
+		player->getPersistManager().setDirtyBit(COUNTERDATABIT);
+	}
 	int tmpTenTime = rewardLotteryTemplate4.refreshtime - ( nowTime - counterData.m_RewardLotteryTenTime);
 	if (tmpTenTime <0)
 	{
 		tmpTenTime = 0;
 	}
+
+	GlobalValue globalValue = GlobalValueManager::getSingleton().getGlobalValue();
+
+	PlayerDailyResetData dailyResetData = player->getPlayerDailyResetData();
+
+	if ( dailyResetData.m_RewardLotteryDailyOnceFreeCount >= globalValue.uRewardLotteryFreeOnceMaxTimes)
+	{
+		tmpOnceTime = -1;
+	}
+
 	onceTime = tmpOnceTime;
 	tenTime = tmpTenTime;
 }
 
-UInt32 GiftManager::modifyCoin(Guid playerID,Int32 num)//铜钱
-{
-	String strData ;
-	char dest[64] = {};
-	Player *player = LogicSystem::getSingleton().getPlayerByGuid(playerID);
-
-	UInt32 gold = player->getPlayerCoin();
-	gold += num;
-	player->setPlayerCoin(gold);	
-	sprintf(dest,"%d,%d",1,gold);
-	strData = (String)dest;
-	updateSingleProperty( playerID, "1", strData);	
-	return 1;
-
-}
 UInt32 GiftManager::modifyExp(Guid playerID,Int32 num)//经验
 {
 	String strData ;
@@ -2137,24 +2691,7 @@ UInt32 GiftManager::modifyRhyme(Guid playerID,Int32 num)//声望
 	return 1;
 }
 
-UInt32 GiftManager::modifyYuanBao(Guid playerID,Int32 num)//元宝
-{
-	String strData ;
-	char dest[64] = {};
 
-	Player *player = LogicSystem::getSingleton().getPlayerByGuid(playerID);
-
-	UInt32 yuanBao = player->getPlayerGold();
-
-	yuanBao += num;
-	player->setPlayerGold(yuanBao);
-	sprintf(dest,"%d,%d",2,yuanBao);
-	strData = (String)dest;
-	updateSingleProperty( playerID, "1", strData);	
-
-	return 1;
-
-}
 UInt32 GiftManager::modifyMercenary(Guid playerID,Int32 num)//佣兵
 {
 	String strData ;
@@ -2279,21 +2816,7 @@ void GiftManager::ChoiseNFromWeigthList(UInt32 num , List<Resource> inList,List<
 	return ;
 }
 
-void GiftManager::onPropertyChang(const  ConnId& connId,CGPropertyChange & msg)		//属性更改
-{
-	char dest[64] = {} ;
-	String strData;
 
-	Player *player = LogicSystem::getSingleton().getPlayerByConnId(connId);
-	msg.convertJsonToData(msg.jsonStr);
-	sprintf(dest,"%s,%s",msg.sKey.c_str(),msg.sValue.c_str());	
-	strData = (String)dest;
-
-	if (msg.sFlag == "1")
-	{
-		GiftManager::getSingleton().modifyCoin(player->getPlayerGuid(),lynxAtoi<UInt32>(msg.sValue.c_str()));
-	}
-}
 
 void GiftManager::sendItemListChange(Guid playerID,List<UInt64> ItemUids)
 {
@@ -2355,3 +2878,67 @@ UInt32 GiftManager::updateStageDatas(Guid playerID,List<Goods> itemList)//关卡信
 	return 1;
 }
 
+void GiftManager::saveEndsGetAttr(Guid playerID,List<Goods> &ends,Json::Value &allAttr,UInt32 systemID= 0)
+{
+	Json::Value stages;
+	saveEndsAttr(playerID,ends,allAttr,stages,systemID);
+
+}
+
+void GiftManager::saveEndsAttr(Guid playerID,List<Goods> &ends,Json::Value &allAttr,Json::Value &stages,UInt32 systemID = 0)
+{
+	List<Goods> stagesEnds;
+	List<Goods> stagesNullEnds;
+	Player * player = LogicSystem::getSingleton().getPlayerByGuid(playerID);
+
+
+	GiftManager::getSingleton().combineSame(ends);
+	for(List<Goods>::Iter *endsIter = ends.begin();endsIter!=NULL;endsIter = ends.next(endsIter))
+	{
+		if (endsIter->mValue.resourcestype == AWARD_STAGEDATA||endsIter->mValue.resourcestype == AWARD_TWELVEPALACE_STAGEDATA)
+		{
+			stagesEnds.insertTail(endsIter->mValue);
+		}
+		else
+		{
+			stagesNullEnds.insertTail(endsIter->mValue);
+		}
+	}
+
+	List<ReturnItemEle> rtItemList;
+	GiftManager::getSingleton().addToPlayerAttr(player->getPlayerGuid(),rtItemList,allAttr, stagesNullEnds,systemID);
+
+	List<ReturnItemEle> stageRtItemList;
+	GiftManager::getSingleton().addToPlayerAttr(player->getPlayerGuid(),stageRtItemList,stages, stagesEnds,systemID);
+
+	GiftManager::getSingleton().PlayerItemChangeResult(player->getPlayerGuid(),0,ends);
+}
+
+
+void GiftManager::saveEndsAttrNotCombine(Guid playerID,List<Goods> &ends,Json::Value &allAttr,Json::Value &stages,UInt32 systemID = 0)
+{
+	List<Goods> stagesEnds;
+	List<Goods> stagesNullEnds;
+	Player * player = LogicSystem::getSingleton().getPlayerByGuid(playerID);
+
+
+	for(List<Goods>::Iter *endsIter = ends.begin();endsIter!=NULL;endsIter = ends.next(endsIter))
+	{
+		if (endsIter->mValue.resourcestype == AWARD_STAGEDATA||endsIter->mValue.resourcestype == AWARD_TWELVEPALACE_STAGEDATA)
+		{
+			stagesEnds.insertTail(endsIter->mValue);
+		}
+		else
+		{
+			stagesNullEnds.insertTail(endsIter->mValue);
+		}
+	}
+
+	List<ReturnItemEle> rtItemList;
+	GiftManager::getSingleton().addToPlayerAttr(player->getPlayerGuid(),rtItemList,allAttr, stagesNullEnds,systemID);
+
+	List<ReturnItemEle> stageRtItemList;
+	GiftManager::getSingleton().addToPlayerAttr(player->getPlayerGuid(),stageRtItemList,stages, stagesEnds,systemID);
+
+	GiftManager::getSingleton().PlayerItemChangeResult(player->getPlayerGuid(),0,ends);
+}

@@ -18,6 +18,9 @@ namespace Lynx
 
 		BOC_CODE_REQ						= sPlayerMsgBase + 100,
 		BOC_CODE_RESP						= sPlayerMsgBase + 101,
+
+		BOC_FISHEAT_REQ						= sPlayerMsgBase + 102,
+		BOC_FISHEAT_RESP					= sPlayerMsgBase + 103,
 		
 	};
 
@@ -60,16 +63,24 @@ namespace Lynx
 
 	struct DailyResetResp
 	{
-		DailyResetResp(): mPacketID(BOC_PLAYER_DETAIL_RESP),dailyresetHour(0){}
+// 		DailyResetResp():{}
 
 		UInt16	mPacketID;
-		UInt32 dailyresetHour;
+		List<UInt32> refreshList;//到时间点让客户端刷新的id列表
+		UInt32 serverTime;
 		std::string	mRespJsonStr;
 
 		std::string convertDataToJson()
 		{
-			Json::Value root;     	
-			root["dailyresetHour"] = Json::Value(dailyresetHour);
+			Json::Value root;     
+
+			Json::Value son; 
+			for (List<UInt32>::Iter * iter = refreshList.begin();iter!=NULL; iter= refreshList.next(iter))
+			{
+				son.append(iter->mValue);				
+			}
+			root["refreshList"] = son;
+			root["serverTime"] = serverTime;
 		
 			Json::FastWriter writer;  
 			std::string strWrite = writer.write(root);

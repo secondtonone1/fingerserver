@@ -91,11 +91,11 @@ FashionTable::loadFromCsv(const String& filePath)
 			return false;
 		}
 
-		if (!csvReader.bind("icon", fashionTemplate.mIcon))
+		/*if (!csvReader.bind("icon", fashionTemplate.mIcon))
 		{
 			LOG_WARN("Failed to load fashionTemplate.csv for [icon]");
 			return false;
-		}
+		}*/
 
 		if (!csvReader.bind("quality", fashionTemplate.mQuality))
 		{

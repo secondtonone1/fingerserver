@@ -30,7 +30,7 @@ namespace Lynx
 		void combineOneTypeGems(UInt64 gemItemID, UInt32 count);
 
 		void gemCombineOnce(void);
-
+ 
 		void gemCombineOnce(UInt32 equipPos);
 
 		std::string convertDataToJson();

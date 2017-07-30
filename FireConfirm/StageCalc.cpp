@@ -26,31 +26,49 @@ void StageCalcManager::onTwelvePalaceUnlock(const  ConnId&  connId,CGTwelvePalac
 	UInt32 isMeet = 0;
 	UInt32 stageID = 0;
 
-	Goods goods;
-
-	TwelvePalaceUnlockResp resp;
+	Goods goods;	
 	List<UInt32> stageIDs;
 	List<Goods> itemList;
-
 	Map<UInt64, StageTemplate> IDToStage;
 	PlayerChapterList chapterList;
+	TwelvePalaceUnlockResp resp;
 
 
 	Player *player = LogicSystem::getSingleton().getPlayerByConnId(connId);
+	if (player == NULL)
+	{
+		LOG_WARN("player not found!!");
+		return;
+	}
+	GlobalValue globalValue = GlobalValueManager::getSingleton().getGlobalValue();	
 	msg.convertJsonToData(msg.jsonStr);
 	resp.doType = msg.doType;
 	resp.id = msg.id;
 	resp.result =LynxErrno::None;
 
-	chapterID = msg.id;
 
+	
+	if (msg.doType == 3)
+	{
+		chapterID = StageManager::getSingleton().getChapterID(msg.id);
+	}
+	else
+	{
+		chapterID = msg.id;
+	}
 
 	PlayerDailyResetData dailyResetData = player->getPlayerDailyResetData();
 	List<KeyValue> m_ChapterUnlockeded = player->getChapterUnlocked();
 	chapterList = player->getChapterList();
+
+	IDToStage = StageManager::getSingleton().getMapIDToStageByChapterID(chapterID);
+	stageID = StageCalcManager::getSingleton().getMinKey(IDToStage,0 );
+	goods.resourcestype = AWARD_TWELVEPALACE_STAGEDATA;
+	goods.subtype =stageID;
+	itemList.insertTail(goods);
+
 	if(msg.doType ==1)//解锁
 	{
-
 		getIt =0;
 		for(List<KeyValue>::Iter * it = m_ChapterUnlockeded.begin();it != NULL; it = m_ChapterUnlockeded.next(it))
 		{
@@ -67,11 +85,8 @@ void StageCalcManager::onTwelvePalaceUnlock(const  ConnId&  connId,CGTwelvePalac
 		{
 			if ( dailyResetData.m_nTwelvePalaceUnlockCount >=1)
 			{
-
 				//消耗
 				dailyResetData.m_nTwelvePalaceUnlockCount --;
-
-
 				//解锁	
 				StageCalcManager::getSingleton().setChapterLock(connId ,msg.id,1);	
 				m_ChapterUnlockeded = player->getChapterUnlocked();
@@ -86,16 +101,14 @@ void StageCalcManager::onTwelvePalaceUnlock(const  ConnId&  connId,CGTwelvePalac
 			resp.result = LynxErrno::IsUnlocked;
 		}
 
-
-		IDToStage = StageManager::getSingleton().getMapIDToStageByChapterID(msg.id);
-
-		stageID = StageCalcManager::getSingleton().getMinKey(IDToStage,0 );
+		
 
 		isMeet = StageManager::getSingleton().isMeetCondition( connId, stageID);
 		if (isMeet != LynxErrno::None)
 		{
 			resp.result = isMeet;
 		}
+	
 	}
 	else if (msg.doType == 2)//重置次数 满足3条件 已解锁，有号角，章存在
 	{
@@ -126,11 +139,7 @@ void StageCalcManager::onTwelvePalaceUnlock(const  ConnId&  connId,CGTwelvePalac
 						//挑战次数变0
 						for(List<StageData>::Iter* it = iter->mValue.m_listStageDatas.begin(); it != NULL;it = iter->mValue.m_listStageDatas.next(it))
 						{
-							it->mValue.m_nChallengTimes = 0;	
-							if (it->mValue.m_nStageID != 0)
-							{
-								stageIDs.insertTail(it->mValue.m_nStageID);
-							}
+							it->mValue.m_nChallengTimes = 0;								
 						}
 
 						break;						
@@ -155,18 +164,29 @@ void StageCalcManager::onTwelvePalaceUnlock(const  ConnId&  connId,CGTwelvePalac
 
 	else if(msg.doType == 3)//doType 3 单个重置，花费元宝 vip等级
 	{
+		GlobalValue globalValue = GlobalValueManager::getSingleton().getGlobalValue();
 		chapterID = StageManager::getSingleton().getChapterID(msg.id);
 		UInt32 canBuyTimes = 0;
 		UInt32 buyCost =0;
+		if (gStageTable->get(msg.id) == NULL)
+		{
+			LOG_WARN("gStageTable->get(msg.id) not found!!");
+			return;
+		}
+		if (gVipTable->get(player->getVipLevel()) == NULL)
+		{
+			LOG_WARN("gVipTable->get(player->getVipLevel()) not found!!");
+			return;
+		}
 		if(gStageTable->get(msg.id)->isBoss == 1)
 		{
 			canBuyTimes = gVipTable->get(player->getVipLevel())->twelvePalaceBossBuy;
-			buyCost = GlobalVarManager::getSingleton().getTwelvePalace().buybosscost;
+			buyCost = globalValue.uTPbuycost;
 		}
 		else
 		{
 			canBuyTimes = gVipTable->get(player->getVipLevel())->twelvePalaceBuy;
-			buyCost = GlobalVarManager::getSingleton().getTwelvePalace().buycost;
+			buyCost =  globalValue.uTPbuycost;
 		}
 		
 		getIt =0;
@@ -210,7 +230,6 @@ void StageCalcManager::onTwelvePalaceUnlock(const  ConnId&  connId,CGTwelvePalac
 								{
 									itemList.insertTail(goods);
 									it->mValue.m_nChallengTimes = 0;	
-									stageIDs.insertTail(it->mValue.m_nStageID);
 									break;
 								}
 							}
@@ -239,19 +258,54 @@ void StageCalcManager::onTwelvePalaceUnlock(const  ConnId&  connId,CGTwelvePalac
 		resp.buyTimes = StageCalcManager::getSingleton().getResetStageCount(player->getPlayerGuid(),msg.id) ;		
 	}
 
+	
+	else if (msg.doType == 4)//购买号角
+	{
+			
+		if ( player->getPlayerGold() >= globalValue.uTPhornbuycost)
+		{
+			goods.resourcestype = AWARD_BASE;
+			goods.subtype = AWARD_BASE_GOLD;
+			goods.num = 0 - globalValue.uTPhornbuycost;
+			itemList.insertTail(goods);
+
+		}
+		else
+		{
+			resp.result = LynxErrno::RmbNotEnough;
+		}
+
+		if (globalValue.uTPeachdaybuytimes <= dailyResetData.m_nTwelvePalaceBuyTimes)
+		{
+			resp.result = LynxErrno::HornBuyTimesNotEnough;
+		}
+		if (resp.result == LynxErrno::None)
+		{
+			dailyResetData.m_nTwelvePalaceUnlockCount ++;
+			dailyResetData.m_nTwelvePalaceBuyTimes ++;
+		}
+	}
+
 	if (resp.result == LynxErrno::None)
 	{
 		player->setPlayerDailyResetData(dailyResetData);
 		player->setchapterList(chapterList);
 		player->setChapterUnlocked(m_ChapterUnlockeded);
-		GiftManager::getSingleton().addToPlayer(player->getPlayerGuid(),REFLASH_AWARD,itemList);
+		player->getPersistManager().setDirtyBit(CHAPTERUNLOCKEDTABIT);
+		if (msg.doType == 3)
+		{			
+			GiftManager::getSingleton().saveEndsAttr(player->getPlayerGuid(),itemList,resp.allAttr,resp.stages,MiniLog66);			
+		}
+		else
+		{
+			GiftManager::getSingleton().saveEndsAttr(player->getPlayerGuid(),itemList,resp.allAttr,resp.stages,MiniLog65);			
+		}		
+
 		player->getPersistManager().setDirtyBit(DAILYRESETBIT);	
 		resp.num = dailyResetData.m_nTwelvePalaceUnlockCount;
 		resp.gold = player->getPlayerGold();
-		
+		resp.twelvePalaceBuyTimes = dailyResetData.m_nTwelvePalaceBuyTimes;
 	}
-
-	StageManager::getSingleton().saveAndSend(player->getPlayerGuid(),player->getChapterList(),stageIDs);
 
 	std::string jsonStr = resp.convertDataToJson();	
 	NetworkSystem::getSingleton().sender( connId,TWELVE_PALACE_UNLOCK_RESP,jsonStr);
@@ -266,6 +320,11 @@ void StageCalcManager::onTwelvePalaceStartReq(const  ConnId& connId ,CGTwelvePal
 	PlayerFireConfirmData fireConfirmData;	
 
 	Player *player = LogicSystem::getSingleton().getPlayerByConnId(connId);
+	if (player == NULL)
+	{
+		LOG_WARN("player not found!!");
+		return;
+	}
 	msg.convertJsonToData(msg.jsonStr);
 
 	player->ResetFireConfirmData();
@@ -281,11 +340,14 @@ void StageCalcManager::onTwelvePalaceStartReq(const  ConnId& connId ,CGTwelvePal
 
 	FireConfirmManager::getSingleton().SetCopyStart(player,msg.id);	
 
-	FireConfirmManager::getSingleton().SendFireConfirmCondition(connId);
+// 	resp.confirmIDs =  FireConfirmManager::getSingleton().getFireConfirmCondition(connId);
 
 	StageTemplate *stageTemplate = gStageTable->get(msg.id);
 	if (stageTemplate == NULL)
 	{
+		resp.result = LynxErrno::ClienServerDataNotMatch;
+		std::string sendStr = resp.convertDataToJson();
+		NetworkSystem::getSingleton().sender(connId,TWELVE_PALACE_BEGIN_RESP,sendStr);
 		return;		
 	}
 	if(stageTemplate->isBoss == 1)
@@ -306,9 +368,10 @@ void StageCalcManager::onTwelvePalaceStartReq(const  ConnId& connId ,CGTwelvePal
 		PlayerBaseData baseData = player->getPlayerBaseData();
 		PersistFindSimilarPowerReq req;
 		req.playerGuid = player->getPlayerGuid();
-		req.low = baseData.m_nPower *(100 - 3) /100;
-		req.high = baseData.m_nPower * (100 + 3) /100;
+		req.low = baseData.m_nPower *(100 - 5) /100;
+		req.high = baseData.m_nPower * (100 + 5) /100;
 		req.times = 1;
+		req.initialValue = baseData.m_nPower;
 		PersistSystem::getSingleton().postThreadMsg(req, 0);
 		return;
 	}
@@ -349,15 +412,44 @@ void StageCalcManager::onTwelvePalaceEndReq(const  ConnId& connId ,CGTwelvePalac
 	msg.convertJsonToData(msg.jsonStr);
 	tmpResp.chapterID = msg.id;
 	tmpResp.result = msg.result;
-
-
 	resp.star = msg.star;
 	resp.doType = msg.doType;
 	star = msg.star;
 
+	LOG_INFO("CGTwelvePalaceEnd = %s",msg.jsonStr.c_str());
 
 	Player *player = LogicSystem::getSingleton().getPlayerByConnId(connId);
+	if (player == NULL)
+	{
+		return;
+	}
 
+	if (gStageTable->get(msg.id) == NULL)
+	{
+		LOG_WARN("gStageTable->get(msg.id) not found!!");
+		resp.result = LynxErrno::ClienServerDataNotMatch;
+		std::string sendStr = resp.convertDataToJson();
+		NetworkSystem::getSingleton().sender(connId,TWELVE_PALACE_END_RESP,sendStr);
+		return;
+	}
+	resp.result = StageManager::getSingleton().canChallengeStage( connId, msg.id);
+	if (resp.result != LynxErrno::None)
+	{
+		LOG_WARN("TWELVE_PALACE_END_RESP not canChallengeStage !!");
+		std::string sendStr = resp.convertDataToJson();
+		NetworkSystem::getSingleton().sender(connId,TWELVE_PALACE_END_RESP,sendStr);
+		return;
+	}
+	//判断是否作弊
+	UInt32 checkRet =  FireConfirmManager::getSingleton().checkIsCheat(player->getPlayerGuid(), msg.fireConfirmData,msg.result);	
+	if(checkRet != LynxErrno::None)
+	{
+		FireConfirmManager::getSingleton().UpdataConfirmLevel(connId,true);
+		resp.result = checkRet;
+		std::string jsonStr = resp.convertDataToJson();	
+		NetworkSystem::getSingleton().sender( connId,TWELVE_PALACE_END_RESP,jsonStr);
+		return;
+	}
 	if (gStageTable->get(msg.id)->mType == STAGE_TRIAL)//多人副本
 	{
 		PVPSystem::getSingleton().removeRoom(player->getRoomID());
@@ -402,7 +494,7 @@ void StageCalcManager::onTwelvePalaceEndReq(const  ConnId& connId ,CGTwelvePalac
 		{
 			player->ResetFireConfirmData();
 			std::string jsonStr = tmpResp.convertDataToJson();	
-			NetworkSystem::getSingleton().sender( connId,CHAPTER_END_RESP,jsonStr);
+			NetworkSystem::getSingleton().sender( connId,TWELVE_PALACE_END_RESP,jsonStr);
 			return;
 		}	
 
@@ -424,7 +516,7 @@ void StageCalcManager::onTwelvePalaceEndReq(const  ConnId& connId ,CGTwelvePalac
 		{		
 			tmpResp.result =LynxErrno::AttackPowerNotRight;
 			std::string jsonStr = tmpResp.convertDataToJson();	
-			NetworkSystem::getSingleton().sender( connId,CHAPTER_END_RESP,jsonStr);
+			NetworkSystem::getSingleton().sender( connId,TWELVE_PALACE_END_RESP,jsonStr);
 			return;
 		}
 		UInt32 flag =0;
@@ -432,7 +524,7 @@ void StageCalcManager::onTwelvePalaceEndReq(const  ConnId& connId ,CGTwelvePalac
 		{
 			tmpResp.result =flag;
 			std::string jsonStr = tmpResp.convertDataToJson();	
-			NetworkSystem::getSingleton().sender( connId,CHAPTER_END_RESP,jsonStr);
+			NetworkSystem::getSingleton().sender( connId,TWELVE_PALACE_END_RESP,jsonStr);
 			return;
 		}
 	}
@@ -440,85 +532,7 @@ void StageCalcManager::onTwelvePalaceEndReq(const  ConnId& connId ,CGTwelvePalac
 	UInt32 goldcost =0;
 	UInt32  gold = player->getPlayerGold();
 
-	if (gStageTable->get(msg.id)->mType == STAGE_TRIAL )//多人副本 
-	{
-		TrialTemplate trialTemplate = GlobalVarManager::getSingleton().gettrial();
-		goldcost = trialTemplate.ratecost.findValue(mFireConfirmData.m_AwardTimes);//倍数 元宝花费
-
-		if (gold < goldcost)
-		{
-			tmpResp.result = LynxErrno::RmbNotEnough;
-
-		}
-		PlayerDailyResetData playerDailyResetData =player->getPlayerDailyResetData();
-
-
-		VipTemplate vipTemplate;//todo mei yanzheng
-		for(List<VipTemplate>::Iter *iter1 = gVipTable->mVip.begin();iter1 != NULL;iter1 = gVipTable->mVip.next(iter1))
-		{
-			if (iter1->mValue.id == player->getVipLevel())
-			{
-				vipTemplate = iter1->mValue;
-				break;
-			}
-		}
-		if (tmpResp.result != LynxErrno::None)//失败
-		{
-			std::string jsonStr = tmpResp.convertDataToJson();	
-			NetworkSystem::getSingleton().sender(connId,CHAPTER_END_RESP,jsonStr);
-			return;
-		}	
-		double multiply =0;
-		multiply += mFireConfirmData.m_AwardTimes;
-		Record record;
-		record.name = player->getPlayerName();
-		record.playerID = player->getPlayerGuid();
-		record.val = TimeUtil::getTimeSec() - mFireConfirmData.m_CopyStartTime;
-		if (record.val <= gStageTable->get(msg.id)->limittime1)//
-		{			
-			multiply += 0.1;
-			if (RankingManager::getSingleton().setRecord(STAGE_RECORD_TYPE,mFireConfirmData.m_CopyID,record,true) <4)//破纪录 4以下是成功
-			{
-				CGRecord recordMsg;
-				recordMsg.typeID = STAGE_RECORD_TYPE;
-				RankingManager::getSingleton().onRecordReq(connId,recordMsg);
-				recordBreaking =1;
-				//todo 加入到成就 
-
-			}
-		}
-
-		if (/*isFriend()*/1)//是否是好友
-		{
-			multiply += 0.1;
-		}
-
-
-		for(List<Award>::Iter * item = mFireConfirmData.m_AwardsList.begin();item != NULL; item = mFireConfirmData.m_AwardsList.next(item))
-		{			
-			for( List<Goods>::Iter * iter = item->mValue.award.begin();iter != NULL;iter = item->mValue.award.next(iter))
-			{
-				iter->mValue.num = iter->mValue.num * (multiply + mFireConfirmData.m_AwardTimes); 
-			}
-			break;
-		}
-		for(List<Card>::Iter * item1 = mFireConfirmData.m_CardsList.begin();item1 != NULL; item1 = mFireConfirmData.m_CardsList.next(item1))
-		{			
-			for( List<Goods>::Iter * iter = item1->mValue.card.begin();iter != NULL;iter = item1->mValue.card.next(iter))
-			{
-				iter->mValue.num = iter->mValue.num * (multiply + mFireConfirmData.m_AwardTimes); 
-			}
-			break;
-		}
-
-		goods.resourcestype =AWARD_BASE;
-		goods.subtype =AWARD_BASE_GOLD;
-		goods.num -= goldcost;
-		mFireConfirmData.m_CostList.insertTail(goods);
-
-
-	}
-	else if (gStageTable->get(msg.id)->mType == STAGE_TWELVEPALACE)//十二宗宫
+	 if (gStageTable->get(msg.id)->mType == STAGE_TWELVEPALACE)//十二宗宫
 	{
 		mFireConfirmData =  player->GetFireConfirmData();
 		Record record;
@@ -526,9 +540,6 @@ void StageCalcManager::onTwelvePalaceEndReq(const  ConnId& connId ,CGTwelvePalac
 		record.playerID = player->getPlayerGuid();
 		record.modleID = player->getPlayerModelID();
 		record.val = TimeUtil::getTimeSec() - mFireConfirmData.m_CopyStartTime;
-
-		
-		
 
 		msg.time = TimeUtil::getTimeSec() - mFireConfirmData.m_CopyStartTime;
 
@@ -549,6 +560,9 @@ void StageCalcManager::onTwelvePalaceEndReq(const  ConnId& connId ,CGTwelvePalac
 	if(stageTemplate == NULL)
 	{
 		LOG_WARN("stageTemplate is NULL stageID = %u", msg.id);
+		resp.result = LynxErrno::ClienServerDataNotMatch;
+		std::string sendStr = resp.convertDataToJson();
+		NetworkSystem::getSingleton().sender(connId,TWELVE_PALACE_END_RESP,sendStr);
 		return;
 	}
 
@@ -573,7 +587,14 @@ void StageCalcManager::onTwelvePalaceEndReq(const  ConnId& connId ,CGTwelvePalac
 	}
 
 	player->SetFireConfirmData(mFireConfirmData);
-	FireConfirmManager::getSingleton().saveAndGetResult(connId,tmpResp,0);
+	if(msg.doType == 0)
+	{
+		FireConfirmManager::getSingleton().saveAndGetResult(connId,tmpResp,0,MiniLog68);
+	}
+	else
+	{
+		FireConfirmManager::getSingleton().saveAndGetResult(connId,tmpResp,0,MiniLog67);
+	}
 	
 	tmpResp.result =LynxErrno::None;
 	tmpResp.star = star;
@@ -592,6 +613,8 @@ void StageCalcManager::onTwelvePalaceEndReq(const  ConnId& connId ,CGTwelvePalac
 	resp.result = tmpResp.result;
 	resp.recordBreaking = tmpResp.recordBreaking;
 	resp.mopupTimes = msg.mopupTimes;
+	resp.allAttr = tmpResp.allAttr;
+	resp.stages = tmpResp.stages;
 			
 
 	if (msg.doType == 1 && stageTemplate->isBoss == 1&& getIt == 1)//挑战
@@ -603,11 +626,13 @@ void StageCalcManager::onTwelvePalaceEndReq(const  ConnId& connId ,CGTwelvePalac
 		resp.recordModleID = record.modleID;
 		resp.recordTime = record.val;		
 	}
-	mFireConfirmData = player->GetFireConfirmData();
-	resp.allAttr = mFireConfirmData.m_AddSendjs;
+// 	mFireConfirmData = player->GetFireConfirmData();
+// 	resp.allAttr = mFireConfirmData.m_AddSendjs;
 
 	std::string jsonStr = resp.convertDataToJson();	
 	NetworkSystem::getSingleton().sender( connId,TWELVE_PALACE_END_RESP,jsonStr);
+
+	LOG_INFO("TWELVE_PALACE_END_RESP = %s",jsonStr.c_str());
 
 	//更新每日任务 wwc
 	if(msg.doType == 1)
@@ -615,6 +640,18 @@ void StageCalcManager::onTwelvePalaceEndReq(const  ConnId& connId ,CGTwelvePalac
 
 	if(msg.doType == 0)
 		player->getAchieveManager().updateDailyTaskData(DLYTELVESUCCESS, msg.mopupTimes );
+
+
+	if(msg.doType == 1)
+	{
+		//更新七日训
+		LogicSystem::getSingleton().updateSevenDayTask(player->getPlayerGuid(),SDT13,1);
+
+		if (stageTemplate->isBoss == 1)
+		{
+			LogicSystem::getSingleton().updateSevenDayTask(player->getPlayerGuid(),SDT21,1);
+		}
+	}
 }
 
 
@@ -638,6 +675,11 @@ UInt32 StageCalcManager::getAwards(const  ConnId& connId ,UInt32 doType,List<Awa
 	PlayerChapterList chapterList = player->getChapterList();
 
 	StageTemplate *stageTemplate = gStageTable->get(stageID);
+	if (stageTemplate == NULL)
+	{
+		LOG_WARN("stageTemplate not found!!");
+		return LynxErrno::NotFound;
+	}
 
 	for (List<PlayerChapterData>::Iter * iter = chapterList.m_listChapterData.begin();iter != NULL;iter = chapterList.m_listChapterData.next(iter))
 	{
@@ -687,6 +729,11 @@ UInt32 StageCalcManager::getAwards(const  ConnId& connId ,UInt32 doType,List<Awa
 				}
 
 				stageTemplate = gStageTable->get(iter1->mValue.m_nStageID);
+				if (stageTemplate == NULL)
+				{
+					LOG_WARN("stageTemplate not found!!");
+					return LynxErrno::NotFound;
+				}
 				if (stageTemplate->mopuptype == 0)
 				{
 					continue;
@@ -733,15 +780,6 @@ UInt32 StageCalcManager::getAwards(const  ConnId& connId ,UInt32 doType,List<Awa
 		GiftManager::getSingleton().getChapterAward( connId,awardMonsterList);
 
 	}
-	// 	GiftManager::getSingleton().addToPlayer(player->getPlayerGuid(),REFLASH_AWARD,itemList);
-
-	// 	PlayerFireConfirmData mFireConfirmData =  player->GetFireConfirmData();
-	// 	for(List<Award>::Iter *iter2 = mFireConfirmData.m_AwardsList.begin();iter2 != NULL;iter2 = mFireConfirmData.m_AwardsList.next(iter2))
-	// 	{
-	// 		iter2->mValue.award += itemList;
-	// 		break;
-	// 	}
-	// 	player->SetFireConfirmData(mFireConfirmData);
 
 	return LynxErrno::None;
 
@@ -761,7 +799,7 @@ void StageCalcManager::addAwardGain(const  ConnId& connId ,PlayerFireConfirmData
 
 
 	double multiply =0;
-	multiply += mFireConfirmData.m_AwardTimes;
+	multiply += mFireConfirmData.m_AwardTimes;//狭路相逢是1 多人副本是10000
 	Record record;
 	record.name = player->getPlayerName();
 	record.playerID = player->getPlayerGuid();
@@ -778,6 +816,11 @@ void StageCalcManager::addAwardGain(const  ConnId& connId ,PlayerFireConfirmData
 			getIt = 1;
 		}
 	}
+	if (gStageTable->get(mFireConfirmData.m_CopyID) == NULL)
+	{
+		LOG_WARN("gStageTable->get(mFireConfirmData.m_CopyID) not found!!");
+		return;
+	}
 	if (time != 0 && time <= gStageTable->get(mFireConfirmData.m_CopyID)->limittime1&&getIt == 1)//
 	{
 // 		multiply += 0.1;//奖励加成去掉
@@ -785,6 +828,9 @@ void StageCalcManager::addAwardGain(const  ConnId& connId ,PlayerFireConfirmData
 		{			
 			recordBreaking =1;
 			//todo 加入到成就 
+			LOG_INFO("onTwelvePalaceEndReq recordBreaking = %d",recordBreaking);
+			
+			LogicSystem::getSingleton().sendSystemMsg(3, player->getPlayerName(), mFireConfirmData.m_CopyID);			
 		}
 	}
 
@@ -824,6 +870,11 @@ void StageCalcManager::addAwardGain(const  ConnId& connId ,PlayerFireConfirmData
 	{
 
 		AwardAddRateTemplate* awardAddRateTemplate = gAwardAddRateTable->get(it->mValue);
+		if (awardAddRateTemplate == NULL)
+		{
+			LOG_WARN("awardAddRateTemplate not found!!");
+			return;
+		}
 		rateOfGoods += awardAddRateTemplate->rateOfGoods;
 	}
 
@@ -891,21 +942,31 @@ void StageCalcManager::addAwardGain(const  ConnId& connId ,PlayerFireConfirmData
 		break;
 	}
 
-	for( List<Goods>::Iter * iter = mFireConfirmData.m_MonsterAwardList.begin();iter != NULL;iter = mFireConfirmData.m_MonsterAwardList.next(iter))
-	{
-		num =0;
-		for (List<RateOfGood>::Iter * iter2 = rateOfGoods.begin();iter2 != NULL;iter2 = rateOfGoods.next(iter2))
+	for(List<Award>::Iter * item = mFireConfirmData.m_MonsterAwardList.begin();item != NULL; item = mFireConfirmData.m_MonsterAwardList.next(item))
+	{			
+		for( List<Goods>::Iter * iter = item->mValue.award.begin();iter != NULL;iter = item->mValue.award.next(iter))
 		{
-			if (iter2->mValue.resourcesType == iter->mValue.resourcestype ||iter2->mValue.resourcesType == 0)
+			num =0;
+			for (List<RateOfGood>::Iter * iter2 = rateOfGoods.begin();iter2 != NULL;iter2 = rateOfGoods.next(iter2))
 			{
-				if (iter2->mValue.subtype == iter->mValue.subtype || iter2->mValue.subtype ==0)
-				{
-					num += iter->mValue.num * (iter2->mValue.rate/10000);
+				if (iter2->mValue.resourcesType == iter->mValue.resourcestype ||iter2->mValue.resourcesType == 0)
+				{					
+					if (iter->mValue.resourcestype == AWARD_STAGEDATA || iter->mValue.resourcestype == AWARD_TWELVEPALACE_STAGEDATA)//关卡信息不用加倍
+					{
+						continue;
+					}
+
+					if (iter2->mValue.subtype == iter->mValue.subtype || iter2->mValue.subtype ==0)
+					{
+						num += iter->mValue.num * (iter2->mValue.rate/10000);
+					}
 				}
 			}
+			iter->mValue.num += num;
 		}
-		iter->mValue.num += num;
+		break;
 	}
+
 
 	for( List<Goods>::Iter * iter = mFireConfirmData.m_IntruderAwardList.begin();iter != NULL;iter = mFireConfirmData.m_IntruderAwardList.next(iter))
 	{
@@ -1123,19 +1184,6 @@ UInt32 StageCalcManager::getMinKey(Map<UInt64, StageTemplate> values,UInt32 flag
 
 }
 
-
-
-void StageCalcManager::findSimilarPowerReq(Guid playerID,UInt32 times,UInt32 high,UInt32 low)
-{
-	PersistFindSimilarPowerReq req;
-	req.playerGuid = playerID;
-	req.times = times;
-	req.high = high;
-	req.low = low;
-	PersistSystem::getSingleton().postThreadMsg(req, 0);
-}
-
-
 Map<UInt32,UInt32> *StageCalcManager::getResetStages(UInt64 playerID)
 {
 	Map<UInt32,UInt32> *resetStages = NULL;
@@ -1232,27 +1280,33 @@ UInt32 StageCalcManager::resetHaoJiao(Guid playerID)
 
 	PlayerDailyResetData dailyResetData= player->getPlayerDailyResetData();
 
-	dailyResetData.m_nTwelvePalaceUnlockCount = GlobalVarManager::getSingleton().getTwelvePalace().resetlowerlimit;
+	GlobalValue globalValue = GlobalValueManager::getSingleton().getGlobalValue();
+
+	dailyResetData.m_nTwelvePalaceUnlockCount = globalValue.uTPresetlowerlimit;
 	player->setPlayerDailyResetData(dailyResetData);
 	player->getPersistManager().setDirtyBit(DAILYRESETBIT);
 	return 0;
 
 }
-
+//战斗开始
 void StageCalcManager::onBattleStart(const  ConnId& connId,CGBattleStart & msg)
 {
 
 	TwelveBattleStartResp resp;
 	Player* player = LogicSystem::getSingleton().getPlayerByConnId(connId);
+	if (player == NULL)
+	{
+		LOG_WARN("player not found!!");
+		return;
+	}
 
 	msg.convertJsonToData(msg.jsonStr); 
 
 	PlayerFireConfirmData mFireConfirmData =  player->GetFireConfirmData();
 
-	if (mFireConfirmData.m_CopyID != msg.id)
-	{
-	}
+	resp.confirmIDs =  FireConfirmManager::getSingleton().getFireConfirmCondition(connId);
 
+	
 	
 	FireConfirmManager::getSingleton().SetCopyStart(player,msg.id);
 	resp.id = msg.id;
@@ -1289,4 +1343,75 @@ bool StageCalcManager::checkStageClearance(Guid playerID,UInt32 stageId)
 		}
 	}
 	return false;
+}
+
+
+UInt32 StageCalcManager::getMonsterAward(UInt32 stageID,List<Goods> &itemList,List<AwardMonsterDamage> awardMonsterList,UInt32 isMopUp)
+{
+	List<Goods> tmpItemList;
+	if (isMopUp == 0)//非扫荡
+	{
+		for (List<AwardMonsterDamage>::Iter * iter = awardMonsterList.begin();iter != NULL;iter = awardMonsterList.next(iter))
+		{
+			for(Map<UInt32, MonsterAwardTemplate>::Iter * it = MONSTERAWARD_TABLE().mMap.begin();it !=NULL;it = MONSTERAWARD_TABLE().mMap.next(it))
+			{
+
+				if (it->mValue.stageid != stageID ||it->mValue.id != iter->mValue.ID)
+				{
+					continue;
+				}
+			
+				if (iter->mValue.damageType == 2)//击打
+				{
+					for(List<KeyValue>::Iter* item = it->mValue.timesAward.begin();item!=NULL;item = it->mValue.timesAward.next(item))
+					{
+						if (item->mValue.key > iter->mValue.times)
+						{
+							break;
+						}
+						GiftManager::getSingleton().getAwardByID(item->mValue.value,0, tmpItemList);
+					}
+					break;
+				}
+				else if (iter->mValue.damageType == 1)	//击杀		
+				{				
+					GiftManager::getSingleton().getAwardByID(it->mValue.killawardid,0, tmpItemList);	
+					break;
+				}
+			}
+		}
+
+		for(List<Goods>::Iter *it = tmpItemList.begin();it!= NULL;it = tmpItemList.next(it))
+		{
+			GiftManager::getSingleton().getContentByID(it->mValue.subtype,itemList);
+		}
+		return 0;
+	}
+	else
+	{
+		//扫荡
+		for(Map<UInt32, MonsterAwardTemplate>::Iter * it = gMonsterAwardTable->mMap.begin();it !=NULL;it = gMonsterAwardTable->mMap.next(it))
+		{
+			if (it->mValue.stageid != stageID)
+			{
+				continue;
+			}			
+			for(List<KeyValue>::Iter* item = it->mValue.timesAward.begin();item!=NULL;item = it->mValue.timesAward.next(item))
+			{
+
+				GiftManager::getSingleton().getAwardByID(item->mValue.value,0, tmpItemList);
+			}
+
+			GiftManager::getSingleton().getAwardByID(it->mValue.killawardid,0, tmpItemList);
+		}
+
+
+		for(List<Goods>::Iter *it = tmpItemList.begin();it!= NULL;it = tmpItemList.next(it))
+		{
+			GiftManager::getSingleton().getContentByID(it->mValue.subtype,itemList);
+		}
+		return 0;
+	}
+	return 0;
+	
 }

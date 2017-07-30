@@ -125,6 +125,19 @@ namespace Lynx
             *res = NULL;
         }
 
+		inline void execFreeSql(char *sql,MYSQL_RES* res)
+		{
+			if (execSql(sql))
+			{
+				do  
+				{  
+					res = mysql_store_result( mConnection );  
+					mysql_free_result(res);  
+				}while( !mysql_next_result( mConnection ) ); 
+
+			}
+		}
+
         String escapeString(const String& fromStr)
         {
             String toStr;

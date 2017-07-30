@@ -22,7 +22,7 @@ PVPWorker::initial(UInt32 index)
 	mWorkerIndex = index + 1;
 	startup();
 
-	LOG_INFO("Start PVPWorker [%u]", mWorkerIndex);
+	//LOG_INFO("Start PVPWorker [%u]", mWorkerIndex);
 
 	return true;
 }
@@ -34,7 +34,7 @@ PVPWorker::release()
 	join();
 
 	DEREGISTER_THREAD_MSG(mThreadMsgHandler, PVPTreadReq);
-	LOG_INFO("Shutdown PVPWorker [%u]", mWorkerIndex);
+	//LOG_INFO("Shutdown PVPWorker [%u]", mWorkerIndex);
 }
 
 void 
@@ -94,6 +94,11 @@ void PVPWorker::onPVPSystemRun( PVPTreadReq& msg )
 
 	return;//todo
 	Player *player = LogicSystem::getSingleton().getPlayerByConnId(msg.connId);
+	if (player == NULL)
+	{
+		LOG_WARN("player not found!!");
+		return;
+	}
 
 	UInt32 sceneID = player->getSceneID();
 	

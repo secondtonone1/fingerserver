@@ -1,3 +1,6 @@
+#ifdef _WIN32
+//#include <vld.h>
+#endif
 #include "GameServer.h"
 #include"jsoncpp/include/json/json.h"
 #include<fstream>
@@ -175,6 +178,12 @@ GameServer::initial(int argc, char** argv)
 		return false;
 	}
 
+	if(!TableManagerCopy::getSingleton().load())
+	{
+		LOG_WARN("Failed to load template tables.");
+		return false;
+	}
+
 	if (!PersistSystem::getSingleton().initial())
 	{
 		LOG_ERROR("Failed to initial PersistSystem");
@@ -236,31 +245,57 @@ GameServer::initial(int argc, char** argv)
 
 	if (!RedisManager::getSingleton().initial())
 	{
+		LOG_ERROR("Failed to initial RedisManager");
 		return false;
 	}
 
 	if(!MemDataSystem::getSingleton().initial())
 	{
+		LOG_ERROR("Failed to initial MemDataSystem");
 		return false;
 	}
 	
 	if(!RankSystem::getSingleton().initial())
 	{
+		LOG_ERROR("Failed to initial RankSystem");
+		return false;
+	}
+
+	if(!ConsortSystem::getSingleton().initial())
+	{
+		LOG_ERROR("Failed to initial ConsortSystem");
 		return false;
 	}
 
 	if(!RobotManager::getSingleton().initial())
 	{
+		LOG_ERROR("Failed to initial RobotManager");
+		return false;
+	}
+
+	if(!GlobalValueManager::getSingleton().initGlobalValue())
+	{
+		LOG_ERROR("Failed to initial GlobalValueManager");
 		return false;
 	}
 	
+	RankGameManager::getSingleton().initRankGame();
+
+
+	Logcxx::getSingleton().initLog4cxx();
+
+	ServerData::getSingleton().serverDatainit();//位置不能变
 	
 	Random::getSingleton().setSeed(0);
 
 	srand(time(0));
 	mUpdateTimer.set(10, IOTimerCallback(this, &GameServer::updateTimer), NULL);
 
-	
+	//mPVPThread.initial(0);
+
+	LOG_INFO("time is  =  %llu",time(0));	
+
+	LOG_INFO("All Manager finish.....");
 	return true;
 }
 
@@ -271,17 +306,21 @@ GameServer::release()
 	PassportSystem::getSingleton().release();
 	PersistSystem::getSingleton().release();
 	
-	#if defined (__linux__) 
+// 	#if defined (__linux__) 
 	PVPWorker::getSingleton().release();
-	#endif
+// 	#endif
 
 	PVPSystem::getSingleton().release();
 	LogicSystem::getSingleton().release();
-	NetworkSystem::getSingleton().release();	
 	RedisManager::getSingleton().release();
 	RankSystem::getSingleton().release();
-	mUpdateTimer.cancel();
+	ConsortSystem::getSingleton().release();
+	mPVPThread.release();
 
+	NetworkSystem::getSingleton().release();		
+
+	mUpdateTimer.cancel();
+	
 	MainThread::release();
 }
 
@@ -290,14 +329,19 @@ GameServer::update()
 {
 	MainThread::processEvents();
 
+
 	UInt64 currTime = TimeUtil::getTimeMilliSec();
-	NetworkSystem::getSingleton().update(currTime);
-	LogicSystem::getSingleton().update(currTime);
+	
+	RankSystem::getSingleton().update(currTime);
 	PersistSystem::getSingleton().update(currTime);
+	LogicSystem::getSingleton().update(currTime);
+	
 	PassportSystem::getSingleton().update(currTime);
 	LoggerSystem::getSingleton().update(currTime);
 	PVPSystem::getSingleton().update(currTime);
-	RankSystem::getSingleton().update(currTime);
+	
+	ConsortSystem::getSingleton().update(currTime);
+	NetworkSystem::getSingleton().update(currTime);
 }
 
 
@@ -351,22 +395,24 @@ GameServer::stop(bool isImmediate)
 
 void GameServer::shutDown()
 {
-	LOG_ERROR(" game server shut down begin !!!!!!!!!!");
-	LOG_ERROR(" game server shut down send kick out all player 15s");
+	LOG_WARN(" game server shut down begin !!!!!!!!!!");
+	LOG_WARN(" game server shut down send kick out all player 15s");
 	NetworkSystem::getSingleton().sendServerShutDown();
-	LOG_ERROR(" game server shut down can not recived msg");
+	LOG_WARN(" game server shut down can not recived msg");
 	NetworkSystem::getSingleton().setCanMsgRecived(false);
-	LOG_ERROR(" game server kick out all player");
+	LOG_WARN(" game server kick out all player");
 	LogicSystem::getSingleton().kickOutAllPlayer();	
-	TimeUtil::sleep(5*1000);
-	LOG_ERROR(" game server close !!!!!!!!! 5s");
-	TimeUtil::sleep(30*1000);
+ 	TimeUtil::sleep(5*1000);
+	LOG_WARN(" game server close !!!!!!!!! 5s");
+ 	
 	stop(true);
+	TimeUtil::sleep(10*1000);
 }
 
 int
 main(int argc, char* argv[])
 {
+	
 	if (!GameServer::getSingleton().initial(argc, argv))
 	{
 		LOG_ERROR("Failed to initial game server");
@@ -382,6 +428,22 @@ main(int argc, char* argv[])
 
 	LOG_INFO("GameServer exited............................");
 	LOG_RELEASE();
+
+
+
 	return 0;
 }
 
+void GameServer::gameExit()
+{
+	LOG_INFO("server will shutdown.................................................");
+	LogicSystem::getSingleton().setForbidLogin(0);
+	TimeUtil::sleep(3);	
+	
+	mIOService.stop();
+
+// 	GameServer::getSingleton().release();	
+// 	LOG_RELEASE();
+// 	exit(0);
+	return ;
+}

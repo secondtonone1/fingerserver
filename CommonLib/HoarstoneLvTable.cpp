@@ -175,6 +175,11 @@ HoarstoneLvTable::loadFromCsv(const String& filePath)
 			return false;
 		}
 
+		if (!csvReader.bind("toMax", hoarstoneLvTemp.mToMax))
+		{
+			LOG_WARN("Failed to load hoarstoneLv.csv for [toMax]");
+			return false;
+		}
 
 		mMap.insert(hoarstoneLvTemp.mId, hoarstoneLvTemp);
 		HoarstoneLvReversMap::Iter * reversIter = mReversMap.find(hoarstoneLvTemp.mIdx);

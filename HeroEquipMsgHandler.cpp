@@ -134,7 +134,7 @@ void HeroEquipMsgHandler::onHeroEquipGemLvUp(const ConnId& connId, CGHeroEquipGe
 		UInt32 equipPos = root["equipPos"].asUInt();
 
 		player->getHeroEquipManager().equipGemLvUp(equipPos, gemPos);
-
+	
 	}
 	else
 	{
@@ -163,6 +163,8 @@ void HeroEquipMsgHandler::onHeroEquipGemUnload(const ConnId& connId, CGHeroEquip
 		UInt32 equipPos = root["equipPos"].asUInt();
 
 		player->getHeroEquipManager().equipGemUnload(equipPos, gemPos);
+
+
 
 	}
 	else

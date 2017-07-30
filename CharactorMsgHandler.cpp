@@ -121,7 +121,6 @@ void CharactorMsgHandler::onPowerRank(const ConnId & connId, CGPowerRankReq& msg
 		rankResp.mPacketID = BOC_POWERRANK_RESP;
 		NetworkSystem::getSingleton().sendMsg(rankResp, connId);
 
-		cout << respstr << endl;
 	
 	}
 	else

@@ -49,11 +49,13 @@ namespace Lynx
 		UInt32 mAttrType5;
 
 		UInt32 mAttrValue5;	
+		
+		UInt32 mToMax;
 
-		LYNX_S11N_17(HoarstoneLvTemplate,UInt64, mId, UInt64, mIdx,UInt32, mLevel,UInt32, mPower,
+		LYNX_S11N_18(HoarstoneLvTemplate,UInt64, mId, UInt64, mIdx,UInt32, mLevel,UInt32, mPower,
 				UInt32, mNextLvAddPower,UInt32, mCostCoin,UInt32, mCostPiece,UInt32, mAttrType1,UInt32, mAttrValue1,
 				UInt32, mAttrType2,UInt32, mAttrValue2,UInt32, mAttrType3,UInt32, mAttrValue3,
-				UInt32, mAttrType4,UInt32, mAttrValue4,UInt32, mAttrType5,UInt32, mAttrValue5
+				UInt32, mAttrType4,UInt32, mAttrValue4,UInt32, mAttrType5,UInt32, mAttrValue5,	UInt32, mToMax
 			);
 
 	};

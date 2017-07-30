@@ -1,0 +1,8 @@
+#! /bin/sh
+#
+# Created by configure
+
+"./configure" \
+"--prefix=/root/libs" \
+"--with-apr=/root/libs" \
+"$@"

@@ -22,7 +22,7 @@ PassportSystem::initial()
     REGISTER_THREAD_MSG(mThreadMsgHandler, PassportAuthResp, PassportSystem::onPassportAuthResp);
 
 	
-	REGISTER_THREAD_MSG(mThreadMsgHandler, PassporCodeResp, PassportSystem::onPassporCodeResp);
+	REGISTER_THREAD_MSG(mThreadMsgHandler, PassportCodeResp, PassportSystem::onPassporCodeResp);
    // REGISTER_THREAD_MSG(mThreadMsgHandler, PassportGMAuthResp, PassportSystem::onPassportGMAuthResp);
 
 
@@ -45,7 +45,7 @@ PassportSystem::release()
     // 注销线程消息
     DEREGISTER_THREAD_MSG(mThreadMsgHandler, PassportAuthResp);
 
-	DEREGISTER_THREAD_MSG(mThreadMsgHandler, PassporCodeResp);
+	DEREGISTER_THREAD_MSG(mThreadMsgHandler, PassportCodeResp);
   
 
     for (UInt32 i = 0; i < PASSPORT_THREAD_WORKER_COUNT; ++i)
@@ -97,7 +97,7 @@ PassportSystem::onPassportAuthResp(PassportAuthResp& msg)
 }
 
 void 
-PassportSystem::onPassporCodeResp(PassporCodeResp& msg)
+PassportSystem::onPassporCodeResp(PassportCodeResp& msg)
 {
 	CodeManager::getSingleton().codeResp(msg);
 }

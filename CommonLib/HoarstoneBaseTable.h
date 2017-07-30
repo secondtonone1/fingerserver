@@ -63,7 +63,9 @@ namespace Lynx
 
 		String     mActiveConditionDesc5;
 
-		LYNX_S11N_25(HoarstoneBaseTemplate,UInt64, mId, String,mName,UInt32,mMaxLv,String,mMainIcon,
+		UInt32		mExchange;
+
+		LYNX_S11N_26(HoarstoneBaseTemplate,UInt64, mId, String,mName,UInt32,mMaxLv,String,mMainIcon,
 			String,mPieceIcon,UInt32, mActiveConditionType1, UInt64 ,mActiveCondition1Param1, UInt64 ,mActiveCondition1Param1,
 			String,mActiveConditionDesc1,
 			UInt32 ,mActiveConditionType2,UInt64 ,mActiveCondition2Param1, UInt64 ,mActiveCondition2Param2,
@@ -73,7 +75,7 @@ namespace Lynx
 			UInt32 ,mActiveConditionType4,UInt64 ,mActiveCondition4Param1, UInt64 ,mActiveCondition4Param2,
 			String,mActiveConditionDesc4,
 			UInt32 ,mActiveConditionType5,UInt64 ,mActiveCondition4Param1, UInt64 ,mActiveCondition4Param2,
-			String,mActiveConditionDesc5
+			String,mActiveConditionDesc5,  UInt32, mExchange
 			);
 
 	};

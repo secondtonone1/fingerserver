@@ -48,8 +48,6 @@ namespace Lynx
 		//程庆银掉落发包
 		void diaoluoSend(List<JewelryData *> getList);
 
-		void diaoluoSendTest(List<JewelryData *> getList);
-
 		void jewelryEquipOnce(Map<UInt32 ,UInt64> equipMap);
 
 		UInt32 getJewelryCount();

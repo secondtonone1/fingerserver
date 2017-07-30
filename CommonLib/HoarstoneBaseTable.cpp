@@ -220,6 +220,13 @@ HoarstoneBaseTable::loadFromCsv(const String& filePath)
 			return false;
 		}
 
+		if (!csvReader.bind("exchange", hoarStoneBaseTemp.mExchange))
+		{
+			LOG_WARN("Failed to load hoarstonebase.csv for [exchange]");
+			return false;
+		}
+
+
 		mMap.insert(hoarStoneBaseTemp.mId, hoarStoneBaseTemp);
 	}
 	fileStream.close();

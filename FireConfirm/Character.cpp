@@ -26,6 +26,10 @@ void Character::initCharacter(Guid playerID)
 	setPosY(GRUOND_Y);
 
 	player = LogicSystem::getSingleton().getPlayerByGuid(playerID);
+	if (player == NULL)
+	{
+		return;
+	}
 
 
 	id = player->getPlayerModelID();
@@ -259,10 +263,20 @@ void Character::initSkill(UInt32 playerID)
 	Player * player;
 	SkillBaseTemplate *skillBaseTemplate;
 	player = LogicSystem::getSingleton().getPlayerByGuid(playerID);
+	if (player == NULL)
+	{
+		LOG_WARN("player not found!!");
+		return;
+	}
 	PlayerSkillListData skillList = player->GetSkillList();
 	for(List<SkillData>::Iter * iter = skillList.m_listSkills.begin();iter != NULL;iter = skillList.m_listSkills.next(iter))//marksend
 	{		
 		skillBaseTemplate = gSkillBaseTable->get(iter->mValue.m_nID);
+		if (skillBaseTemplate == NULL)
+		{
+			LOG_WARN("skillBaseTemplate not found!!");
+			return;
+		}
 		SkillLevelTemplate * skillLvTemplate = SKILLLEVEL_TABLE().reverseGetNextLv(iter->mValue.m_nID,iter->mValue.m_nLevel);
 
 		m_character.skillBaseData.skillMap.insert(iter->mValue.m_nID,skillBaseTemplate);
@@ -277,10 +291,20 @@ void Character::initBuff(UInt32 playerID)
 	Player * player;
 	BuffTemplate *buffTemplate;
 	player = LogicSystem::getSingleton().getPlayerByGuid(playerID);
+	if (player == NULL)
+	{
+		LOG_WARN("player not found!!");
+		return;
+	}
 	PlayerBuffListData buffList = player->GetBufferData();
 	for(List<BufferData>::Iter *iter = buffList.m_listBuffers.begin();iter != NULL;iter = buffList.m_listBuffers.next(iter))
 	{
 		buffTemplate = gBuffTable->get(iter->mValue.m_nBufferID);
+		if (buffTemplate == NULL)
+		{
+			LOG_WARN("buffTemplate not found!!");
+			return;
+		}
 		m_character.buffData.buffMap.insert(iter->mValue.m_nBufferID,buffTemplate);
 	}
 
@@ -290,6 +314,11 @@ void Character::initEquipAttr(UInt32 playerID)
 {
 	Player *player;
 	player = LogicSystem::getSingleton().getPlayerByGuid(playerID);
+	if (player == NULL)
+	{
+		LOG_WARN("player not found!!");
+		return;
+	}
 	PlayerItemListData itemListData;
 
 	Map<UInt64, ItemData*> MapUidEquipType;/* = player->getItemManager().m_mapUidEquipType;*/
@@ -305,6 +334,11 @@ void Character::initFashionAttr(UInt32 playerID)
 {
 	Player *player;
 	player = LogicSystem::getSingleton().getPlayerByGuid(playerID);
+	if (player == NULL)
+	{
+		LOG_WARN("player not found!!");
+		return;
+	}
 	PlayerFashionData mFashionData;
 	FahionTemplate *fahionTemplate;
 
@@ -313,6 +347,11 @@ void Character::initFashionAttr(UInt32 playerID)
 	for(List<FashionData>::Iter * iter = mFashionData.m_listFashionDatas.begin();iter != NULL;iter = mFashionData.m_listFashionDatas.next(iter) )
 	{
 		fahionTemplate = gFashionTable->get(iter->mValue.m_nFahionID);//todo ÊôÐÔ¼ÓÈë herotemplate
+		if (fahionTemplate == NULL)
+		{
+			LOG_WARN("skillBaseTemplate not found!!");
+			return;
+		}
 
 	}
 
@@ -1301,6 +1340,11 @@ bool Character::skillAttack(AttParams attParams, UInt32 isAttacks)
 	SceneManager* sceneManager ;
 
 	player = LogicSystem::getSingleton().getPlayerByGuid(m_character.playerID);
+	if (player == NULL)
+	{
+		LOG_WARN("player not found!!");
+		return false;
+	}
 	UInt32 sceneID = player->getSceneID();
 	
 	sceneManager = PVPSystem::getSingleton().getScene(sceneID);
@@ -1441,9 +1485,18 @@ UInt32 Character::getBuffIdByType(UInt32 buffbigType,UInt32 buffSubType)
 
 BuffType Character::getBuffTypeByID(UInt32 buffId)
 {
+	BuffType buffType;
 	BuffTemplate *buffTemplate;
 	buffTemplate = gBuffTable->get(buffId);
-	BuffType buffType;
+	if (buffTemplate == NULL)
+	{
+		LOG_WARN("buffTemplate not found!!");
+		buffType.buffBigType = 0;
+		buffType.buffSubType = 0;
+		return buffType;
+	}
+
+	
 	buffType.buffBigType = buffTemplate->mType;
 	buffType.buffSubType = buffTemplate->mSubType;
 	return buffType;
@@ -1966,6 +2019,11 @@ UInt32 calcPropertytoPower(TypeName &values,PowerValueTemplate* powerValueTempla
 UInt32 Character::calcPower(Guid playerID,UInt32 which)
 {
 	Player *player = LogicSystem::getSingleton().getPlayerByGuid(playerID);
+	if (player == NULL)
+	{
+		LOG_WARN("player not found!!");
+		return 0;
+	}
 
 	UInt32 maxNum = 0;
 	UInt32 power = 0;
@@ -1981,6 +2039,11 @@ UInt32 Character::calcPower(Guid playerID,UInt32 which)
 
 		initLevelAttr(playerID,player->getPlayerLeval());
 		PowerValueTemplate* powerValueTemplate = gPowerValueTable->get(1);
+		if (powerValueTemplate == NULL)
+		{
+			LOG_WARN("powerValueTemplate not found!!");
+			return 0;
+		}
 		power1 += calcPropertytoPower(m_character.heroTemplate,powerValueTemplate);
 
 		if (which ==1)

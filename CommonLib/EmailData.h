@@ -28,6 +28,16 @@ namespace Lynx
 
 		
 	};
+
+	struct GMMsg
+	{
+		GMMsg():m_strGMMsg(""),m_nEndTime(0), m_nTerminal(0), m_nLastTime(0){}
+		std::string  m_strGMMsg;
+		UInt64  m_nEndTime;
+		UInt32  m_nTerminal;
+		UInt64  m_nLastTime;
+		LYNX_S11N_4(GMMsg, std::string , m_strGMMsg, UInt64,  m_nEndTime, UInt32,  m_nTerminal, UInt64,  m_nLastTime);
+	};
 } // namespace Lynx
 
 #endif // __LYNX_COMMON_LIB_EMAIL_DATA_H__

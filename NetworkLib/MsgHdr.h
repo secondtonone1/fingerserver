@@ -44,9 +44,13 @@ namespace Lynx
 				return false;
 			}
 
+		
 			istream >> mAckId;
 			istream >> mId;
 			istream >> mBodyLen;
+
+		
+
 			return true;
 		}
 	}; 

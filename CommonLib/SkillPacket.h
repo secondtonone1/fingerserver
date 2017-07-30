@@ -11,7 +11,8 @@ namespace Lynx
 		BOC_SKILL_LIST_RESP					= sKillMsgBase + 2,
 		BOC_SKILL_LEVELUP_REQ				= sKillMsgBase + 3,
 		BOC_SKILL_LEVELUP_RESP				= sKillMsgBase + 4,
-		BOC_SKILL_EQUIPSET_REQ				= sKillMsgBase + 5
+		BOC_SKILL_EQUIPSET_REQ				= sKillMsgBase + 5,
+		BOC_SKILL_LVUPONCE_REQ			= sKillMsgBase + 7
 	};
 
 	//-----------------CG-------------------
@@ -27,7 +28,7 @@ namespace Lynx
 
 	struct CGSkillLevelUpReq
 	{
-		CGSkillLevelUpReq():mPacketID(0),mReqJsonStr(""){}
+		CGSkillLevelUpReq():mPacketID(BOC_SKILL_LEVELUP_REQ),mReqJsonStr(""){}
 		UInt16 mPacketID;
 		std::string mReqJsonStr;
 
@@ -43,6 +44,18 @@ namespace Lynx
 
 		LYNX_MESSAGE_2(BOC_SKILL_EQUIPSET_REQ,CGSkillEquipSetReq,UInt16, mPacketID,std::string, mReqJsonStr);
 	};
+
+	struct CGSkillLvUpOnceReq
+	{
+		CGSkillLvUpOnceReq():mPacketID(BOC_SKILL_LVUPONCE_REQ),mReqJsonStr(""){}
+		UInt16 mPacketID;
+		std::string mReqJsonStr;
+
+		LYNX_MESSAGE_2(BOC_SKILL_LVUPONCE_REQ,CGSkillLvUpOnceReq,UInt16, mPacketID,std::string, mReqJsonStr);
+	};
+
+
+	
 
 	//-----------------GC-------------------
 	struct GCSkillListResp

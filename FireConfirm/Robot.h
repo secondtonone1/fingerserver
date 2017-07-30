@@ -6,6 +6,7 @@
 namespace Lynx
 {
 
+
 	class RobotManager: public Singleton<RobotManager>
 	{
 	

@@ -1,5 +1,6 @@
 #include "PassportWorker.h"
 #include "ConfigParser.h"
+#include "ServerData.h"
 
 using namespace Lynx;
 
@@ -20,6 +21,8 @@ PassportWorker::initial(UInt32 index)
 //	REGISTER_THREAD_MSG(mThreadMsgHandler, PassportGMAuthReq, PassportWorker::onPassportGMAuthReq);
 	
 	REGISTER_THREAD_MSG(mThreadMsgHandler, PassportCodeReq, PassportWorker::onPassportCodeReq);
+
+	REGISTER_THREAD_MSG(mThreadMsgHandler, PassportServerIDReq, PassportWorker::onGetServerIDReq);
 
 
 
@@ -148,14 +151,15 @@ PassportWorker::onPassportAuthReq(PassportAuthReq& msg)
 void 
 PassportWorker::onPassportCodeReq(PassportCodeReq& msg)
 {
-	PassporCodeResp resp;
+	PassportCodeResp resp;
 
 	// 数据库校验
 	char sql[2048];
 
 	if(msg.isSave == 1)
 	{
-		snprintf(sql, sizeof(sql), "REPLACE INTO exchange_code(code,gift_type,player_uuid)VALUES('%s',%u,%llu)", msg.code.c_str(),msg.reqType,msg.playerID);
+
+		snprintf(sql, sizeof(sql), "UPDATE exchange_code SET player_uuid = %llu WHERE `code` = '%s' AND gift_type = %d ", msg.playerID,msg.code.c_str(),msg.reqType);
 		LOG_DEBUG("Sql:%s", sql);
 		bool result = mDBInterface.execSql(sql);
 		MYSQL_RES* rs = mDBInterface.storeResult();
@@ -196,7 +200,15 @@ PassportWorker::onPassportCodeReq(PassportCodeReq& msg)
 		if (playerID != 0)
 		{
 			resp.errorId = LynxErrno::Used;    
-		}		
+		}	
+		if (resp.endTime != 0)
+		{
+			UInt32 nowTime = TimeUtil::getTimeSec();
+			if (nowTime <resp.beginTime|| nowTime > resp.endTime)
+			{
+				resp.errorId = LynxErrno::TimeNotRight;	
+			}
+		}
 
 		mDBInterface.freeResult(&rs);		
 	}
@@ -209,6 +221,41 @@ PassportWorker::onPassportCodeReq(PassportCodeReq& msg)
 	postMsgToOutputQueue(resp, 0);
 	return;
 }
+
+
+
+void 
+PassportWorker::onGetServerIDReq(PassportServerIDReq& msg)
+{
+	UInt32 serverID = 0;
+	PassportServerIDResp resp;
+	char sql[2048];
+
+	snprintf(sql, sizeof(sql), "SELECT id FROM ServerList WHERE ip = '%s' AND port =  %d", msg.serverIP.c_str(),msg.port);
+
+	bool result = mDBInterface.execSql(sql);
+	MYSQL_RES* rs = mDBInterface.storeResult();
+	if(!result)
+	{
+		mDBInterface.freeResult(&rs);
+		postMsgToOutputQueue(resp, 0);
+		return;
+	}
+	MYSQL_ROW row = mDBInterface.fetchRow(rs);
+	if(row)
+	{
+		serverID =	lynxAtoi<UInt32>(row[0]);
+	}
+
+	ServerPublicData  serverPublicData = ServerData::getSingleton().getServerPublicData();
+	serverPublicData.gServerID = serverID;
+	ServerData::getSingleton().setServerPublicData(serverPublicData,true);//true =save	
+	
+	mDBInterface.freeResult(&rs);
+
+	return;
+}
+
 //void 
 //PassportWorker::onPassportGMAuthReq(PassportGMAuthReq& msg)
 //{

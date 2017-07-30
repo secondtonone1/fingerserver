@@ -1,5 +1,6 @@
 #include "EmailManager.h"
 #include "PersistSystem.h"
+#include "NetworkSystem.h"
 #include "Player.h"
 using namespace Lynx;
 
@@ -46,9 +47,18 @@ void EmailManager::addEmail(const EmailData & emailData)
 
 void EmailManager::delEmail(UInt64 emailUid)
 {
+	const ConnId & connId  = m_pPlayer->getConnId();
 	Map<UInt64, EmailData*>::Iter * findIter = m_emailMap.find(emailUid);
 	if(!findIter)
 	{
+		EmailDelResp delResp;
+		delResp.mPacketID = EMAIL_DEL_RESP;
+		Json::Value root;
+		root["errorId"] =  LynxErrno::InvalidParameter;
+		Json::StyledWriter writer;
+		
+		delResp.mRespJsonStr = writer.write(root);
+		NetworkSystem::getSingleton().sendMsg(delResp,connId);
 		return ;
 	}
 
@@ -66,6 +76,17 @@ void EmailManager::delEmail(UInt64 emailUid)
 	PersistDelEmail emailDelMsg;
 	emailDelMsg.mEmailUid = emailUid;
 	PersistSystem::getSingleton().postThreadMsg(emailDelMsg, emailUid);
+
+
+		EmailDelResp delResp;
+		delResp.mPacketID = EMAIL_DEL_RESP;
+		Json::Value root;
+		root["errorId"] =  LynxErrno::None;
+		root["emailuid"] = emailUid;
+		Json::StyledWriter writer;
+		
+		delResp.mRespJsonStr = writer.write(root);
+		NetworkSystem::getSingleton().sendMsg(delResp,connId);
 }
 
 void EmailManager::updateEmailState(const EmailData & emailData)
@@ -90,11 +111,48 @@ void EmailManager::updateEmailState(const EmailData & emailData)
 
 void EmailManager::clearAllEmail()
 {
-	m_pEmailList->clear();
-	m_emailMap.clear();
+//////////////
+		const ConnId & connId  = m_pPlayer->getConnId();
+	
+		List<EmailData>::Iter *  emailIter =  m_pEmailList->begin();
+		for(;
+			emailIter != NULL;  )
+		{
+			if(emailIter->mValue.m_nGetState || emailIter->mValue.m_strContent.empty() )
+			{
+				Map<UInt64, EmailData*>::Iter * findIter = m_emailMap.find(emailIter->mValue.m_nEmailUid);
+				if(findIter)
+				{
+					m_emailMap.erase(findIter);
+					emailIter = m_pEmailList->erase(emailIter);
+					continue;
+				}
+				else{
+					emailIter = m_pEmailList->next(emailIter);
+				}
+			}
+			else
+			{
+				emailIter = m_pEmailList->next(emailIter);
+			}
+		}
+
+	//////////////
+	
 	PersistClearEmail clearEmail;
 	clearEmail.mPlayerUid = m_pPlayer->getPlayerGuid();
 	PersistSystem::getSingleton().postThreadMsg(clearEmail, clearEmail.mPlayerUid);
+
+	EmailDelOnceResp delResp;
+		delResp.mPacketID = EMAIL_DEL_RESP;
+		Json::Value root;
+		root["errorId"] =  LynxErrno::None;
+		
+		Json::StyledWriter writer;
+		
+		delResp.mRespJsonStr = writer.write(root);
+		NetworkSystem::getSingleton().sendMsg(delResp,connId);
+
 }
 
 void EmailManager::openEmail(UInt64 emailUid)
@@ -151,7 +209,13 @@ void EmailManager::getContant(UInt64 emailUid)
 		Json::StyledWriter writer;
 		getContantResp.mRespJsonStr = writer.write(root);
 		cout << getContantResp.mRespJsonStr;
+		NetworkSystem::getSingleton().sendMsg(getContantResp,connId);
 
+		return;
+	}
+
+	if(findIter->mValue->m_nGetState)
+	{
 		return;
 	}
 
@@ -165,17 +229,17 @@ void EmailManager::getContant(UInt64 emailUid)
 
 		Map<UInt64, List<UInt64> > mapRes2Sub;
 		List<JewelryData *> listJewelryData;
-	
+			List<ReturnItemEle>  listrtitem;
 		while(findIndex != std::string::npos)
 		{
-			dealSubStr(contantStr,findIndex, mapRes2Sub, listJewelryData);
+			dealSubStr(contantStr,findIndex, mapRes2Sub, listJewelryData, listrtitem,MiniLog120);
 		   contantStr = contantStr.substr(findIndex +1);
 	       findIndex = contantStr.find(';');
 		}
 
 		if(contantStr != "")
 		{
-			dealSubStr(contantStr,findIndex,mapRes2Sub,listJewelryData);
+			dealSubStr(contantStr,findIndex,mapRes2Sub,listJewelryData, listrtitem,MiniLog120);
 		}
 
 	findIter->mValue->m_nOpenState = 1;
@@ -186,8 +250,9 @@ void EmailManager::getContant(UInt64 emailUid)
 
 	EmailGetContantResp getContantResp;
 		getContantResp.mPacketID = EMAIL_GETCONTANT_RESP;
-	
-		getContantResp.mRespJsonStr = convertGetToJson(mapRes2Sub,listJewelryData);
+		//更改为新的接口
+		//getContantResp.mRespJsonStr = convertGetToJson(mapRes2Sub,listJewelryData);
+		getContantResp.mRespJsonStr = convertGetToJson(emailUid, listrtitem);
 		cout << getContantResp.mRespJsonStr;
 		NetworkSystem::getSingleton().sendMsg(getContantResp,connId);
 }
@@ -197,12 +262,17 @@ void EmailManager::getContant(List<UInt64> emailList)
 	const ConnId & connId  = m_pPlayer->getConnId();	
 	Map<UInt64, List<UInt64> > mapRes2Sub;
 		List<JewelryData *> listJewelryData;
-
+		List<ReturnItemEle>  listrtitem;
 	for(List<UInt64>::Iter * emailIter = emailList.begin();  emailIter != NULL; emailIter = emailList.next(emailIter))
 	{
 		Map<UInt64, EmailData*>::Iter * findIter = m_emailMap.find(emailIter->mValue);
 
 		if(!findIter)
+		{
+			continue;
+		}
+
+		if(findIter->mValue->m_nGetState)
 		{
 			continue;
 		}
@@ -216,14 +286,14 @@ void EmailManager::getContant(List<UInt64> emailList)
 
 		while(findIndex != std::string::npos)
 		{
-			dealSubStr(contantStr,findIndex, mapRes2Sub, listJewelryData);
+			dealSubStr(contantStr,findIndex, mapRes2Sub, listJewelryData, listrtitem,MiniLog120);
 		    contantStr = contantStr.substr(findIndex +1);
 	        findIndex = contantStr.find(';');
 		}
 
 		if(contantStr != "")
 		{
-			dealSubStr(contantStr,findIndex,mapRes2Sub,listJewelryData);
+			dealSubStr(contantStr,findIndex,mapRes2Sub,listJewelryData, listrtitem,MiniLog120);
 		}
 
 		findIter->mValue->m_nOpenState = 1;
@@ -237,14 +307,17 @@ void EmailManager::getContant(List<UInt64> emailList)
 
 	EmailGetContantResp getContantResp;
 		getContantResp.mPacketID = EMAIL_GETCONTANT_RESP;
-	
-		getContantResp.mRespJsonStr = convertGetToJson(mapRes2Sub,listJewelryData);
+		//调用新的接口
+		//getContantResp.mRespJsonStr = convertGetToJson(mapRes2Sub,listJewelryData);
+		getContantResp.mRespJsonStr = convertGetToJson(0,listrtitem);
+
 		cout << getContantResp.mRespJsonStr;
 		NetworkSystem::getSingleton().sendMsg(getContantResp,connId);
 }
 
 
-void EmailManager::dealSubStr(std::string &contantStr, std::string ::size_type  findIndex,Map<UInt64, List<UInt64> > &mapRes2Sub, List<JewelryData *> &listJewelryData)
+void EmailManager::dealSubStr(std::string &contantStr, std::string ::size_type  findIndex,Map<UInt64, List<UInt64> > &mapRes2Sub, 
+							  List<JewelryData *> &listJewelryData, List<ReturnItemEle> &rtcontantList,UInt32 systemID)
 {
 		//;号之前的全部截取，放入到列表里
 			std::string contantEleStr = contantStr.substr(0,findIndex);
@@ -284,7 +357,23 @@ void EmailManager::dealSubStr(std::string &contantStr, std::string ::size_type  
 
 			if(resType != AWARD_JEWELRY)
 			{
-				m_pPlayer->getAllItemManager().addAwardMaterial(resType,subType,count);
+				if(resType == AWARD_SERVANT)
+				{
+					for(UInt32 i = 0; i < count; i++)
+					{
+						ReturnItemEle rtItemEle;
+						m_pPlayer->getAllItemManager().addAwardMaterial(resType,subType,1,rtItemEle,systemID);
+						rtcontantList.insertTail(rtItemEle);
+					}
+				}
+				else
+				{
+						ReturnItemEle rtItemEle;
+						m_pPlayer->getAllItemManager().addAwardMaterial(resType,subType,count,rtItemEle,systemID);
+						rtcontantList.insertTail(rtItemEle);
+				}
+			
+				
 
 				Map<UInt64, List<UInt64> >::Iter * mapIterFind = mapRes2Sub.find(resType);
 				
@@ -309,6 +398,19 @@ void EmailManager::dealSubStr(std::string &contantStr, std::string ::size_type  
 			else
 			{
 				listJewelryData += m_pPlayer->getJewelryManager().playerGetJewelry(subType,count);
+	
+				for(List<JewelryData *>::Iter * jewelryDataIter = listJewelryData.begin();  jewelryDataIter != NULL; 
+					jewelryDataIter = listJewelryData.next(jewelryDataIter))
+				{
+					ReturnItemEle rtItemEle;
+						rtItemEle.resType = AWARD_JEWELRY;
+						rtItemEle.subType = jewelryDataIter->mValue->m_nJewelryId;
+						rtItemEle.addCount1 = 1;
+						rtItemEle.addCount2 = 0;
+						rtItemEle.jewelryData = jewelryDataIter->mValue;
+						rtcontantList.insertTail(rtItemEle);
+				}
+
 			}
 
 
@@ -317,8 +419,10 @@ void EmailManager::dealSubStr(std::string &contantStr, std::string ::size_type  
 
 std::string EmailManager::convertGetToJson(Map<UInt64, List<UInt64> > mapRes2Sub, List<JewelryData *> listJewelryData)
 {
+	
 	Json::Value root;
 	root["errorId"] = LynxErrno::None;
+	root["type"] = 1;
 	for(Map<UInt64, List<UInt64> >::Iter * mapIter = mapRes2Sub.begin();  mapIter != NULL; mapIter = mapRes2Sub.next(mapIter))
 	{
 		UInt32 resType = mapIter->mKey;
@@ -429,4 +533,27 @@ std::string EmailManager::convertGetToJson(Map<UInt64, List<UInt64> > mapRes2Sub
 //	root["errorId"] = 0;
 
 	return writer.write(root);
+}
+
+
+std::string EmailManager::convertGetToJson(UInt64 emailUid,const List<ReturnItemEle> & rtcontantList)
+{
+	Json::Value root;
+	root["errorId"] = LynxErrno::None;
+	root["emailuid"]=emailUid;
+	root["getstate"] = 1;
+	if(emailUid == 0)
+	{
+			root["type"] = 1;
+	}
+	m_pPlayer->getAllItemManager().convertItemListToStr(rtcontantList, root);
+
+	
+	Json::StyledWriter  writer;
+
+
+	return writer.write(root);
+
+
+
 }

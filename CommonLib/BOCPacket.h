@@ -25,4 +25,6 @@
 #include "EmailPacket.h"
 #include "CharactorPacket.h"
 #include "AchieveAndDailyPacket.h"
+#include "ConsortPacket.h"
+#include "PVPPacket.h"
 #endif // __LYNX_COMMON_LIB_BOCPACKET_H__

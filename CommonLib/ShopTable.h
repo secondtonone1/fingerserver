@@ -280,7 +280,7 @@ namespace Lynx
 
 	};
 
-
+	
 	struct AwardContentShopTable
 	{	
 		mAwardContentList mContentList;
@@ -381,7 +381,9 @@ namespace Lynx
 
 		String contentID;
 
-		LYNX_S11N_3(PremiumsTemplate,UInt32, ID,UInt32, type,String,contentID);
+		UInt32 awardID;
+
+		LYNX_S11N_4(PremiumsTemplate,UInt32, ID,UInt32, type,String,contentID,UInt32, awardID);
 
 	};
 
@@ -419,6 +421,115 @@ namespace Lynx
 	};
 
 
+
+
+	struct CoinshopTemplate 
+	{
+		UInt32 ID;
+
+		UInt32 shopposition;
+
+		UInt32 vipLv;
+
+		UInt32 playerLv;	
+
+		String refreshTime;
+
+		UInt32 timeawardcontentshop;
+
+		List<UInt32> awardcontentshops;
+
+		LYNX_S11N_7(CoinshopTemplate,UInt32, ID,	UInt32, shopposition,UInt32, vipLv,UInt32, playerLv,String, refreshTime,UInt32, timeawardcontentshop,List<UInt32>, awardcontentshops);
+
+	};
+
+	typedef Map<UInt32, CoinshopTemplate> CoinshopTemplateMap;
+
+
+	struct CoinshopTable
+	{
+		CoinshopTemplateMap mMap;
+
+
+		LYNX_S11N_1(CoinshopTable, CoinshopTemplateMap, mMap);
+
+		CoinshopTemplate* get(UInt32 id)
+		{
+			CoinshopTemplateMap::Iter* iter = mMap.find(id);
+
+			if (iter == mMap.end())
+			{
+				return NULL;
+			}
+			return &iter->mValue;
+		}
+
+		void clear()
+		{
+			mMap.clear();
+		}
+
+		bool loadFromDbc(const String& fileName);
+		bool reloadFromDbc(const String& fileName);
+		bool saveToDbc(const String& filePath);
+		bool loadFromCsv(const String& filePath);
+
+	};
+
+
+
+	struct CourageshopTemplate 
+	{
+		UInt32 ID;
+
+		UInt32 shopposition;
+
+		UInt32 vipLv;
+
+		UInt32 playerLv;	
+
+		String refreshTime;
+
+		UInt32 timeawardcontentshop;
+
+		List<UInt32> awardcontentshops;
+
+		LYNX_S11N_7(CourageshopTemplate,UInt32, ID,	UInt32, shopposition,UInt32, vipLv,UInt32, playerLv,String, refreshTime,UInt32, timeawardcontentshop,List<UInt32>, awardcontentshops);
+
+	};
+
+	typedef Map<UInt32, CourageshopTemplate> CourageshopTemplateMap;
+
+
+	struct CourageshopTable
+	{
+		CourageshopTemplateMap mMap;
+
+
+		LYNX_S11N_1(CourageshopTable, CourageshopTemplateMap, mMap);
+
+		CourageshopTemplate* get(UInt32 id)
+		{
+			CourageshopTemplateMap::Iter* iter = mMap.find(id);
+
+			if (iter == mMap.end())
+			{
+				return NULL;
+			}
+			return &iter->mValue;
+		}
+
+		void clear()
+		{
+			mMap.clear();
+		}
+
+		bool loadFromDbc(const String& fileName);
+		bool reloadFromDbc(const String& fileName);
+		bool saveToDbc(const String& filePath);
+		bool loadFromCsv(const String& filePath);
+
+	};
 
 
 } // namespace Lynx

@@ -3,6 +3,7 @@
 
 #include "CommonLib.h"
 #include "LoggerThreadMsg.h"
+#include "DBInterface.h"
 
 namespace Lynx
 {
@@ -11,6 +12,8 @@ namespace Lynx
 	public:
 		LoggerWorker();
 		virtual ~LoggerWorker();
+
+		DBInterface getDBInterface();
 
         bool initial(UInt32 index);
         void release();
@@ -22,8 +25,17 @@ namespace Lynx
 		void onPostUpdate();
 		void onDispatchMsg(ThreadMsg& threadMsg);
 
+
+
+		void onLoggerPlayerTypeLogReq( LoggerPlayerTypeLogReq &msg);
+
+		void onLoggerPlayerLogoutReq( LoggerPlayerLogoutReq &msg);
+
 	private:
 		ThreadMsgHandler mThreadMsgHandler;
+
+
+		DBInterface mDBInterface;
 	};
 } // namespace Lynx
 

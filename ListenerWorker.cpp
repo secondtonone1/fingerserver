@@ -195,7 +195,8 @@ ListenerWorker::onMainAccepted(TcpConnection* conn, StreamBuffer& istream, Strea
 	LOG_INFO("Player Connection arrived from [%s:%u]", conn->getFromIp().c_str(), conn->getFromPort());
 	mMainConnectionSet.insert(conn);
 	conn->mRecvTimeStamp = TimeUtil::getTimeSec();
-	//旧的连接用于绑定mOnReceived事件了 王戊辰
+	//设置 conn->mOnReceived指向 ListenerWorker::onMainReceived ,该函数在onReceived中调用
+	//王戊辰
 	LYNX_REGISTER_RECEIVED(conn, this, &ListenerWorker::onMainReceived);
 	LYNX_REGISTER_CONNECT_BROKEN(conn, this, &ListenerWorker::onMainDisconnected);
 	//新new一个conn用于监听新的客户端连接 王戊辰
@@ -263,6 +264,7 @@ ListenerWorker::onMainReceived(TcpConnection* conn, StreamBuffer& istream, Strea
 	LYNX_DEREGISTER_CONNECT_BROKEN(conn, this, &ListenerWorker::onMainDisconnected);
 	//从主链接上删除，绑定到network的连接上 王戊辰
 	mMainConnectionSet.erase(conn);
+	//内部删除了读写事件 王戊辰
 	conn->pause();
 	//把io服务断开 王戊辰
     conn->setService(NULL);

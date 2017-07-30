@@ -16,6 +16,8 @@ namespace Lynx
 		String blackstr; 
 		UInt32 friendCount ;
 		UInt64 playerUid;
+		List<UInt64> friendBeApplyGuidList;
+
 	};
 
 	class FriendBlackManager : public MainThread ,public Singleton<FriendBlackManager>
@@ -44,15 +46,26 @@ namespace Lynx
 		bool addBlack(UInt64 playerUid);
 
 	
-		bool getOtherFriendInfo(UInt64 playerUid, FriendBlackInfo & friendBlackInfo);
+		//bool getOtherFriendInfo(UInt64 playerUid, FriendBlackInfo & friendBlackInfo);
 
-		bool getBaseInfoFromDb(UInt64 playerUid, BaseInfoData & baseDataInfo);
+		//bool getBaseInfoFromDb(UInt64 playerUid, BaseInfoData & baseDataInfo);
 
 		std::string convertDataToJson();
 
 		bool judgeFriend(UInt64 playerUid);
 
 		bool judgeBlack(UInt64 playerUid);
+
+		bool addFriendBeApply(BaseInfoData baseInfoData);
+
+		bool delFriendBeApply(UInt64 playerUid);
+
+		bool delFriendBeAllApply();
+
+		List<BaseInfoData> &getFriendApplyList();
+
+		bool judgeOtherBeApply(UInt64 playerUid);
+		
 		
 
 	private:
@@ -63,7 +76,8 @@ namespace Lynx
 		FriendData *m_pFriendData;
 		List<UInt64> *m_pFriendList;
 		List<UInt64> * m_pBlackList;
-		DBInterface mDBInterface;
+		List<BaseInfoData> m_pFriendBeApplyList;
+		//DBInterface mDBInterface;
 		UInt64 m_nSelfUid;
 	};
 };

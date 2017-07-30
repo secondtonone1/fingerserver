@@ -5,7 +5,7 @@
 using namespace Lynx;
 extern float  getVal(Vector<String> strVector,UInt32 level);
 
-Player::Player() : mAckIndex(1), mConnectCloseTime(0),mLastPostState(0)
+Player::Player() : mAckIndex(1), mConnectCloseTime(0),mLastPostState(0),mNeedDel(0)
 {
 
 }
@@ -179,6 +179,12 @@ Player::initial(const ConnId& connId, const PlayerData& playerData,
 
 	}
 
+	if(!mConsortManager.initial(this))
+	{
+		LOG_WARN("Failed to initial mConsortManager");
+		return false;
+	}
+
 	//calNakedAttr();
 	updatePlayerInfo();
 	
@@ -293,6 +299,8 @@ Player::release()
 
 	mAchieveManager.release();
 
+	mConsortManager.release();
+
     for (Map<UInt32, StreamBuffer*>::Iter* iter = mWaitAckMsgMap.begin();
         iter != NULL; iter = mWaitAckMsgMap.next(iter))
     {
@@ -345,13 +353,18 @@ Player::onClientConnectClosed()
     mConnectCloseTime = TimeUtil::getTimeMilliSec();
 	updatePlayerInfo();
 	InlineActivityManager::getSingleton().checkLogOut(mPlayerData.mBaseData.m_nPlayerID,TimeUtil::getTimeSec());
+	LogicSystem::getSingleton().logPlayerLogout(mPlayerData.mBaseData);
+
+	//
+	mConsortManager.clearWoodBattle();
 }
 
 void Player::updatePlayerInfo()
 {	
 	setPlayerLeaveTime(mConnectCloseTime);
 	LogicSystem::getSingleton().updateBaseInfo(mPlayerData.mBaseData);
-
+	LogicSystem::getSingleton().updateConsortInfo(mPlayerData.mBaseData.m_nPlayerID, mPlayerData.mConsortData);
+	
 	PersistUpdateLeaveTime updateLeaveTime;
 	updateLeaveTime.m_nPlayerUid = mPlayerData.mBaseData.m_nPlayerID;
 	updateLeaveTime.m_nLeaveTime = mConnectCloseTime;
@@ -365,6 +378,7 @@ Player::onClientConnectReconnected(const ConnId& connId, const UInt64& loginToke
     mLoginToken = loginToken;
     mConnectCloseTime = 0;
 	mLastPostState = 0;
+	mNeedDel = 0;
 
     if (isLogin)
     {
@@ -410,8 +424,8 @@ void Player::ResetFireConfirmData()
 	mPlayerData.mFireConfirmData.m_CopyStartTime = 0;
 	mPlayerData.mFireConfirmData.m_ConfirmIDs.clear();
 	mPlayerData.mFireConfirmData.m_RecConfirmIDs.clear();
-	mPlayerData.mFireConfirmData.m_Times = 0;
-	mPlayerData.mFireConfirmData.m_trialTimes = 0;
+	mPlayerData.mFireConfirmData.m_ReliveTimes = 0;
+	mPlayerData.mFireConfirmData.m_Player2ReliveTimes = 0;
 	mPlayerData.mFireConfirmData.m_trialOtherTimes = 0;
 	mPlayerData.mFireConfirmData.m_AwardTimes = 0;
 	mPlayerData.mFireConfirmData.m_Star = 0;
@@ -435,25 +449,29 @@ void Player::ResetFireConfirmData()
 	mPlayerData.mFireConfirmData.m_AddSendjs.clear();
 	mPlayerData.mFireConfirmData.m_JewlryCanAddNum = MAXJEWELRYCOUNT - mPlayerData.mJewelryData.mJewelryList.size();
 
+	mPlayerData.mFireConfirmData.m_IsMopUp = 0;
+
 	mStageManager.resetgDocument();
 // 	player->getStageManager().
 	
 }
 
 //王戊辰 2016.1.19
-List<Goods>  Player::getExpAdd(UInt32 count)
+UInt32  Player::getExpAdd(UInt32 count,UInt32 &addStrength)
 {
 	Goods goods;
-	List<Goods> itemList;
+// 	List<Goods> itemList;
+	
 	UInt64 maxLevel = gPlayerExpTable->mMap.getMax()->mKey;	
 	mPlayerData.mBaseData.m_nLevelExp += count;
 
 	//临时保存之前的等级
 	UInt32 level = mPlayerData.mBaseData.m_nLevel;
-	PlayerExpTemplate * playerExpTemp = PLAYEREXP_TABLE().get(level+1);
+	UInt32 upToLevel = mPlayerData.mBaseData.m_nLevel;
+	PlayerExpTemplate * playerExpTemp = PLAYEREXP_TABLE().get(level);
 	if (playerExpTemp == NULL)
 	{
-		return itemList;
+		return upToLevel;
 	}
 
 	//判断升级逻辑
@@ -466,14 +484,21 @@ List<Goods>  Player::getExpAdd(UInt32 count)
 			mPlayerData.mBaseData.m_nLevel = maxLevel;
 			break;
 		}
-		goods.resourcestype = AWARD_BASE;
-		goods.subtype = AWARD_BASE_LEVEL;
-		goods.num = mPlayerData.mBaseData.m_nLevel;
-		itemList.insertTail(goods);
+
+		levelUpcheck(mPlayerData.mBaseData.m_nPlayerID);
+
+		upToLevel = mPlayerData.mBaseData.m_nLevel;
 
 		mPlayerData.mBaseData.m_nLevelExp -= playerExpTemp->mExp;
+		addStrength += playerExpTemp->mStrengthAdd;
+	
 
-		playerExpTemp = PLAYEREXP_TABLE().get(mPlayerData.mBaseData.m_nLevel+1);		
+		playerExpTemp = PLAYEREXP_TABLE().get(mPlayerData.mBaseData.m_nLevel);
+		if (playerExpTemp == NULL)
+		{
+			LOG_WARN("playerExpTemp not found!!");
+			return upToLevel;
+		}
 	}
 
 	if(level < mPlayerData.mBaseData.m_nLevel)
@@ -483,11 +508,19 @@ List<Goods>  Player::getExpAdd(UInt32 count)
 		mAchieveManager.updateAchieveData(PLAYERLV,mPlayerData.mBaseData.m_nLevel );
 	}
 
-	return itemList;
+	return upToLevel;
 }
 
 
 
+void Player::levelUpcheck(UInt64 playerID)
+{
+	FireConfirmManager::getSingleton().foodsInit(mPlayerData.mBaseData.m_nPlayerID);
+
+	//第一次开启
+	RankGameManager::getSingleton().initPlayerRankGame(mPlayerData.mBaseData.m_nPlayerID);
+
+}
 //计算玩家角色等级裸体属性
 void Player::calNakedAttr()
 {
@@ -503,6 +536,55 @@ void Player::checkLvActiveConditon()
 	mSkillManager.activeSkill();
 }
 
+//新增新手引导配置材料
+void Player::checkGuidInit()
+{
+	if(mPlayerData.mBaseData.m_nGuidGift)
+	{
+		return;
+	}
+
+	ReturnItemEle rtitem;
+	//加薄荷草
+	mAllItemManager.addAwardMaterial(AWARD_GRASS,1,50,rtitem,MiniLog136);
+	//加铜钱
+	mAllItemManager.addAwardMaterial(AWARD_BASE,1,50000,rtitem,MiniLog136);
+	//加元宝
+	//mAllItemManager.addAwardMaterial(AWARD_BASE,2,5000,rtitem,MiniLog136);
+	//加佣兵
+	mAllItemManager.addAwardMaterial(AWARD_SERVANT,1,1,rtitem,MiniLog136);
+	mAllItemManager.addAwardMaterial(AWARD_SERVANT,5,1,rtitem,MiniLog136);
+	//加玉器
+	mAllItemManager.addAwardMaterial(AWARD_GEM,1001,2,rtitem,MiniLog136);
+	mAllItemManager.addAwardMaterial(AWARD_GEM,2001,2,rtitem,MiniLog136);
+	mAllItemManager.addAwardMaterial(AWARD_GEM,3001,2,rtitem,MiniLog136);
+	//添加韵魂
+	mAllItemManager.addAwardMaterial(AWARD_BASE,AWARD_BASE_RHYME_SOUL,100,rtitem,MiniLog136);
+	//添加强化石
+	mAllItemManager.addAwardMaterial(AWARD_ENHANCEMATERIAL,1,20,rtitem,MiniLog136);
+
+	mAllItemManager.addAwardMaterial(AWARD_JEWELRY,2051,2,rtitem,MiniLog136);
+
+	mAllItemManager.addAwardMaterial(AWARD_SERVANTTREASURE, 1005,1,rtitem, MiniLog136);
+	mAllItemManager.addAwardMaterial(AWARD_SERVANTTREASURE, 1006,1,rtitem, MiniLog136);
+	mAllItemManager.addAwardMaterial(AWARD_SERVANTTREASURE, 1007,1,rtitem, MiniLog136);
+	mAllItemManager.addAwardMaterial(AWARD_SERVANTTREASURE, 1008,1,rtitem, MiniLog136);
+	mAllItemManager.addAwardMaterial(AWARD_SERVANTMATERIAL, 1,1,rtitem, MiniLog136);
+	mAllItemManager.addAwardMaterial(AWARD_SERVANTPIECE, 10,30,rtitem, MiniLog136);
+	mAllItemManager.addAwardMaterial(AWARD_SERVANTTREASURE, 1003,1,rtitem, MiniLog136);
+	mAllItemManager.addAwardMaterial(AWARD_SERVANTTREASURE, 1004,1,rtitem, MiniLog136);
+	mAllItemManager.addAwardMaterial(AWARD_SERVANTTREASURE, 1005,1,rtitem, MiniLog136);
+	mAllItemManager.addAwardMaterial(AWARD_SERVANTTREASURE, 1007,1,rtitem, MiniLog136);
+
+	mPlayerData.mBaseData.m_nGuidGift = 1;
+	//存盘
+	PersistGuidFlagUpdateMsg guidflagupdate;
+	guidflagupdate.playerUid = mPlayerData.mBaseData.m_nPlayerID;
+	guidflagupdate.giftflag = 1;
+	PersistSystem::getSingleton().postThreadMsg(guidflagupdate, guidflagupdate.playerUid);
+
+}
+
 
 const PlayerAttrData &Player::getLevelNakedAttr()
 {
@@ -512,4 +594,81 @@ const PlayerAttrData &Player::getLevelNakedAttr()
 	
 	
 	return m_playerAttrData;
+}
+
+void Player::setDelDirty()
+{
+	mNeedDel = 1;
+}
+
+void Player::clearDelDirty()
+{
+	mNeedDel = 0;
+}
+
+bool Player::isToDel()
+{
+	if(mNeedDel)
+	{
+		return true;
+	}
+
+	return false;
+}
+
+
+
+
+UInt32  Player::getVipExpAdd(UInt32 count,UInt32 &change)
+{
+	Goods goods;
+	// 	List<Goods> itemList;
+
+	UInt64 maxLevel = VIP_TABLE().getMaxVipLevel();
+	mPlayerData.mBaseData.m_nVipExp += count;
+
+	//临时保存之前的等级
+	UInt32 vipLevel = mPlayerData.mBaseData.m_nVipLevel;
+	UInt32 upToVipLevel = mPlayerData.mBaseData.m_nVipLevel;
+	VipTemplate * vipTemplate = VIP_TABLE().get(vipLevel);
+	if (vipTemplate == NULL)
+	{
+		return upToVipLevel;
+	}
+
+	//判断升级逻辑
+	while(vipTemplate && (mPlayerData.mBaseData.m_nVipExp >= vipTemplate->charge)&&vipTemplate->charge != 0 )
+	{
+		mPlayerData.mBaseData.m_nVipLevel++;
+
+		if (mPlayerData.mBaseData.m_nVipLevel > maxLevel)
+		{
+			mPlayerData.mBaseData.m_nVipLevel = maxLevel;
+			break;
+		}
+
+// 		levelUpcheck(mPlayerData.mBaseData.m_nPlayerID);
+
+		upToVipLevel = mPlayerData.mBaseData.m_nVipLevel;
+
+ 		mPlayerData.mBaseData.m_nVipExp -= vipTemplate->charge;
+
+// 		addStrength += vipTemplate->mStrengthAdd;
+
+
+		vipTemplate = VIP_TABLE().get(mPlayerData.mBaseData.m_nVipLevel);
+		if (vipTemplate == NULL)
+		{
+			return upToVipLevel;
+		}
+	}
+
+// 	if(vipLevel < mPlayerData.mBaseData.m_nVipLevel)
+// 	{
+// 		checkLvActiveConditon();
+// 		//更新成就信息
+// 		mAchieveManager.updateAchieveData(PLAYERLV,mPlayerData.mBaseData.m_nLevel );
+// 	}
+
+	return upToVipLevel;
 }

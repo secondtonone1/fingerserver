@@ -228,7 +228,7 @@ RewardLotteryTable::loadFromCsv(const String& filePath)
 			if (!csvReader.bind(strData1, keyValue.key))
 			{
 				LOG_WARN("Failed to load RewardLotteryTemplate.csv for [times]");
-				return false;
+				break;
 			}
 			if (keyValue.key == 0)
 			{
@@ -237,7 +237,7 @@ RewardLotteryTable::loadFromCsv(const String& filePath)
 			if (!csvReader.bind(strData2, keyValue.value))
 			{
 				LOG_WARN("Failed to load RewardLotteryTemplate.csv for [award]");
-				return false;
+				break;
 			}
 			RewardLotteryTemplate.keyValues.insertTail(keyValue);		
 		}	

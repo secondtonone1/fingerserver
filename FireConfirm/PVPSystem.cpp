@@ -32,7 +32,7 @@ PVPSystem::initial()
 
   #endif
 // 		m_nLastSyncTime = 0;
-	LOG_INFO("Initial PVPSystem");
+	//LOG_INFO("Initial PVPSystem");
 
 	SceneManager *sceneManager;
 
@@ -115,7 +115,7 @@ PVPSystem::release()
 		mPVPWorkerArray[i].release();
 	}
 	
-	LOG_INFO("Release PVPSystem");
+	//LOG_INFO("Release PVPSystem");
 
 	
 // 	DEREGISTER_THREAD_MSG(mThreadMsgHandler, PersistNotifyWorkerSaveDbResp);
@@ -255,6 +255,8 @@ void PVPSystem::createRoom(const  ConnId& connId,PVPRoomReq& msg)
 	resp.typeID = msg.typeID;
 	resp.result =LynxErrno::None;
 
+
+	GlobalValue globalValue = GlobalValueManager::getSingleton().getGlobalValue();
 	VipTemplate vipTemplate;
 	for(List<VipTemplate>::Iter *iter = gVipTable->mVip.begin();iter != NULL;iter = gVipTable->mVip.next(iter))
 	{
@@ -264,19 +266,22 @@ void PVPSystem::createRoom(const  ConnId& connId,PVPRoomReq& msg)
 			break;
 		}
 	}
-	if (vipTemplate.trailopenrate < msg.value)
+	if (msg.value >= globalValue.uTRIALGainsRate)
 	{
-		resp.result = LynxErrno::VipLevelNotEnough;
-		jsonStr = resp.convertDataToJson();
-		NetworkSystem::getSingleton().sender(connId,PVP_ROOM_RESP,jsonStr);
-		resp.result = LynxErrno::VipLevelNotEnough;
-		return;
-	}
+		if (globalValue.uTRIALVipNeed  > player->getVipLevel())
+		{
+			resp.result = LynxErrno::VipLevelNotEnough;
+			jsonStr = resp.convertDataToJson();
+			NetworkSystem::getSingleton().sender(connId,PVP_ROOM_RESP,jsonStr);
+			return;
+		}
 
+	}
+	
 	roomData.roomID = ++mRoomID;
 	roomData.stageID = msg.stageID;
 	roomData.sceneID = 0;
-	roomData.multiple =msg.value;
+	roomData.multiple = msg.value;
 	roomData.roomState = 0;
 
 	roomPlayer.playerID = player->getPlayerGuid();
@@ -292,16 +297,7 @@ void PVPSystem::createRoom(const  ConnId& connId,PVPRoomReq& msg)
 	roomPlayer.delay = 100;//todo 计算网络延迟
 	roomPlayer.score = 0;//todo 有没有积分
 
-	//for test
-	Goods good;
-	good.resourcestype =14 ;
-	good.subtype = 1003;
-	good.num = 1;
-	roomPlayer.equipList.insertTail(good);//todo 装备 时装有没有完成
-	good.resourcestype =14 ;
-	good.subtype = 2001;
-	good.num = 1;
-	roomPlayer.equipList.insertTail(good);//todo 装备 时装有没有完成
+	
 
 
 	roomData.playerList.insertTail(roomPlayer);
@@ -309,6 +305,7 @@ void PVPSystem::createRoom(const  ConnId& connId,PVPRoomReq& msg)
 	player->setRoomID(mRoomID);	
 
 	resp.roomDatas.insertTail(roomData);
+	resp.gold = player->getPlayerGold();
 	
 	jsonStr = resp.convertDataToJson();
 	NetworkSystem::getSingleton().sender(connId,PVP_ROOM_RESP,jsonStr);
@@ -370,6 +367,7 @@ void PVPSystem::joinRoom(const  ConnId& connId,PVPRoomReq& msg)
 		resp.result = 2;
 	}
 	resp.result = LynxErrno::None;
+	resp.gold = player->getPlayerGold();
 	std::string jsonStr;
 	jsonStr = resp.convertDataToJson();
 	NetworkSystem::getSingleton().sender(connId,PVP_ROOM_RESP,jsonStr);
@@ -382,7 +380,7 @@ Robot getRobot(Guid playerID)
 	Robot robot;
 	robot.playerID = playerID;
 	
- 	sprintf(dest,"player%ld",playerID);
+ 	sprintf(dest,"player%llu",playerID);
 	robot.name = dest;
 
 	robot.level = rand()%100;
@@ -492,9 +490,15 @@ void PVPSystem::matchingRoom(const  ConnId& connId,PVPRoomReq& msg)//todo
 	PlayerBaseData baseData = player->getPlayerBaseData();
 	PersistFindSimilarPowerReq req;
 	req.playerGuid = player->getPlayerGuid();
-	req.low = baseData.m_nPower *(100 - 5) /100;
-	req.high = baseData.m_nPower * (100 + 5) /100;
-	req.times = 10000;
+	int lowLevel =baseData.m_nLevel -5;
+	if (lowLevel < 0)
+	{
+		lowLevel = 0;
+	}
+	req.low = lowLevel;
+	req.high = baseData.m_nLevel +5;
+	req.times = 10001;//10001 多人副本标识
+	req.initialValue = baseData.m_nLevel;
 
 	PersistSystem::getSingleton().postThreadMsg(req, 0);
 }
@@ -527,14 +531,14 @@ void PVPSystem::matchingRoomResp(Guid playerID,Guid otherPlayerID)
 	LogicSystem::getSingleton().getBaseInfo(otherPlayerID, baseInfoData);
 	Goods good;
 	List<Goods>equipList;
-	good.resourcestype =14 ;
-	good.subtype = 1003;
-	good.num = 1;
-	equipList.insertTail(good);//todo 装备 时装有没有完成
-	good.resourcestype =14 ;
-	good.subtype = 2001;
-	good.num = 1;
-	equipList.insertTail(good);//todo 装备 时装有没有完成
+// 	good.resourcestype =14 ;
+// 	good.subtype = 1003;
+// 	good.num = 1;
+// 	equipList.insertTail(good);//todo 装备 时装有没有完成
+// 	good.resourcestype =14 ;
+// 	good.subtype = 2001;
+// 	good.num = 1;
+// 	equipList.insertTail(good);//todo 装备 时装有没有完成
 
 	for(List<RoomData>::Iter *iter = mRoomData.begin();iter != NULL;iter = mRoomData.next(iter))
 	{
@@ -564,23 +568,32 @@ void PVPSystem::matchingRoomResp(Guid playerID,Guid otherPlayerID)
 			break;
 		}
 	}
+
 	if (otherPlayerID != 0)
 	{
-		player->getStageManager().addMatchingPlayers(otherPlayerID);
-		sprintf(dest,"%d",otherPlayerID);
+		sprintf(dest,"%llu",otherPlayerID);
 		playerUidStr = (String)dest;	
 		resp.otherPlayerID = otherPlayerID;
-		if (otherPlayerID > 1000 && otherPlayerID <10000)
+		if (otherPlayerID > RobotMinRoleID && otherPlayerID <RobotMaxRoleID)
 		{
 			resp.isRobot = 1;
 		}		
 		resp.otherPlayer =  LogicSystem::getSingleton().getDetailInfo(playerUidStr.c_str());
+		
+
 	}
 
 	if (resp.roomDatas.size()== 0)
 	{
 		resp.result = LynxErrno::NotFound;
 	}
+	PlayerFireConfirmData mFireConfirmData =  player->GetFireConfirmData();
+	resp.value = mFireConfirmData.m_AwardTimes;
+	if (resp.otherPlayer == "")
+	{
+		resp.result = LynxErrno::RobotNotFound;
+	}
+	resp.gold = player->getPlayerGold();
 
 	jsonStr = resp.convertDataToJson();
 	NetworkSystem::getSingleton().sender(player->getConnId(),PVP_ROOM_RESP,jsonStr);
@@ -639,6 +652,7 @@ void PVPSystem::leaveRoom(const  ConnId& connId,PVPRoomReq& msg)
 
 	std::string jsonStr;
 	resp.result = LynxErrno::None;
+	resp.gold = player->getPlayerGold();
 	jsonStr = resp.convertDataToJson();
 	NetworkSystem::getSingleton().sender(connId,PVP_ROOM_RESP,jsonStr);
 }
@@ -649,12 +663,21 @@ void PVPSystem::PVPStart(const  ConnId& connId,PVPRoomReq& msg)
 	Guid otherPlayerID = 0;
 	UInt32 flag = LynxErrno::None;
 	UInt32 trailTimes =0;
+	Goods goods;
+	List<Goods> itemList;
 	std::string jsonStr;
 	Player *player;
 	SceneManager *sceneManager;
 	PVPRoomResp resp;
 
+	//LOG_INFO("PVPStart  = %s ",msg.jsonStr.c_str());
+
 	player = LogicSystem::getSingleton().getPlayerByConnId(connId);
+	if (player == NULL)
+	{
+		LOG_WARN("player not found!!");
+		return;
+	}
 
 	msg.convertJsonToData(msg.jsonStr);
 	resp.typeID =msg.typeID;
@@ -671,11 +694,21 @@ void PVPSystem::PVPStart(const  ConnId& connId,PVPRoomReq& msg)
 		return;
 	}
 
-	
+	if (gStageTable->get(msg.stageID) == NULL)
+	{
+		LOG_WARN("gStageTable->get(msg.stageID) not found!!");
+		return;
+	}
 	if (gStageTable->get(msg.stageID)->mType == STAGE_TRIAL)//多人副本
 	{
-		TrialTemplate trialTemplate = GlobalVarManager::getSingleton().gettrial();
-		cost = trialTemplate.ratecost.findValue(msg.value);
+
+		GlobalValue globalValue = GlobalValueManager::getSingleton().getGlobalValue();
+		//正常是10000不扣钱，2倍是20000 扣钱
+		if (globalValue.uTRIALGainsRate == msg.value)
+		{
+			cost = globalValue.uTRIALratecosts;
+		}
+		
 
 		if (player->getPlayerGold()<cost)
 		{
@@ -683,6 +716,7 @@ void PVPSystem::PVPStart(const  ConnId& connId,PVPRoomReq& msg)
 
 		}
 		PlayerDailyResetData playerDailyResetData =player->getPlayerDailyResetData();
+		
 		VipTemplate vipTemplate;
 		for(List<VipTemplate>::Iter *iter1 = gVipTable->mVip.begin();iter1 != NULL;iter1 = gVipTable->mVip.next(iter1))
 		{
@@ -691,6 +725,13 @@ void PVPSystem::PVPStart(const  ConnId& connId,PVPRoomReq& msg)
 				vipTemplate = iter1->mValue;
 				break;
 			}
+		}
+		if (globalValue.uTRIALVipNeed > player->getVipLevel() && globalValue.uTRIALGainsRate == msg.value)
+		{
+			resp.result = LynxErrno::VipLevelNotEnough;
+			jsonStr = resp.convertDataToJson();
+			NetworkSystem::getSingleton().sender(connId,PVP_ROOM_RESP,jsonStr);
+			return;
 		}
 
 		trailTimes = vipTemplate.trailtimes;
@@ -734,6 +775,11 @@ void PVPSystem::PVPStart(const  ConnId& connId,PVPRoomReq& msg)
 		playerDailyResetData.m_MatchingList.insertTail(otherPlayerID);
 		player->setPlayerDailyResetData(playerDailyResetData);
 		player->getPersistManager().setDirtyBit(DAILYRESETBIT);
+		goods.resourcestype =1;
+		goods.subtype =2;
+		goods.num =0 - cost;
+		itemList.insertTail(goods);
+		GiftManager::getSingleton().addToPlayer(player->getPlayerGuid(),1,itemList,MiniLog8);
 
 		GCPlayerDetailResp detailInfoResp;
 		detailInfoResp.mPacketID = BOC_PLAYER_DETAIL_RESP;
@@ -741,6 +787,9 @@ void PVPSystem::PVPStart(const  ConnId& connId,PVPRoomReq& msg)
 		NetworkSystem::getSingleton().sendMsg(detailInfoResp, connId);
 
 		PlayerFireConfirmData mFireConfirmData =  player->GetFireConfirmData();
+
+		//LOG_INFO("m_AwardTimes  = %u ",msg.value);
+
 		mFireConfirmData.m_AwardTimes =  msg.value;
 		player->SetFireConfirmData(mFireConfirmData);
 		//更新多人副本每日任务
@@ -749,12 +798,15 @@ void PVPSystem::PVPStart(const  ConnId& connId,PVPRoomReq& msg)
 
 	FireConfirmManager::getSingleton().SetCopyStart(player,msg.stageID);
 
-	
+// 	resp.confirmIDs =  FireConfirmManager::getSingleton().getFireConfirmCondition(connId);
 
 	resp.result = LynxErrno::None;
+	resp.gold = player->getPlayerGold();
 	
 	jsonStr = resp.convertDataToJson();
 	NetworkSystem::getSingleton().sender(connId,PVP_ROOM_RESP,jsonStr);
+
+	//LOG_INFO("PVP_ROOM_RESP = %s",jsonStr.c_str());
 	
 
 	for(List<RoomData>::Iter *iter = mRoomData.begin();iter != NULL;iter = mRoomData.next(iter))
@@ -782,7 +834,6 @@ void PVPSystem::PVPStart(const  ConnId& connId,PVPRoomReq& msg)
 
 // 	sceneManager->update();
 
-	FireConfirmManager::getSingleton().SendFireConfirmCondition(connId);
 }
 
 //1.获取房间列表2.创建房间3.加入房间4.开始PVP 5.离开房间6.改变房间状态7.排队

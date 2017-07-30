@@ -36,7 +36,7 @@ namespace Lynx
 
         void onPassportAuthResp(PassportAuthResp& msg);
 
-		void onPassporCodeResp(PassporCodeResp& msg);
+		void onPassporCodeResp(PassportCodeResp& msg);
     
 
 	private:

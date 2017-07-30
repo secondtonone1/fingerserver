@@ -41,6 +41,23 @@ namespace Lynx
 		bool loadFromCsv(const String& filePath);
 	};
 
+	struct AwardRouletteTable
+	{	
+		mAwardList mList;
+
+		LYNX_S11N_1(AwardRouletteTable, mAwardList, mList);
+
+		void clear()
+		{
+			mList.clear();
+		}
+
+		bool loadFromDbc(const String& fileName);
+		bool reloadFromDbc(const String& fileName);
+		bool saveToDbc(const String& filePath);
+		bool loadFromCsv(const String& filePath);
+	};
+
 	struct Resource
 	{
 		UInt32 weight;
@@ -252,13 +269,15 @@ namespace Lynx
 		UInt32 twelvePalaceBuy;
 		UInt32 twelvePalaceBossBuy;
 		UInt32 territorybuytimes;
+		UInt32 buyrankgametimes;
+		UInt32 cattaskrefreshtimes;
 
 
-
-		LYNX_S11N_19(VipTemplate, UInt32,id, UInt32, charge, UInt32, 	stageCard1, UInt32, 	stageCard2, UInt32, 	stageCard3,
+		LYNX_S11N_21(VipTemplate, UInt32,id, UInt32, charge, UInt32, 	stageCard1, UInt32, 	stageCard2, UInt32, 	stageCard3,
 			UInt32, stageCard4, UInt32, 	strengthPurchase, UInt32, 	stageReset, UInt32, 	stageCleanOut10, 
 			 UInt32, 	friends, UInt32,love,UInt32, foodBuy,UInt32, welfaremarket,UInt32, trailtimes ,UInt32, trailopenrate,
-			 UInt32, climtowertimes,UInt32, twelvePalaceBuy,UInt32, twelvePalaceBossBuy,UInt32, territorybuytimes);
+			 UInt32, climtowertimes,UInt32, twelvePalaceBuy,UInt32, twelvePalaceBossBuy,UInt32, territorybuytimes,
+			 UInt32, buyrankgametimes,UInt32, cattaskrefreshtimes);
 	};
 
 
@@ -282,6 +301,19 @@ namespace Lynx
 				}
 			}
 			return NULL;
+		}
+
+		UInt32 getMaxVipLevel()
+		{
+			UInt32 maxVipLevel = 0;
+			for (List<VipTemplate>::Iter * iter = mVip.begin();iter != NULL;iter = mVip.next(iter))
+			{
+				if (iter->mValue.id > maxVipLevel)
+				{
+					maxVipLevel = iter->mValue.id;
+				}				
+			}
+			return maxVipLevel;
 		}
 
 
